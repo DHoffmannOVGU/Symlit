@@ -51,6 +51,15 @@ commit that fixed them.
   renders it. Remove it or show it behind a developer setting.
 - **Product name is spelled three ways** in code and UI: "MBSE Lite" (old docs), "SymLit"
   (templates, project list) and "Symlit" (repository, package).
+- **`DiagramCanvas.tsx` is still about 1,400 lines.** The hooks and dialogs are split out; what
+  remains is wiring between them and the large `<ReactFlow>` element with its event handlers. Next
+  candidates: the node-change/selection handlers and the toolbar/inspector prop assembly.
+- **Some extracted props carry long inferred types** (palette items, query result maps in
+  `sidebar-parts/`). Naming them (e.g. `ReferencedPaletteItem`) would make the components easier to read.
+- **One unexplained browser-test failure in about 120 runs** (a `toHaveCount` assertion, most
+  likely in the edge-drawing spec) while splitting the canvas. It did not reproduce in repeated runs.
+- **The demo project's relationship has no handles**, so React Flow draws small marker stubs on
+  the elements' top and bottom edges (`server/seed.ts`). Also present before the refactor.
 - **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
 
 ## Done
@@ -81,3 +90,4 @@ commit that fixed them.
 - Everything was one 1.76 MB JavaScript bundle; pages are lazy-loaded, so the project list needs about 510 kB.
 - The server stored any element `data`; it now requires an object with string text fields and a list of attributes (other fields stay open).
 - The built server only found its migrations when started from the repository root; it now also looks next to the entry point.
+- `DiagramCanvas.tsx` (2,813 lines) and `Sidebar.tsx` (2,015 lines) were split into hooks and components (1,378 and 640 lines now).

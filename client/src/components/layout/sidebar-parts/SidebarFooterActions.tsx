@@ -1,0 +1,92 @@
+import type { ProjectType } from "@shared/schema";
+import { type MouseEvent } from "react";
+import { Link } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Home } from "lucide-react";
+import * as Icons from "lucide-react";
+import { dispatchDiagramEvent } from "@/lib/diagram-events";
+import { Separator } from "@/components/ui/separator";
+import { SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
+import { AI_ASSISTANT_ENABLED } from "@/lib/feature-flags";
+import { supportsModelRules } from "@/components/flow/rules/model-rules";
+
+export interface SidebarFooterActionsProps {
+  projectType: ProjectType | undefined;
+  currentViewId: number | undefined;
+  canEditMetamodels: boolean;
+  canSeeModelRules: boolean;
+  setExportDialogOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  handleLinkClick: (event?: MouseEvent, href?: string) => void;
+}
+
+export function SidebarFooterActions({
+  projectType,
+  currentViewId,
+  canEditMetamodels,
+  canSeeModelRules,
+  setExportDialogOpen,
+  handleLinkClick,
+}: SidebarFooterActionsProps) {
+  return (
+    <SidebarFooter className="p-4 border-t border-white/10 bg-[#1e293b] space-y-2">
+              <Separator className="bg-white/10" />
+              {AI_ASSISTANT_ENABLED &&
+              projectType === "metamodel" &&
+              currentViewId &&
+              canEditMetamodels ? (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-white/70 hover:text-white hover:bg-white/10"
+                  onClick={() => dispatchDiagramEvent("metamodel-ai-assistant-toggle-request", { viewId: currentViewId })}
+                  data-testid="button-ai-model-assistant"
+                >
+                  <Icons.Sparkles className="w-4 h-4 mr-2" />
+                  AI Model Assistant
+                </Button>
+              ) : null}
+              {supportsModelRules(projectType) &&
+              currentViewId &&
+              canSeeModelRules ? (
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-white/70 hover:text-white hover:bg-white/10"
+                  onClick={() =>
+                    dispatchDiagramEvent("model-rules-toggle-request", {
+                      viewId: currentViewId,
+                    })
+                  }
+                  data-testid="button-model-rules"
+                >
+                  <Icons.ListChecks className="w-4 h-4 mr-2" />
+                  {projectType === "instance" ? "Instance Rules" : "Model Rules"}
+                </Button>
+              ) : null}
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-white/70 hover:text-white hover:bg-white/10"
+                onClick={() => setExportDialogOpen(true)}
+                data-testid="button-export-project"
+              >
+                <Icons.Download className="w-4 h-4 mr-2" />
+                Export Project
+              </Button>
+              <Separator className="bg-white/10" />
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    className="w-full justify-start text-white/60 hover:text-white hover:bg-white/5 gap-2 h-9"
+                  >
+                    <Link
+                      href="/projects"
+                      onClick={(event) => handleLinkClick(event, "/projects")}
+                    >
+                      <Home className="w-4 h-4" />
+                      <span className="font-medium">Projects Overview</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarFooter>
+  );
+}

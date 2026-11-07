@@ -95,12 +95,22 @@ presets, the renderers/editors, and this document together.
 - `client/src/pages`: `ProjectList` (`/projects`) and `ProjectView` (`/project/:id`, `/project/:id/view/:viewId`).
 - `client/src/hooks`: React Query hooks per resource (`use-projects`, `use-views`, `use-flow`, …) and `use-auth`.
 - `client/src/components/flow`: the diagram editor (the largest and fastest-moving area).
-  - `canvas/DiagramCanvas.tsx` composes the canvas.
+  - `canvas/DiagramCanvas.tsx` composes the canvas. Its logic lives in hooks next to it, one per
+    concern: `useCanvasDisplayGraph` (what React Flow renders), `useCanvasElementActions` (edit,
+    copy, delete, re-type, reverse), `useCanvasInsertion` and `useCanvasDropInsertion` (sidebar
+    inserts and drops), `usePatternCreation`, `useCanvasSidePanels` (model rules / AI panels),
+    `useCanvasAiProposal`, `useEdgeRelationConfirmation`, `useCanvasActionRequests` (actions
+    requested from the sidebar), `useCanvasTableRows` and `useCanvasTableSelection` (table mode).
+    Dialogs are separate components (`SavePatternDialog`, `DiagramHelpDialog`,
+    `ValidationResultsDialog`, `UnsavedChangesDialog`, `DiagramLoadError`).
   - `nodes/*` and `edges/*` are the renderers.
   - `panels/*` are the attribute editors.
   - `hooks/*` hold canvas state, edge creation, validation, playback and screenshots.
   - `utils/*` hold layout, inheritance and reference resolution.
-- `client/src/components/layout`: sidebar and view dialogs.
+- `client/src/components/layout`: sidebar and view dialogs. `Sidebar.tsx` wires state together;
+  `sidebar/useSidebarFlowData` loads local and referenced diagrams, `sidebar/useViewOrdering`
+  handles drag-to-reorder, and `sidebar-parts/` holds the header, tabs, footer, view element lists
+  and the two palettes.
 - `client/src/lib/diagram-events.ts`: in-app event bus (context-owned `EventTarget`) between the sidebar, toolbar and canvas.
 - `client/src/components/ui`: shadcn/ui primitives.
 

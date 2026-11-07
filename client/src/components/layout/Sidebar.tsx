@@ -1,3 +1,8 @@
+import { SidebarProjectHeader } from "./sidebar-parts/SidebarProjectHeader";
+import { SidebarTabsContent } from "./sidebar-parts/SidebarTabsContent";
+import { SidebarFooterActions } from "./sidebar-parts/SidebarFooterActions";
+import { useViewOrdering } from "./sidebar/useViewOrdering";
+import { useSidebarFlowData } from "./sidebar/useSidebarFlowData";
 import { SidebarViewNodeList, type SidebarViewNodeListArgs } from "./sidebar-parts/SidebarViewNodeList";
 import { ReferencedNodePalette } from "./sidebar-parts/ReferencedNodePalette";
 import { MetamodelCreatePalette } from "./sidebar-parts/MetamodelCreatePalette";
@@ -8,12 +13,8 @@ import {
   type DragEvent,
   type MouseEvent,
 } from "react";
-import { Link, useLocation } from "wouter";
-import { useQueries, useQuery } from "@tanstack/react-query";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { LayoutGrid, Plus, Home } from "lucide-react";
-import * as Icons from "lucide-react";
+import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import type { FlowNode, Project, View } from "@shared/schema";
@@ -30,21 +31,7 @@ import {
 } from "@/lib/diagram-events";
 import { EditViewDialog } from "@/components/layout/EditViewDialog";
 import { useCreateInternalView } from "@/hooks/use-internal-views";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Separator } from "@/components/ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Sidebar as ShadcnSidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { Sidebar as ShadcnSidebar, useSidebar } from "@/components/ui/sidebar";
 import {
   BASE_METAMODEL_ID,
   METAMODEL_NODE_DRAG_MIME,
@@ -57,10 +44,6 @@ import {
 } from "./sidebar/SidebarConstants";
 import { useProjectExport } from "./sidebar/useProjectExport";
 import { ExportProjectDialog } from "./sidebar-parts/ExportProjectDialog";
-import { SidebarViewList } from "./sidebar-parts/SidebarViewList";
-import { SidebarPatternPalette } from "./sidebar-parts/SidebarPatternPalette";
-import { AI_ASSISTANT_ENABLED } from "@/lib/feature-flags";
-import { supportsModelRules } from "@/components/flow/rules/model-rules";
 
 interface SidebarProps {
   projectId: number;
@@ -76,25 +59,6 @@ interface SidebarProps {
   metamodelSetup?: MetamodelSetup | null;
 }
 
-const VIEW_ORDER_STORAGE_KEY = "mbse.diagram-view-order";
-
-const applyPreferredOrder = <T,>(
-  items: T[],
-  getId: (item: T) => string,
-  preferredOrder: string[] = [],
-) => {
-  const orderIndex = new Map(
-    preferredOrder.map((id, index) => [id, index] as const),
-  );
-  return items.slice().sort((a, b) => {
-    const aIndex = orderIndex.get(getId(a));
-    const bIndex = orderIndex.get(getId(b));
-    if (aIndex === undefined && bIndex === undefined) return 0;
-    if (aIndex === undefined) return 1;
-    if (bIndex === undefined) return -1;
-    return aIndex - bIndex;
-  });
-};
 
 export function Sidebar({
   projectId,
@@ -138,195 +102,33 @@ export function Sidebar({
   const [includeReferencedMetamodelViews, setIncludeReferencedMetamodelViews] =
     useState<boolean>(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [viewOrderByProject, setViewOrderByProject] = useState<
-    Record<string, string[]>
-  >(() => {
-    if (typeof window === "undefined") return {};
-    try {
-      const stored = window.localStorage.getItem(VIEW_ORDER_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
-    }
-  });
-  const [draggedViewId, setDraggedViewId] = useState<number | null>(null);
-  const [viewDropTarget, setViewDropTarget] = useState<{
-    id: number;
-    position: "before" | "after";
-  } | null>(null);
   const { isExporting, exportProject } = useProjectExport(projectId);
   const createInternalView = useCreateInternalView();
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(
-      VIEW_ORDER_STORAGE_KEY,
-      JSON.stringify(viewOrderByProject),
-    );
-  }, [viewOrderByProject]);
-
-  const viewOrderKey = String(projectId);
-  const orderedViews = useMemo(
-    () =>
-      applyPreferredOrder(
-        views,
-        (view) => String(view.id),
-        viewOrderByProject[viewOrderKey],
-      ),
-    [viewOrderByProject, viewOrderKey, views],
-  );
-
-  const finishViewReorder = (
-    targetViewId: number,
-    position: "before" | "after",
-  ) => {
-    if (draggedViewId === null || draggedViewId === targetViewId) {
-      setDraggedViewId(null);
-      setViewDropTarget(null);
-      return;
-    }
-    const nextOrder = orderedViews.map((view) => view.id);
-    const sourceIndex = nextOrder.indexOf(draggedViewId);
-    if (sourceIndex >= 0) {
-      const [movedId] = nextOrder.splice(sourceIndex, 1);
-      const targetIndex = nextOrder.indexOf(targetViewId);
-      if (targetIndex < 0) return;
-      nextOrder.splice(targetIndex + (position === "after" ? 1 : 0), 0, movedId);
-      setViewOrderByProject((current) => ({
-        ...current,
-        [viewOrderKey]: nextOrder.map(String),
-      }));
-    }
-    setDraggedViewId(null);
-    setViewDropTarget(null);
-  };
-
-  const flowQueries = useQueries({
-    queries: views.map((view) => ({
-      queryKey: [api.flow.get.path, view.id],
-      queryFn: async () =>
-        apiCall(api.flow.get, {
-          params: { viewId: view.id },
-          allowNotFound: true,
-        }),
-      enabled: expandedViews.has(view.id),
-      staleTime: 30_000,
-    })),
+  const {
+    draggedViewId,
+    setViewDropTarget,
+    finishViewReorder,
+    viewDropTarget,
+    setDraggedViewId,
+    orderedViews,
+  } = useViewOrdering({
+    projectId,
+    views,
   });
-
-  const flowByViewId = useMemo(() => {
-    const map = new Map<number, (typeof flowQueries)[number]>();
-    views.forEach((view, index) => {
-      map.set(view.id, flowQueries[index]);
-    });
-    return map;
-  }, [views, flowQueries]);
-
-  const referencedViewQueries = useQueries({
-    queries: referencedProjects.map((project) => ({
-      queryKey: [api.views.list.path, project.id, "referenced"],
-      queryFn: async () =>
-        apiCall(api.views.list, { params: { projectId: project.id } }),
-      enabled: referencedProjects.length > 0,
-      staleTime: 30_000,
-    })),
-  });
-
-  const referencedViews = useMemo(
-    () =>
-      referencedProjects.map((project, index) => ({
-        project,
-        views: referencedViewQueries[index]?.data ?? [],
-        isLoading: Boolean(referencedViewQueries[index]?.isLoading),
-        isError: Boolean(referencedViewQueries[index]?.isError),
-      })),
-    [referencedProjects, referencedViewQueries],
-  );
-
-  const referencedViewEntries = useMemo(
-    () =>
-      referencedViews.flatMap(({ project, views }) =>
-        views.map((view) => ({ project, view })),
-      ),
-    [referencedViews],
-  );
-
-  const referencedFlowEnabledViewIds = useMemo(() => {
-    const ids = new Set<number>();
-
-    for (const viewId of Array.from(expandedViews)) {
-      ids.add(viewId);
-    }
-
-    if (selectedReferencedProjectId === BASE_METAMODEL_ID) {
-      return ids;
-    }
-
-    for (const { project, view } of referencedViewEntries) {
-      if (String(project.id) !== selectedReferencedProjectId) continue;
-      if (
-        selectedReferencedViewId !== "all" &&
-        String(view.id) !== selectedReferencedViewId
-      ) {
-        continue;
-      }
-      ids.add(view.id);
-    }
-
-    return ids;
-  }, [
-    expandedViews,
+  const {
+    referencedViews,
     referencedViewEntries,
+    referencedFlowByViewId,
+    getReferencedFlowQueriesForSelection,
+    retryReferencedFlows,
+    flowByViewId,
+  } = useSidebarFlowData({
+    views,
+    expandedViews,
+    referencedProjects,
     selectedReferencedProjectId,
     selectedReferencedViewId,
-  ]);
-
-  const referencedFlowQueries = useQueries({
-    queries: referencedViewEntries.map(({ view }) => ({
-      queryKey: [api.flow.get.path, view.id, "referenced"],
-      queryFn: async () =>
-        apiCall(api.flow.get, {
-          params: { viewId: view.id },
-          allowNotFound: true,
-        }),
-      enabled: referencedFlowEnabledViewIds.has(view.id),
-      // A reference can be removed and re-added while the same flow query
-      // remains in React Query's cache. Always revalidate it so a replacement
-      // cannot silently reuse an old palette.
-      staleTime: 0,
-    })),
   });
-
-  const referencedFlowByViewId = useMemo(() => {
-    const map = new Map<number, (typeof referencedFlowQueries)[number]>();
-    referencedViewEntries.forEach(({ view }, index) => {
-      map.set(view.id, referencedFlowQueries[index]);
-    });
-    return map;
-  }, [referencedViewEntries, referencedFlowQueries]);
-
-  const getReferencedFlowQueriesForSelection = (
-    projectId: string,
-    viewId: string,
-  ) =>
-    referencedViewEntries
-      .filter(({ project, view }) => {
-        if (String(project.id) !== projectId) return false;
-        return viewId === "all" || String(view.id) === viewId;
-      })
-      .map(({ view }) => referencedFlowByViewId.get(view.id))
-      .filter(
-        (query): query is (typeof referencedFlowQueries)[number] =>
-          Boolean(query),
-      );
-
-  const retryReferencedFlows = (projectId: string, viewId: string) => {
-    void Promise.all(
-      getReferencedFlowQueriesForSelection(projectId, viewId).map((query) =>
-        query.refetch(),
-      ),
-    );
-  };
 
   const hasReferencedMetamodels = referencedProjects.length > 0;
   const visibleMetamodelNodeTypes = useMemo(() => {
@@ -779,339 +581,43 @@ export function Sidebar({
   return (
     <>
       <ShadcnSidebar className="border-r border-sidebar-border bg-[#1e293b] text-white shadow-2xl z-20">
-        <SidebarHeader className="p-4 border-b border-white/10 bg-[#1e293b]">
-          <Link
-            href="/projects"
-            onClick={(event) => handleLinkClick(event, "/projects")}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity mb-4 group"
-          >
-            <div className="bg-primary/20 p-2 rounded-lg group-hover:bg-primary/30 transition-colors">
-              <LayoutGrid className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <span className="text-[10px] font-medium text-white/60 uppercase tracking-wider block leading-none mb-1">
-                Workspace
-              </span>
-              <h1 className="font-bold text-sm truncate max-w-[140px] leading-tight text-white">
-                {projectName || "Loading..."}
-              </h1>
-            </div>
-          </Link>
+        <SidebarProjectHeader
+          handleLinkClick={handleLinkClick}
+          projectName={projectName}
+          username={username}
+          visibleRole={visibleRole}
+        />
 
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/5 text-xs">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            <span className="truncate opacity-80 text-white/80">
-              {username}
-            </span>
-            {visibleRole ? (
-              <span className="ml-auto rounded border border-white/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-white/50">
-                {visibleRole}
-              </span>
-            ) : null}
-          </div>
-        </SidebarHeader>
+        <SidebarTabsContent
+          projectType={projectType}
+          views={views}
+          orderedViews={orderedViews}
+          currentViewId={currentViewId}
+          flowByViewId={flowByViewId}
+          getNodeMeta={getNodeMeta}
+          renderViewNodeList={renderViewNodeList}
+          onCreateView={onCreateView}
+          projectId={projectId}
+          patternsQuery={patternsQuery}
+          setEditingView={setEditingView}
+          handleLinkClick={handleLinkClick}
+          renderReferencedNodePalette={renderReferencedNodePalette}
+          hasReferencedMetamodels={hasReferencedMetamodels}
+          includeReferencedMetamodelViews={includeReferencedMetamodelViews}
+          setIncludeReferencedMetamodelViews={setIncludeReferencedMetamodelViews}
+          referencedViews={referencedViews}
+          referencedFlowByViewId={referencedFlowByViewId}
+          renderMetamodelCreatePalette={renderMetamodelCreatePalette}
+        />
 
-        <SidebarContent className="bg-[#1e293b]">
-          {projectType === "instance" ? (
-            <Tabs
-              defaultValue="metamodels"
-              className="flex h-full flex-col px-2 pt-3"
-            >
-              <TabsList
-                className={cn(
-                  "grid w-full bg-white/5 p-1 text-white/60",
-                  "grid-cols-2",
-                )}
-              >
-                <TabsTrigger
-                  value="metamodels"
-                  className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
-                >
-                  Metamodels
-                </TabsTrigger>
-                <TabsTrigger
-                  value="diagrams"
-                  className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
-                >
-                  Diagram Views
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent
-                value="diagrams"
-                className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1"
-              >
-                <SidebarViewList
-                  views={views}
-                  orderedViews={orderedViews}
-                  currentViewId={currentViewId}
-                  flowByViewId={flowByViewId}
-                  getNodeLabel={(node) => getNodeMeta(node).label}
-                  renderViewNodeList={renderViewNodeList}
-                  onCreateView={onCreateView}
-                />
-
-                <SidebarPatternPalette
-                  projectId={projectId}
-                  currentViewId={currentViewId}
-                  patterns={(patternsQuery.data ?? []).map((pattern) => ({
-                    id: pattern.id,
-                    name: pattern.name,
-                  }))}
-                  isLoading={patternsQuery.isLoading}
-                  isError={patternsQuery.isError}
-                  onInsertPattern={(patternId, viewId) =>
-                    dispatchDiagramEvent("insert-pattern-into-view", {
-                      patternId,
-                      viewId,
-                    })
-                  }
-                  onConfigurePattern={(pattern) => {
-                    const fullPattern = (patternsQuery.data ?? []).find(
-                      (candidate) => candidate.id === pattern.id,
-                    );
-                    if (fullPattern) setEditingView(fullPattern);
-                  }}
-                  onNavigate={handleLinkClick}
-                />
-              </TabsContent>
-
-              <TabsContent
-                value="metamodels"
-                className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1"
-              >
-                {renderReferencedNodePalette()}
-              </TabsContent>
-            </Tabs>
-          ) : (
-            <Tabs
-              defaultValue="node-types"
-              className="flex h-full flex-col px-2 pt-3"
-            >
-              <TabsList
-                className={cn(
-                  "grid w-full bg-white/5 p-1 text-white/60",
-                  "grid-cols-2",
-                )}
-              >
-                <TabsTrigger
-                  value="node-types"
-                  className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
-                >
-                  Create Nodes
-                </TabsTrigger>
-                <TabsTrigger
-                  value="diagrams"
-                  className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
-                >
-                  Show Views
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent
-                value="diagrams"
-                className="mt-3 flex-1 overflow-y-auto pr-1"
-              >
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    {hasReferencedMetamodels && (
-                      <div className="mb-3 px-1">
-                        <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/75">
-                          <Checkbox
-                            checked={includeReferencedMetamodelViews}
-                            onCheckedChange={(checked) =>
-                              setIncludeReferencedMetamodelViews(checked === true)
-                            }
-                          />
-                          <span>Include referenced metamodel views</span>
-                        </label>
-                      </div>
-                    )}
-                    <SidebarMenu>
-                      {views.length === 0 ? (
-                        <div className="px-4 py-8 text-center text-white/30 text-xs italic">
-                          No views yet.
-                        </div>
-                      ) : (
-                        orderedViews.map((view) => {
-                          const flowQuery = flowByViewId.get(view.id);
-                          const nodes = (
-                            (flowQuery?.data?.nodes ?? []) as FlowNode[]
-                          )
-                            .slice()
-                            .sort((a, b) =>
-                              getNodeMeta(a).label.localeCompare(
-                                getNodeMeta(b).label,
-                              ),
-                            );
-                          return renderViewNodeList({
-                            view,
-                            nodes,
-                            flowState: flowQuery,
-                            isCurrentView: view.id === currentViewId,
-                            isReadOnly: false,
-                          });
-                        })
-                      )}
-
-                      {hasReferencedMetamodels && includeReferencedMetamodelViews &&
-                        referencedViews.map(
-                          ({ project, views, isLoading, isError }) => (
-                            <div key={project.id} className="mt-3 mb-2">
-                              <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
-                                {project.name}
-                              </div>
-                              {isLoading && (
-                                <SidebarMenuItem>
-                                  <SidebarMenuButton
-                                    asChild
-                                    className="text-white/40"
-                                  >
-                                    <span>Loading referenced views...</span>
-                                  </SidebarMenuButton>
-                                </SidebarMenuItem>
-                              )}
-                              {isError && (
-                                <SidebarMenuItem>
-                                  <SidebarMenuButton
-                                    asChild
-                                    className="text-red-300"
-                                  >
-                                    <span>Failed to load referenced views</span>
-                                  </SidebarMenuButton>
-                                </SidebarMenuItem>
-                              )}
-                              {!isLoading && !isError && views.length === 0 && (
-                                <SidebarMenuItem>
-                                  <SidebarMenuButton
-                                    asChild
-                                    className="text-white/40"
-                                  >
-                                    <span>No views available</span>
-                                  </SidebarMenuButton>
-                                </SidebarMenuItem>
-                              )}
-                              {!isLoading &&
-                                !isError &&
-                                views.map((view) => {
-                                  const flowQuery = referencedFlowByViewId.get(
-                                    view.id,
-                                  );
-                                  const nodes = (
-                                    (flowQuery?.data?.nodes ?? []) as FlowNode[]
-                                  )
-                                    .slice()
-                                    .sort((a, b) =>
-                                      getNodeMeta(a).label.localeCompare(
-                                        getNodeMeta(b).label,
-                                      ),
-                                    );
-                                  return renderViewNodeList({
-                                    view,
-                                    nodes,
-                                    flowState: flowQuery,
-                                    isCurrentView: false,
-                                    isReadOnly: true,
-                                    sourceLabel: project.description
-                                      ? `${project.description}`
-                                      : undefined,
-                                    insertMode: "insert-reference",
-                                    showReadOnlyBadge: false,
-                                  });
-                                })}
-                            </div>
-                          ),
-                        )}
-                    </SidebarMenu>
-                    <div className="px-2 pt-3">
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-center gap-2 rounded-md border border-white/10 bg-white/5 text-white/75 hover:bg-white/10 hover:text-white"
-                        onClick={onCreateView}
-                        data-testid="button-create-view-sidebar"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Create view
-                      </Button>
-                    </div>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </TabsContent>
-
-              <TabsContent
-                value="node-types"
-                className="mt-3 flex-1 overflow-y-auto pr-1"
-              >
-                <SidebarGroup>
-                  <SidebarGroupContent>
-                    {renderMetamodelCreatePalette()}
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              </TabsContent>
-            </Tabs>
-          )}
-        </SidebarContent>
-
-        <SidebarFooter className="p-4 border-t border-white/10 bg-[#1e293b] space-y-2">
-          <Separator className="bg-white/10" />
-          {AI_ASSISTANT_ENABLED &&
-          projectType === "metamodel" &&
-          currentViewId &&
-          canEditMetamodels ? (
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-white/70 hover:text-white hover:bg-white/10"
-              onClick={() => dispatchDiagramEvent("metamodel-ai-assistant-toggle-request", { viewId: currentViewId })}
-              data-testid="button-ai-model-assistant"
-            >
-              <Icons.Sparkles className="w-4 h-4 mr-2" />
-              AI Model Assistant
-            </Button>
-          ) : null}
-          {supportsModelRules(projectType) &&
-          currentViewId &&
-          canSeeModelRules ? (
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-white/70 hover:text-white hover:bg-white/10"
-              onClick={() =>
-                dispatchDiagramEvent("model-rules-toggle-request", {
-                  viewId: currentViewId,
-                })
-              }
-              data-testid="button-model-rules"
-            >
-              <Icons.ListChecks className="w-4 h-4 mr-2" />
-              {projectType === "instance" ? "Instance Rules" : "Model Rules"}
-            </Button>
-          ) : null}
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-white/70 hover:text-white hover:bg-white/10"
-            onClick={() => setExportDialogOpen(true)}
-            data-testid="button-export-project"
-          >
-            <Icons.Download className="w-4 h-4 mr-2" />
-            Export Project
-          </Button>
-          <Separator className="bg-white/10" />
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                className="w-full justify-start text-white/60 hover:text-white hover:bg-white/5 gap-2 h-9"
-              >
-                <Link
-                  href="/projects"
-                  onClick={(event) => handleLinkClick(event, "/projects")}
-                >
-                  <Home className="w-4 h-4" />
-                  <span className="font-medium">Projects Overview</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarFooter>
+        <SidebarFooterActions
+          projectType={projectType}
+          currentViewId={currentViewId}
+          canEditMetamodels={canEditMetamodels}
+          canSeeModelRules={canSeeModelRules}
+          setExportDialogOpen={setExportDialogOpen}
+          handleLinkClick={handleLinkClick}
+        />
       </ShadcnSidebar>
 
       <ExportProjectDialog
