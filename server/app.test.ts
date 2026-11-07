@@ -483,3 +483,22 @@ describe("project integrity", () => {
     assert.equal(res.json.userId, localUserId);
   });
 });
+
+describe("element data validation", () => {
+  test("rejects element data with the wrong structure and keeps open-ended fields", async () => {
+    const project = await createProject();
+    const view = await createView(project.id);
+    const node = (id: string, data: unknown) => ({ id: `${id}-${project.id}`, type: "part", position: { x: 0, y: 0 }, data });
+
+    for (const data of ["just text", null, [1, 2], { label: 42 }, { attributes: "none" }]) {
+      const res = await request("POST", `/api/views/${view.id}/sync`, { nodes: [node("bad", data)], edges: [] });
+      assert.equal(res.status, 400, `${JSON.stringify(data)} -> ${res.status}`);
+    }
+
+    const rich = { label: "Pump", attributes: [{ id: "a1", name: "flow", value: "3", unit: "l/s", type: "number" }], color: "#fff", _nodeStyle: { width: 300 } };
+    const ok = await request("POST", `/api/views/${view.id}/sync`, { nodes: [node("good", rich)], edges: [] });
+    assert.ok(ok.status < 300, ok.text);
+    const loaded = (await request("GET", `/api/views/${view.id}/flow`)).json;
+    assert.deepEqual(loaded.nodes[0].data, rich);
+  });
+});

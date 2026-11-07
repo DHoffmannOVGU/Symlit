@@ -19,11 +19,26 @@ export const flowPositionSchema = z.object({
   y: z.number().finite(),
 });
 
+/**
+ * Element payloads are open-ended (styling, attributes, flow settings, ...),
+ * so only the structure the editor relies on is enforced: an object whose
+ * well-known text fields are strings and whose attributes are a list.
+ */
+export const flowNodeDataSchema = z
+  .object({
+    label: z.string().optional(),
+    description: z.string().optional(),
+    type: z.string().optional(),
+    typeId: z.string().optional(),
+    attributes: z.array(z.record(z.unknown())).optional(),
+  })
+  .passthrough();
+
 export const flowNodeInputSchema = z.object({
   id: nonBlankString,
   type: z.string().min(1).optional(),
   position: flowPositionSchema,
-  data: z.unknown(),
+  data: flowNodeDataSchema,
   parentId: nonBlankString.nullable().optional(),
 });
 

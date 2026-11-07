@@ -25,6 +25,9 @@ commit that fixed them.
   (`metamodel-reference-resolution.ts`). An export of an instance whose metamodel builds on
   another metamodel is therefore incomplete.
 
+- **Relationship data is still unchecked.** Edge `data` is `z.any()` because the same schema
+  parses stored relationships on load; tightening it needs a check of what older diagrams contain.
+
 ### Client
 - **Seven React hook dependency warnings** (`npm run lint`), in `DiagramCanvas.tsx`, `useDiagramCanvas.ts`,
   `useEdgeCreation.ts` and others. Some are missing dependencies (possible stale values), others
@@ -65,3 +68,4 @@ commit that fixed them.
   from Google, so the "local" app called a third party on every page load. Fonts are bundled now,
   and an e2e test checks that no request leaves the machine. The page also had no `<title>`.
 - Everything was one 1.76 MB JavaScript bundle; pages are lazy-loaded, so the project list needs about 510 kB.
+- The server stored any element `data`; it now requires an object with string text fields and a list of attributes (other fields stay open).

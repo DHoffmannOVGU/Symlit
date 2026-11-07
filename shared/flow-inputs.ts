@@ -10,11 +10,21 @@ export type FlowEdgeInput = Omit<InsertFlowEdge, "viewId">;
  * a dedicated type here avoids forcing the client and routes to invent the
  * extra fields just to satisfy the compiler.
  */
+/** Structure enforced by `flowNodeDataSchema` in shared/routes.ts. */
+export type FlowNodeData = {
+  label?: string;
+  description?: string;
+  type?: string;
+  typeId?: string;
+  attributes?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+};
+
 export type SyncFlowNodeInput = {
   id: string;
   type?: string;
   position: { x: number; y: number };
-  data?: unknown;
+  data: FlowNodeData;
   parentId?: string | null;
 };
 
