@@ -39,7 +39,7 @@ type MetamodelEdgeLike = Pick<Edge, "id" | "source" | "target" | "data" | "type"
   edgeType?: string | null;
 };
 
-type PartTypeOption = {
+export type PartTypeOption = {
   id: string;
   label: string;
   icon?: string;
