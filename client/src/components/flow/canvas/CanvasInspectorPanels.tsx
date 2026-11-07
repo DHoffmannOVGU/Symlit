@@ -9,7 +9,6 @@ import type {
 import type { MetamodelSetup, MagicRelationType } from "@shared/metamodel-setup";
 
 export interface CanvasInspectorPanelsProps {
-  viewId: number;
   node: DiagramNode | null;
   edge: DiagramEdge | null;
   nodes: DiagramNode[];
@@ -28,11 +27,6 @@ export interface CanvasInspectorPanelsProps {
   }>;
   parentNodes: DiagramNode[];
   referencedMetamodels: Array<{ id: number; name: string; metamodelSetup?: MetamodelSetup | null }>;
-  selectedNodeDebug?: {
-    projectId?: number;
-    createdAt?: unknown;
-    type?: string;
-  };
   allowedEdgeTypes?: MagicRelationType[];
   onCloseNodePanel: () => void;
   onCloseEdgePanel: () => void;
@@ -43,7 +37,6 @@ export interface CanvasInspectorPanelsProps {
 }
 
 export function CanvasInspectorPanels({
-  viewId,
   node,
   edge,
   nodes,
@@ -54,7 +47,6 @@ export function CanvasInspectorPanels({
   availablePartDefNodes,
   availablePartDefEdges,
   parentNodes,
-  selectedNodeDebug,
   allowedEdgeTypes,
   onCloseNodePanel,
   onCloseEdgePanel,
@@ -78,17 +70,6 @@ export function CanvasInspectorPanels({
           allNodes={nodes}
           allEdges={edges}
           parentNodes={parentNodes}
-          debugInfo={
-            selectedNodeDebug
-              ? {
-                  nodeId: node.id,
-                  viewId,
-                  projectId: selectedNodeDebug.projectId,
-                  createdAt: selectedNodeDebug.createdAt,
-                  type: selectedNodeDebug.type,
-                }
-              : { nodeId: node.id, viewId }
-          }
         />
       ) : null}
 

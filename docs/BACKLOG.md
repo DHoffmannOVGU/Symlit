@@ -24,14 +24,9 @@ commit that fixed them.
 - **The diagram editor chunk is still 1.1 MB.** Pages are lazy-loaded now, but React Flow, the
   panels and layout engines (`dagre`, `entitree-flex`) load as one chunk. The panels and layout
   code could be split further once `DiagramCanvas.tsx` is decomposed.
-- **Unused debug info.** `useDiagramCanvas` computes `debugInfoById` for every element and
-  `DiagramCanvas` passes it to `NodeAttributePanel`, which declares a `debugInfo` prop but never
-  renders it. Remove it or show it behind a developer setting.
 - **`DiagramCanvas.tsx` is still about 1,400 lines.** The hooks and dialogs are split out; what
   remains is wiring between them and the large `<ReactFlow>` element with its event handlers. Next
   candidates: the node-change/selection handlers and the toolbar/inspector prop assembly.
-- **Some extracted props carry long inferred types** (palette items, query result maps in
-  `sidebar-parts/`). Naming them (e.g. `ReferencedPaletteItem`) would make the components easier to read.
 - **The edge-drawing browser test is occasionally flaky under load** (`e2e/metamodel-instance.spec.ts`,
   "selects a metamodel, creates typed instances…"): about 1 in 30 full-suite runs on four parallel
   workers the drag does not register as a connection; 15/15 when run on its own. Investigate the
@@ -81,3 +76,5 @@ commit that fixed them.
 - Auto layout multiplied all coordinates by 6 and assumed 200x100 cards, so diagrams spread out far; it now uses dagre with the real element sizes, keeps side-connected elements in one row, and stays where the diagram was. `entitree-flex` was removed.
 - The export dialog now closes after a successful download (and stays open on errors).
 - All React hook dependency warnings are fixed; `npm run lint` reports none.
+- `useDiagramCanvas` computed per-element debug info that was never shown; it now only keeps the owning project per element (used to mark elements from referenced projects).
+- Sidebar components spelled out long inferred types; they are named in `sidebar-parts/types.ts` now (`FlowQuery`, `PaletteItem`, `NodeMeta`, …).

@@ -1,4 +1,4 @@
-import type { UseQueryResult } from "@tanstack/react-query";
+import type { FlowQuery, MetamodelNodeTypeOption, PaletteItem } from "./types";
 import type { Project } from "@shared/schema";
 import type { View } from "@shared/schema";
 import { type DragEvent } from "react";
@@ -23,18 +23,18 @@ import {
 export interface MetamodelCreatePaletteContext {
   selectedMetamodelCreateProjectId: string;
   referencedProjects: Project[];
-  getReferencedFlowQueriesForSelection: (projectId: string, viewId: string) => UseQueryResult<{ nodes: { id: string; type: string; position: { x: number; y: number; }; projectId: number; data?: unknown; createdAt?: unknown; parentId?: string | null | undefined; }[]; edges: { id: string; source: string; target: string; data?: any; edgeType?: string | undefined; sourceHandle?: string | null | undefined; targetHandle?: string | null | undefined; }[]; } | null, Error>[];
+  getReferencedFlowQueriesForSelection: (projectId: string, viewId: string) => FlowQuery[];
   selectedMetamodelCreateViewId: string;
   filteredMetamodelCreateViews: View[];
   hasReferencedMetamodels: boolean;
   setSelectedMetamodelCreateProjectId: React.Dispatch<React.SetStateAction<string>>;
   setSelectedMetamodelCreateViewId: React.Dispatch<React.SetStateAction<string>>;
-  visibleMetamodelNodeTypes: { type: "partdef" | "actiondef" | "concerndef" | "agentdef" | "requirementdef" | "eventdef" | "capabilitydef"; label: string; description: string; iconName: string; color: string; }[];
+  visibleMetamodelNodeTypes: MetamodelNodeTypeOption[];
   currentViewId: number | undefined;
   handleCreateMetamodelNode: (options: Omit<SidebarCreateMetamodelNodeDetail, "viewId">) => void;
   handleMetamodelNodeTypeDragStart: (event: DragEvent<HTMLButtonElement>, payload: SidebarCreateMetamodelNodeDragPayload) => void;
   retryReferencedFlows: (projectId: string, viewId: string) => void;
-  metamodelCreatePaletteItems: ({ project: Project; view: View; node: { id: string; data: unknown; createdAt: Date | null; type: string; projectId: number; }; meta: { label: string; typeLabel: string; iconName: string; color: string; }; } & { duplicateCount: number; })[];
+  metamodelCreatePaletteItems: PaletteItem[];
   getCanonicalTypeId: (node: FlowNode) => string;
 }
 

@@ -1,4 +1,4 @@
-import type { UseQueryResult } from "@tanstack/react-query";
+import type { FlowQuery, PaletteItem } from "./types";
 import type { Project } from "@shared/schema";
 import type { View } from "@shared/schema";
 import { type DragEvent } from "react";
@@ -22,14 +22,14 @@ export interface ReferencedNodePaletteContext {
   referencedProjects: Project[];
   selectedReferencedProjectId: string;
   unavailableMetamodelIds: number[];
-  getReferencedFlowQueriesForSelection: (projectId: string, viewId: string) => UseQueryResult<{ nodes: { id: string; type: string; position: { x: number; y: number; }; projectId: number; data?: unknown; createdAt?: unknown; parentId?: string | null | undefined; }[]; edges: { id: string; source: string; target: string; data?: any; edgeType?: string | undefined; sourceHandle?: string | null | undefined; targetHandle?: string | null | undefined; }[]; } | null, Error>[];
+  getReferencedFlowQueriesForSelection: (projectId: string, viewId: string) => FlowQuery[];
   selectedReferencedViewId: string;
   setSelectedReferencedProjectId: React.Dispatch<React.SetStateAction<string>>;
   setSelectedReferencedViewId: React.Dispatch<React.SetStateAction<string>>;
   filteredReferencedViews: View[];
   onRemoveReferencedMetamodel: ((id: number) => void) | undefined;
   retryReferencedFlows: (projectId: string, viewId: string) => void;
-  referencedPaletteItems: ({ project: Project; view: View; node: { id: string; data: unknown; createdAt: Date | null; type: string; projectId: number; }; meta: { label: string; typeLabel: string; iconName: string; color: string; }; } & { duplicateCount: number; })[];
+  referencedPaletteItems: PaletteItem[];
   getCanonicalTypeId: (node: FlowNode) => string;
   currentViewId: number | undefined;
   currentViewNodeIds: Set<string>;
