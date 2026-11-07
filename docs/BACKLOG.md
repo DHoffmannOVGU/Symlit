@@ -32,6 +32,11 @@ commit that fixed them.
 - **Toolbar ignores `onAddNode` and `onAutoLayout`.** `DiagramToolbar` receives both handlers,
   but has no button for them, so auto layout of the whole diagram is not reachable from the toolbar.
   Decide whether to bring the buttons back or remove the props and the callers' wiring.
+- **The diagram editor chunk is still 1.1 MB.** Pages are lazy-loaded now, but React Flow, the
+  panels and layout engines (`dagre`, `entitree-flex`) load as one chunk. The panels and layout
+  code could be split further once `DiagramCanvas.tsx` is decomposed.
+- **Zooming the page is disabled** (`maximum-scale=1` in `client/index.html`). Probably meant to
+  stop mobile browsers zooming the canvas, but it also blocks accessibility zoom.
 - **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
 
 ## Done
@@ -55,3 +60,8 @@ commit that fixed them.
 - `PATCH /api/projects/:id` accepted `userId`, so an update could change a project's owner.
 - `tsconfig.json` had no `target`, so type checking assumed ES3.
 - No linter: ESLint (TypeScript and React hook rules) now runs in CI. 78 unused imports, variables and props were removed.
+- 16 unused shadcn/ui components and 16 dependencies only they (or nothing) used were removed.
+- `client/index.html` loaded 25 Google font families and `index.css` loaded Inter and JetBrains Mono
+  from Google, so the "local" app called a third party on every page load. Fonts are bundled now,
+  and an e2e test checks that no request leaves the machine. The page also had no `<title>`.
+- Everything was one 1.76 MB JavaScript bundle; pages are lazy-loaded, so the project list needs about 510 kB.

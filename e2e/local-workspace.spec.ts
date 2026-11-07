@@ -4,10 +4,18 @@ import { expect, test } from "@playwright/test";
 // in-memory database: no API mocking.
 
 test("opens straight into the local workspace without a login", async ({ page }) => {
+  // The local edition must work offline: no fonts, scripts or APIs from other hosts.
+  const external: string[] = [];
+  page.on("request", (request) => {
+    const { hostname } = new URL(request.url());
+    if (!["localhost", "127.0.0.1"].includes(hostname)) external.push(request.url());
+  });
   await page.goto("/");
   await expect(page).toHaveURL(/\/projects$/);
   await expect(page.getByTestId("button-new-project")).toBeVisible();
   await expect(page.getByText("Local workspace")).toBeVisible();
+  await expect(page).toHaveTitle("Symlit");
+  expect(external).toEqual([]);
 });
 
 test("creates a project in the UI and persists it on the server", async ({ page, request }) => {
