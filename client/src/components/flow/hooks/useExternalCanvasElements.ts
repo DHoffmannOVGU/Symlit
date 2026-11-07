@@ -4,7 +4,7 @@ import type {
   DiagramNode as Node,
 } from "../types";
 
-type ExternalCanvasEdge = {
+export type ExternalCanvasEdge = {
   id: string;
   label?: string;
   type: "input" | "output";
