@@ -78,7 +78,9 @@ export default function ProjectView() {
   const [quickstartOpen, setQuickstartOpen] = useState(false);
   const [quickstartProgress, setQuickstartProgress] =
     useState<QuickstartProgress>(() => getQuickstartProgress(userId, projectId));
-  const isQuickstartProject = project?.name === "SymLit Quickstart";
+  // Projects created before the rename are still called "SymLit Quickstart".
+  const isQuickstartProject =
+    project?.name === "Symlit Quickstart" || project?.name === "SymLit Quickstart";
 
   useEffect(() => {
     if (project?.referencedMetamodels) {

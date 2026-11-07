@@ -46,12 +46,12 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
   },
   {
     id: "tutorial",
-    name: "SymLit quickstart",
+    name: "Symlit quickstart",
     description: "A guided model that teaches the workspace in three short stops.",
     projectType: "instance",
-    projectName: "SymLit Quickstart",
+    projectName: "Symlit Quickstart",
     projectDescription:
-      "A hands-on introduction to SymLit: explore a system, build relationships, and review a requirement.",
+      "A hands-on introduction to Symlit: explore a system, build relationships, and review a requirement.",
     nodes: [],
     edges: [],
     views: [

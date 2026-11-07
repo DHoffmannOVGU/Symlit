@@ -37,13 +37,11 @@ commit that fixed them.
 - **Zooming the page is disabled** (`maximum-scale=1` in `client/index.html`). Probably meant to
   stop mobile browsers zooming the canvas, but it also blocks accessibility zoom.
 - **The quickstart guide is tied to the project name.** `ProjectView.tsx` treats a project as
-  the quickstart when its name is exactly "SymLit Quickstart"; renaming it loses the guide, and any
+  the quickstart when its name is exactly "Symlit Quickstart" (or the old "SymLit Quickstart"); renaming it loses the guide, and any
   project given that name gets it. A template id stored on the project would be robust.
 - **Unused debug info.** `useDiagramCanvas` computes `debugInfoById` for every element and
   `DiagramCanvas` passes it to `NodeAttributePanel`, which declares a `debugInfo` prop but never
   renders it. Remove it or show it behind a developer setting.
-- **Product name is spelled three ways** in code and UI: "MBSE Lite" (old docs), "SymLit"
-  (templates, project list) and "Symlit" (repository, package).
 - **`DiagramCanvas.tsx` is still about 1,400 lines.** The hooks and dialogs are split out; what
   remains is wiring between them and the large `<ReactFlow>` element with its event handlers. Next
   candidates: the node-change/selection handlers and the toolbar/inspector prop assembly.
@@ -86,3 +84,4 @@ commit that fixed them.
 - `DiagramCanvas.tsx` (2,813 lines) and `Sidebar.tsx` (2,015 lines) were split into hooks and components (1,378 and 640 lines now).
 - Method projects and internal views were removed (decision D5), including their data (migration 0003).
 - Resized elements lost their size on reload: the size was saved but only restored for internal-view containers. It is restored for every element now.
+- The product name was spelled "MBSE Lite", "SymLit" and "Symlit"; it is "Symlit" everywhere now.

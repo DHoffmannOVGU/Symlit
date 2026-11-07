@@ -116,7 +116,7 @@ export function QuickstartGuide({
             </div>
             <Badge variant="secondary">Quickstart guide</Badge>
           </div>
-          <DialogTitle className="text-2xl">Take a short tour of SymLit</DialogTitle>
+          <DialogTitle className="text-2xl">Take a short tour of Symlit</DialogTitle>
           <DialogDescription className="max-w-xl leading-6">
             This guide follows the same workflow as the tutorial model: explore
             a view, build connections, and review what you created.
@@ -228,7 +228,7 @@ export function QuickstartGuide({
         {isComplete ? (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
             <p className="font-semibold text-emerald-800 dark:text-emerald-300">
-              You have the core SymLit workflow down.
+              You have the core Symlit workflow down.
             </p>
             <p className="mt-1 text-sm leading-5 text-emerald-700/80 dark:text-emerald-300/80">
               Continue refining this model, or use what you learned to start
