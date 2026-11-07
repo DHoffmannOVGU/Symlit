@@ -6,7 +6,7 @@ type HelpItem = {
   description: string;
 };
 
-type DiagramHelpContent = {
+export type DiagramHelpContent = {
   title: string;
   description: string;
   shortcuts: HelpItem[];

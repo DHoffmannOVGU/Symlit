@@ -1,3 +1,8 @@
+import { DiagramLoadError } from "./DiagramLoadError";
+import { SavePatternDialog } from "./SavePatternDialog";
+import { DiagramHelpDialog } from "./DiagramHelpDialog";
+import { ValidationResultsDialog } from "./ValidationResultsDialog";
+import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 import { useCanvasInsertion } from "./useCanvasInsertion";
 import { useCanvasAiProposal } from "./useCanvasAiProposal";
 import { useCanvasDropInsertion } from "./useCanvasDropInsertion";
@@ -46,17 +51,6 @@ import { useMetamodelParts } from "../hooks/useMetamodelParts";
 import { useEdgeCreation } from "../hooks/useEdgeCreation";
 import { EdgeRelationConfirmationProvider } from "../edges/EdgeRelationConfirmation";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 
 import { DiagramToolbar } from "./DiagramToolBar";
 import { useDiagramCanvas } from "../hooks/useDiagramCanvas";
@@ -67,7 +61,6 @@ import { useFlowPlayback } from "../hooks/useFlowPlayback";
 import { EdgeCreateMenu } from "../menus/EdgeCreateMenu";
 import { ScreenshotDialog } from "../dialogs/ScreenshotDialog";
 import { DeleteConfirmDialog } from "../dialogs/DeleteConfirmDialog";
-import { DiagramRecoveryDialog } from "../dialogs/DiagramRecoveryDialog";
 import {
   buildParentMap,
   buildParentMapFromNodes,
@@ -1053,46 +1046,16 @@ function FlowInner({
 
   if (isError) {
     return (
-      <>
-        <div className="flex-1 flex items-center justify-center h-full">
-          <div className="flex max-w-md flex-col items-center gap-3 px-6 text-center">
-            <p className="font-medium text-destructive">
-              This diagram could not be loaded safely.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              The saved diagram contains invalid positions or relationship
-              endpoints. Your saved data was not changed.
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => void reloadDiagram()}
-                data-testid="button-reload-diagram"
-              >
-                Try again
-              </Button>
-              <Button onClick={openRecovery} data-testid="button-repair-diagram">
-                Repair saved diagram
-              </Button>
-            </div>
-          </div>
-        </div>
-        <DiagramRecoveryDialog
-          open={recoveryOpen}
-          flow={recoveryQuery.data}
-          isLoading={recoveryQuery.isFetching}
-          error={
-            recoveryQuery.error instanceof Error ? recoveryQuery.error : null
-          }
-          isSaving={isSaving}
-          onOpenChange={(open) => {
-            setRecoveryOpen(open);
-            if (!open) setSuspendFlowLoad(false);
-          }}
-          onRetry={() => void recoveryQuery.refetch()}
-          onSave={handleRecoverySave}
-        />
-      </>
+      <DiagramLoadError
+        reloadDiagram={reloadDiagram}
+        openRecovery={openRecovery}
+        recoveryOpen={recoveryOpen}
+        recoveryQuery={recoveryQuery}
+        isSaving={isSaving}
+        setRecoveryOpen={setRecoveryOpen}
+        setSuspendFlowLoad={setSuspendFlowLoad}
+        handleRecoverySave={handleRecoverySave}
+      />
     );
   }
 
@@ -1265,103 +1228,23 @@ function FlowInner({
           />
         )}
 
-      <Dialog open={patternDialogOpen} onOpenChange={setPatternDialogOpen}>
-        <DialogContent className="sm:max-w-[520px]">
-          <DialogHeader>
-            <DialogTitle>Save Pattern</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="pattern-name">Name</Label>
-              <Input
-                id="pattern-name"
-                value={patternName}
-                onChange={(event) => setPatternName(event.target.value)}
-                placeholder="e.g. Control loop starter"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pattern-description">
-                Description (optional)
-              </Label>
-              <Textarea
-                id="pattern-description"
-                value={patternDescription}
-                onChange={(event) => setPatternDescription(event.target.value)}
-                placeholder="What should this pattern be used for?"
-                rows={3}
-              />
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Saving {patternSnapshot?.nodes.length ?? 0} nodes and{" "}
-              {patternSnapshot?.edges.length ?? 0} edges.
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPatternDialogOpen(false);
-                setPatternSnapshot(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreatePattern}
-              disabled={!patternName.trim() || !patternSnapshot?.nodes.length}
-            >
-              Save Pattern
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <SavePatternDialog
+        patternDialogOpen={patternDialogOpen}
+        setPatternDialogOpen={setPatternDialogOpen}
+        patternName={patternName}
+        setPatternName={setPatternName}
+        patternDescription={patternDescription}
+        setPatternDescription={setPatternDescription}
+        patternSnapshot={patternSnapshot}
+        setPatternSnapshot={setPatternSnapshot}
+        handleCreatePattern={handleCreatePattern}
+      />
 
-      <Dialog open={helpDialogOpen} onOpenChange={setHelpDialogOpen}>
-        <DialogContent className="sm:max-w-[620px]">
-          <DialogHeader>
-            <DialogTitle>{helpContent.title}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            <p className="text-sm text-muted-foreground">
-              {helpContent.description}
-            </p>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Shortcuts</h3>
-              <div className="space-y-2">
-                {helpContent.shortcuts.map((shortcut) => (
-                  <div
-                    key={shortcut.key}
-                    className="flex items-start justify-between gap-4 rounded-lg border bg-muted/20 px-3 py-2"
-                  >
-                    <code className="shrink-0 rounded bg-background px-2 py-1 text-xs font-semibold">
-                      {shortcut.key}
-                    </code>
-                    <span className="text-sm text-muted-foreground">
-                      {shortcut.description}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold">Main Functions</h3>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                {helpContent.functions.map((item) => (
-                  <li
-                    key={item}
-                    className="rounded-lg border bg-muted/20 px-3 py-2"
-                  >
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <DiagramHelpDialog
+        helpDialogOpen={helpDialogOpen}
+        setHelpDialogOpen={setHelpDialogOpen}
+        helpContent={helpContent}
+      />
 
       <EdgeCreateMenu
         open={!!edgeCreateMenu}
@@ -1452,88 +1335,24 @@ function FlowInner({
         onDownload={downloadImage}
       />
 
-      <Dialog open={validationOpen} onOpenChange={setValidationOpen}>
-        <DialogContent className="sm:max-w-[560px]">
-          <DialogHeader>
-            <DialogTitle>Validation Results</DialogTitle>
-          </DialogHeader>
+      <ValidationResultsDialog
+        validationOpen={validationOpen}
+        setValidationOpen={setValidationOpen}
+        validationIssues={validationIssues}
+        projectType={projectType}
+        highlightIssues={highlightIssues}
+        setHighlightIssues={setHighlightIssues}
+        applyIssueHighlights={applyIssueHighlights}
+      />
 
-          {validationIssues.length === 0 ? (
-            <div className="text-sm text-muted-foreground">
-              {projectType === "instance"
-                ? "No issues found. All meta and instance rules pass."
-                : "No issues found. Your model rules pass."}
-            </div>
-          ) : (
-            <div className="space-y-2 max-h-[320px] overflow-y-auto">
-              {validationIssues.map((issue, index) => (
-                <div
-                  key={`${issue.type}-${issue.id}-${index}`}
-                  className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-                >
-                  {issue.message}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <DialogFooter>
-            {validationIssues.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  const next = !highlightIssues;
-                  setHighlightIssues(next);
-                  applyIssueHighlights(next);
-                }}
-              >
-                {highlightIssues ? "Clear marks" : "Mark issues"}
-              </Button>
-            )}
-            <Button onClick={() => setValidationOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={leaveDialogOpen}
-        onOpenChange={(open) => {
-          if (isLeaving) return;
-          if (!open) handleCancelLeave();
-        }}
-      >
-        <DialogContent className="sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>Unsaved changes</DialogTitle>
-          </DialogHeader>
-          <div className="text-sm text-muted-foreground">
-            You have unsaved changes in this diagram. Save now or leave without
-            saving?
-          </div>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={handleCancelLeave}
-              disabled={isLeaving || isSaving}
-            >
-              Stay
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleLeaveWithoutSaving}
-              disabled={isLeaving || isSaving}
-            >
-              Leave without saving
-            </Button>
-            <Button
-              onClick={handleSaveAndLeave}
-              disabled={isLeaving || isSaving}
-            >
-              {isLeaving || isSaving ? "Saving..." : "Save and leave"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <UnsavedChangesDialog
+        leaveDialogOpen={leaveDialogOpen}
+        isLeaving={isLeaving}
+        handleCancelLeave={handleCancelLeave}
+        isSaving={isSaving}
+        handleLeaveWithoutSaving={handleLeaveWithoutSaving}
+        handleSaveAndLeave={handleSaveAndLeave}
+      />
 
       <DeleteConfirmDialog
         open={deleteDialogOpen}
