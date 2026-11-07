@@ -1,6 +1,6 @@
 # Symlit: Replit → GitHub migration plan
 
-Status: **local edition imported (Phases 0, 1 and 3 done for the local edition; Phase 2 partly).**
+Status: **local edition complete and stable on `main`** (PRs #1–#4). Hosted edition deferred.
 Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc7732`, 217 commits).
 
 ### Decisions taken
@@ -13,6 +13,8 @@ Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc
 - **Fresh git history** (D2): the Replit history is not imported, because it contains a plain-text API key.
 - **PostgreSQL everywhere**: Docker Compose or embedded PGlite locally (§4.4).
 - **Local edition is single-user** (D4).
+- **Method projects and internal views were removed** (D5, migration 0003).
+- **Product name is "Symlit"** everywhere.
 - The **AI assistant** stays in the local edition as an optional feature (bring your own Gemini key).
 
 ### Progress
@@ -35,9 +37,37 @@ Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc
 | Element id collisions fixed; elements deleted when in no diagram | done |
 | ESLint in CI, dead code and unused UI components/dependencies removed | done |
 | Fonts bundled (no third-party requests), pages lazy-loaded | done |
-| Smaller findings | tracked in [`BACKLOG.md`](BACKLOG.md) |
-| Frontend decomposition (Phase 7) | open |
-| Hosted edition (Phases 4 and 6) | deferred |
+| `DiagramCanvas.tsx` / `Sidebar.tsx` split into hooks and components (Phase 7, first pass) | done |
+| Method projects and internal views removed; resized elements keep their size | done |
+| Auto Layout toolbar button (dagre, real element sizes) | done |
+| Guided tutorial (two linked projects, coach panel, 15 auto-detected steps) replacing the quickstart | done |
+| Recursive metamodel export, `projects.template_id`, page zoom, demo seed handles | done |
+| "Unsaved changes" on open and blank sidebar bugs fixed; zero lint warnings | done |
+| `docker compose up --build` verified on a machine with Docker | **open – needs the owner** |
+| Further frontend decomposition, relationship data validation, smaller findings | tracked in [`BACKLOG.md`](BACKLOG.md) |
+| First release (tag `v0.1.0`) | open |
+| Hosted edition (Phases 4 and 6) | deferred; decide D1 (same repo vs private repo) first |
+
+### Pull requests
+
+| PR | Content |
+| --- | --- |
+| #1 | Import of the local edition, PGlite/Postgres, CI, ID fix, foreign keys, route split, lint, fonts, canvas/sidebar split |
+| #2 | Remove method projects and internal views, rename to Symlit, Auto Layout button |
+| #3 | Guided tutorial; recursive export, template ids, page zoom, seed handles; two load/sidebar bugs |
+| #4 | Auto layout spacing, export dialog closes, all hook warnings fixed |
+
+### Working notes for contributors
+
+- Run everything locally with `npm ci && npm run dev`; checks: `npm run check`, `npm run lint`,
+  `npm test` (PGlite), `npm run test:postgres`, `npm run test:e2e`.
+- Element ids are global primary keys: always generate them with `newNodeId()` / `newEdgeId()`
+  (`client/src/lib/ids.ts`); the server re-ids templates and patterns.
+- An element is deleted when it is in no diagram any more (`deleteUnplacedNodes`).
+- Schema change = edit `shared/schema.ts` + `npm run db:generate`; CI fails on drift. Hand-written
+  data clean-up goes at the top of the generated migration (see 0002, 0003).
+- New tutorial steps: `shared/tutorial.ts` + `emitTutorialSignal()` where the action happens.
+- `e2e/tutorial.spec.ts` must not run concurrently with itself (one tutorial per workspace).
 
 The rest of this document is the original analysis and plan. Hosted-edition sections are kept for
 when that work resumes.
