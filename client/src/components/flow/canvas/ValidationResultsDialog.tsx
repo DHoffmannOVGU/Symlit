@@ -1,3 +1,4 @@
+import type { ProjectType } from "@shared/schema";
 import type { ValidationIssue } from "@shared/model-validation";
 import {
   Dialog,
@@ -12,7 +13,7 @@ export interface ValidationResultsDialogProps {
   validationOpen: boolean;
   setValidationOpen: React.Dispatch<React.SetStateAction<boolean>>;
   validationIssues: ValidationIssue[];
-  projectType: "metamodel" | "instance" | "method";
+  projectType: ProjectType;
   highlightIssues: boolean;
   setHighlightIssues: React.Dispatch<React.SetStateAction<boolean>>;
   applyIssueHighlights: (enable: boolean, issues?: ValidationIssue[]) => void;

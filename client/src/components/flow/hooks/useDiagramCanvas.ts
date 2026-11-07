@@ -108,7 +108,6 @@ export function useDiagramCanvas(
   viewId: number,
   projectType: ProjectType,
   suspendLoad = false,
-  parentNodeId?: string | null,
 ) {
   const {
     data: flowData,
@@ -139,8 +138,6 @@ export function useDiagramCanvas(
     const mappedNodes: DiagramNode[] = flowData.nodes.map((n) => {
       const nodeData = isRecord(n.data) ? n.data : {};
       const savedStyle = readSavedNodeStyle(nodeData._nodeStyle);
-      const isGroupContainer = parentNodeId === n.id;
-      
       return {
         id: n.id,
         type: n.type,
@@ -150,10 +147,10 @@ export function useDiagramCanvas(
           ...(canonicalTypeLabel(nodeData.type) !== undefined
             ? { type: canonicalTypeLabel(nodeData.type) }
             : {}),
-          isGroupContainer,
         },
         ...(n.parentId ? { parentId: n.parentId, extent: "parent" as const } : {}),
-        ...(savedStyle && isGroupContainer ? { style: savedStyle } : {}),
+        // Restore the size an element was resized to (saved as data._nodeStyle).
+        ...(savedStyle ? { style: savedStyle } : {}),
       };
     });
 
@@ -285,16 +282,7 @@ export function useDiagramCanvas(
         y: window.innerHeight / 2,
       });
 
-      let center = options?.position ?? absCenter;
-      if (parentNodeId) {
-        const parentNode = nodes.find((n) => n.id === parentNodeId);
-        if (parentNode) {
-          center = {
-            x: center.x - parentNode.position.x,
-            y: center.y - parentNode.position.y,
-          };
-        }
-      }
+      const center = options?.position ?? absCenter;
 
       const newNode: DiagramNode = {
         id,
@@ -303,7 +291,6 @@ export function useDiagramCanvas(
           x: center.x - NODE_WIDTH / 2 + (Math.random() - 0.5) * 50,
           y: center.y - NODE_HEIGHT / 2 + (Math.random() - 0.5) * 50,
         },
-        ...(parentNodeId ? { parentId: parentNodeId, extent: "parent" as const } : {}),
         data: {
           label: `New ${typeLabel} ${nodes.length + 1}`,
           attributes: [],
@@ -339,33 +326,22 @@ export function useDiagramCanvas(
       projectType,
       screenToFlowPosition,
       setNodes,
-      parentNodeId,
       viewId,
     ],
   );
 
   const handleAutoLayout = useCallback(() => {
-    setNodes((currentNodes) => {
-      if (currentNodes.length === 0) return currentNodes;
-
-      setEdges((currentEdges) => {
-        takeSnapshot(currentNodes, currentEdges);
-        const { nodes: layoutedNodes, edges: layoutedEdges } =
-          getLayoutedElementsEntitree(currentNodes, currentEdges);
-
-        setNodes(() => layoutedNodes);
-        
-        // Use requestAnimationFrame to ensure nodes are rendered before fitting view
-        requestAnimationFrame(() => {
-          fitView({ duration: 800 });
-        });
-        
-        return layoutedEdges;
-      });
-
-      return currentNodes;
+    if (nodes.length === 0) return;
+    takeSnapshot(nodes, edges);
+    const { nodes: layoutedNodes, edges: layoutedEdges } =
+      getLayoutedElementsEntitree(nodes, edges);
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+    // Fit after the new positions have rendered.
+    requestAnimationFrame(() => {
+      fitView({ duration: 800 });
     });
-  }, [setNodes, setEdges, takeSnapshot, fitView]);
+  }, [nodes, edges, setNodes, setEdges, takeSnapshot, fitView]);
 
   const handleLayoutSelected = useCallback(
     (direction: "TB" | "LR", selectedNodeIds: string[]) => {
@@ -435,13 +411,8 @@ export function useDiagramCanvas(
 
   const buildSavePayload = useCallback(
     (nodesInput: DiagramNode[], edgesInput: DiagramEdge[]) => {
-      // Filter out external stub nodes, edges, and the container node itself before saving
-      const filteredNodes = nodesInput.filter(n => n.type !== "externalStub" && n.id !== parentNodeId);
-      const filteredEdges = edgesInput.filter(e => 
-        !e.id.startsWith("external-edge-") && 
-        e.source !== parentNodeId && 
-        e.target !== parentNodeId
-      );
+      const filteredNodes = nodesInput;
+      const filteredEdges = edgesInput;
 
       const nodesToSave: InsertFlowNode[] = filteredNodes.map((n) => {
         const nodeStyle = n.style as { width?: number; height?: number } | undefined;
@@ -480,7 +451,7 @@ export function useDiagramCanvas(
 
       return { nodesToSave, edgesToSave };
     },
-    [projectType, parentNodeId],
+    [projectType],
   );
 
   const handleSaveWithData = useCallback(

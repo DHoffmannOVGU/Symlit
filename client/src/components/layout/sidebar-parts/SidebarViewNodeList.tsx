@@ -2,7 +2,7 @@ import { type DragEvent, type MouseEvent } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Layers, Box, Settings2, ChevronRight, ArrowRight, Check, GripVertical } from "lucide-react";
+import { Box, Settings2, ChevronRight, ArrowRight, Check, GripVertical } from "lucide-react";
 import * as Icons from "lucide-react";
 import type { FlowNode, View } from "@shared/schema";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
@@ -15,7 +15,6 @@ import {
   SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import { type SidebarNodeInsertMode, type SidebarNodeTransfer } from "../sidebar/SidebarConstants";
-import { INTERNAL_VIEWS_ENABLED } from "@/lib/feature-flags";
 
 export type SidebarViewNodeListArgs = {
     view: View;
@@ -47,7 +46,6 @@ export interface SidebarViewNodeListContext {
   getCanonicalTypeId: (node: FlowNode) => string;
   handleMetamodelNodeDragStart: (event: DragEvent<HTMLElement>, payload: SidebarNodeTransfer) => void;
   handleInsertNode: (nodeId: string, options?: { mode?: SidebarNodeInsertMode; typeId?: string; typeLabel?: string; icon?: string; color?: string; }) => Promise<void>;
-  handleOpenInternalView: (event: MouseEvent, nodeId: string) => Promise<void>;
 }
 
 export function SidebarViewNodeList({
@@ -69,7 +67,6 @@ export function SidebarViewNodeList({
   getCanonicalTypeId,
   handleMetamodelNodeDragStart,
   handleInsertNode,
-  handleOpenInternalView,
   view,
   nodes,
   flowState,
@@ -364,21 +361,6 @@ export function SidebarViewNodeList({
                           ) : (
                             <ArrowRight className="h-3.5 w-3.5" />
                           )}
-                        </Button>
-                      )}
-                      {INTERNAL_VIEWS_ENABLED && !isReadOnly && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover/node:opacity-100 transition-opacity text-white/50 hover:text-white hover:bg-white/10"
-                          onClick={(event) =>
-                            handleOpenInternalView(event, node.id)
-                          }
-                          title="Open internal view"
-                          data-testid={`button-open-internal-view-${node.id}`}
-                        >
-                          <Layers className="h-3.5 w-3.5" />
                         </Button>
                       )}
                     </div>

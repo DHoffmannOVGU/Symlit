@@ -1,5 +1,4 @@
 import type { UseQueryResult } from "@tanstack/react-query";
-import type { ModelRuleCondition } from "@shared/schema";
 import type { Project } from "@shared/schema";
 import type { View } from "@shared/schema";
 import { type DragEvent } from "react";
@@ -35,7 +34,7 @@ export interface MetamodelCreatePaletteContext {
   handleCreateMetamodelNode: (options: Omit<SidebarCreateMetamodelNodeDetail, "viewId">) => void;
   handleMetamodelNodeTypeDragStart: (event: DragEvent<HTMLButtonElement>, payload: SidebarCreateMetamodelNodeDragPayload) => void;
   retryReferencedFlows: (projectId: string, viewId: string) => void;
-  metamodelCreatePaletteItems: ({ project: { id: number; name: string; createdAt: Date | null; userId: number; description: string | null; projectType: string; referencedMetamodels: number[] | null; methodMetadata: { stakeholders: { id: string; name: string; description?: string | undefined; }[]; } | null; metamodelSetup: { description: string; version: 1; purpose: "custom" | "system-context" | "requirements" | "behavior" | "architecture"; nodeTypes: ("partdef" | "actiondef" | "concerndef" | "agentdef" | "requirementdef" | "eventdef" | "capabilitydef")[]; relationTypes: ("association" | "aggregation" | "composition" | "generalization" | "dependency" | "realization")[]; } | null; }; view: { id: number; name: string; createdAt: Date | null; description: string | null; projectId: number; viewType: string; parentNodeId: string | null; parentViewId: number | null; modelRules: { id: string; name: string; enabled: boolean; targetType: string; check?: "missing-name" | "missing-description" | "duplicate-name" | "no-connections" | undefined; severity?: "warning" | "error" | undefined; condition?: ModelRuleCondition | undefined; outcome?: { kind: "tag"; label: string; color?: string | undefined; } | { kind: "issue"; severity: "warning" | "error"; message?: string | undefined; } | undefined; }[] | null; }; node: { id: string; data: unknown; createdAt: Date | null; type: string; projectId: number; }; meta: { label: string; typeLabel: string; iconName: string; color: string; }; } & { duplicateCount: number; })[];
+  metamodelCreatePaletteItems: ({ project: Project; view: View; node: { id: string; data: unknown; createdAt: Date | null; type: string; projectId: number; }; meta: { label: string; typeLabel: string; iconName: string; color: string; }; } & { duplicateCount: number; })[];
   getCanonicalTypeId: (node: FlowNode) => string;
 }
 

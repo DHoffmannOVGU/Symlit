@@ -40,8 +40,6 @@ export interface NodeData {
   flowEnd?: boolean;
   flowTick?: number | number[];
   flowActive?: boolean;
-  hasInternalView?: boolean;
-  isGroupContainer?: boolean;
   /**
    * Legacy concern-rule payload. The node-level rule editor was retired in
    * favour of the view-scoped Model Rules workspace; this is always written as

@@ -1,7 +1,5 @@
+import type { ProjectType } from "@shared/schema";
 import type { PartTypeOption } from "../hooks/useMetamodelParts";
-import { useCreateInternalView } from "@/hooks/use-internal-views";
-import { useLocation } from "wouter";
-import { useToast } from "@/hooks/use-toast";
 import type { DiagramEdge } from "../types";
 import { newNodeId } from "@/lib/ids";
 import { useCallback, useMemo } from "react";
@@ -18,17 +16,12 @@ export interface UseCanvasElementActionsParams {
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
   setEdges: React.Dispatch<React.SetStateAction<DiagramEdge[]>>;
   partTypeOptions: PartTypeOption[];
-  projectType: "metamodel" | "instance" | "method";
+  projectType: ProjectType;
   setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>;
   selectedNodes: Node[];
   setSelectedEdgeId: React.Dispatch<React.SetStateAction<string | null>>;
   requestDelete: (payload: { nodeIds: string[]; edgeIds: string[]; label?: string; }) => void;
   edgeTypeCycle: ("association" | "aggregation" | "composition" | "generalization" | "dependency" | "realization")[];
-  selectedNodeId: string | null;
-  createInternalView: ReturnType<typeof useCreateInternalView>;
-  viewId: number;
-  setLocation: ReturnType<typeof useLocation>[1];
-  toast: ReturnType<typeof useToast>["toast"];
 }
 
 export function useCanvasElementActions({
@@ -46,11 +39,6 @@ export function useCanvasElementActions({
   setSelectedEdgeId,
   requestDelete,
   edgeTypeCycle,
-  selectedNodeId,
-  createInternalView,
-  viewId,
-  setLocation,
-  toast,
 }: UseCanvasElementActionsParams) {
   const handleSaveNodeData = useCallback(
     (nodeId: string, data: NodeData) => {
@@ -413,24 +401,6 @@ export function useCanvasElementActions({
     [edges, nodes, setEdges, takeSnapshot],
   );
 
-  const handleOpenInternalView = useCallback(async () => {
-    if (!selectedNodeId) return;
-    try {
-      const view = await createInternalView.mutateAsync({
-        nodeId: selectedNodeId,
-        parentViewId: viewId,
-      });
-      setLocation(`/project/${view.projectId}/view/${view.id}`);
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Failed to open internal view",
-        description:
-          err instanceof Error ? err.message : "Unexpected error occurred.",
-      });
-    }
-  }, [createInternalView, selectedNodeId, setLocation, toast, viewId]);
-
   return {
     handleCopyNode,
     handleDeleteNode,
@@ -441,7 +411,6 @@ export function useCanvasElementActions({
     metamodelNodeTypeOptions,
     handleInlineNodeFieldChange,
     handleInlineEdgeFieldChange,
-    handleOpenInternalView,
     handleSaveNodeData,
     handleSaveEdgeData,
   };

@@ -7,18 +7,11 @@ commit that fixed them.
 ## Open
 
 ### Data model
-- **Internal views of deleted elements are left behind.** An element is now deleted when it
-  leaves its last diagram, but `views.parent_node_id` of its internal views is not cleaned up
-  (`server/services/internal-views.ts`). Internal views are behind `SYMLIT_INTERNAL_VIEWS`, so
-  this only matters once that feature is turned on.
 - **Element ids are global primary keys.** Ids are now random UUIDs, so collisions are
   practically impossible. A composite key `(project_id, id)` would make the
   model cleaner, but every edge, placement and reference would have to change.
-- **`node_views.parent_id` and `views.parent_node_id` have no foreign keys.** Parent elements
-  may legitimately live outside the view, so they were left unconstrained.
-- **Internal views accept a `parentViewId` from any project.** `POST /api/nodes/:nodeId/internal-view`
-  checks the node's project but not the project of the `parentViewId` in the body
-  (`server/services/internal-views.ts`). Fix before enabling internal views.
+- **`node_views.parent_id` has no foreign key.** Parent elements may legitimately live outside
+  the view, so it was left unconstrained.
 - **Starter templates cannot reuse an element in two views.** `validateStarterTemplate` rejects
   the same node id in several views, although the data model supports it.
 
@@ -35,22 +28,17 @@ commit that fixed them.
 - **Seven React hook dependency warnings** (`npm run lint`), in `DiagramCanvas.tsx`, `useDiagramCanvas.ts`,
   `useEdgeCreation.ts` and others. Some are missing dependencies (possible stale values), others
   unnecessary ones. Each needs a look with the canvas tests running, not a blanket fix.
-- **Toolbar ignores `onAddNode` and `onAutoLayout`.** `DiagramToolbar` receives both handlers,
-  but has no button for them, so auto layout of the whole diagram is not reachable from the toolbar.
-  Decide whether to bring the buttons back or remove the props and the callers' wiring.
 - **The diagram editor chunk is still 1.1 MB.** Pages are lazy-loaded now, but React Flow, the
   panels and layout engines (`dagre`, `entitree-flex`) load as one chunk. The panels and layout
   code could be split further once `DiagramCanvas.tsx` is decomposed.
 - **Zooming the page is disabled** (`maximum-scale=1` in `client/index.html`). Probably meant to
   stop mobile browsers zooming the canvas, but it also blocks accessibility zoom.
 - **The quickstart guide is tied to the project name.** `ProjectView.tsx` treats a project as
-  the quickstart when its name is exactly "SymLit Quickstart"; renaming it loses the guide, and any
+  the quickstart when its name is exactly "Symlit Quickstart" (or the old "SymLit Quickstart"); renaming it loses the guide, and any
   project given that name gets it. A template id stored on the project would be robust.
 - **Unused debug info.** `useDiagramCanvas` computes `debugInfoById` for every element and
   `DiagramCanvas` passes it to `NodeAttributePanel`, which declares a `debugInfo` prop but never
   renders it. Remove it or show it behind a developer setting.
-- **Product name is spelled three ways** in code and UI: "MBSE Lite" (old docs), "SymLit"
-  (templates, project list) and "Symlit" (repository, package).
 - **`DiagramCanvas.tsx` is still about 1,400 lines.** The hooks and dialogs are split out; what
   remains is wiring between them and the large `<ReactFlow>` element with its event handlers. Next
   candidates: the node-change/selection handlers and the toolbar/inspector prop assembly.
@@ -91,3 +79,7 @@ commit that fixed them.
 - The server stored any element `data`; it now requires an object with string text fields and a list of attributes (other fields stay open).
 - The built server only found its migrations when started from the repository root; it now also looks next to the entry point.
 - `DiagramCanvas.tsx` (2,813 lines) and `Sidebar.tsx` (2,015 lines) were split into hooks and components (1,378 and 640 lines now).
+- Method projects and internal views were removed (decision D5), including their data (migration 0003).
+- Resized elements lost their size on reload: the size was saved but only restored for internal-view containers. It is restored for every element now.
+- The product name was spelled "MBSE Lite", "SymLit" and "Symlit"; it is "Symlit" everywhere now.
+- The toolbar received `onAddNode`/`onAutoLayout` without buttons; there is now an Auto Layout button (undoable), and the unused add-node wiring is gone.

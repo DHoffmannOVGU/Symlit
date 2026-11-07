@@ -56,7 +56,7 @@ export type DiagramModelEdgeCreatedDetail = {
 
 export type DiagramNodeActionRequestDetail = {
   nodeId: string;
-  action: "edit" | "copy" | "open-internal-view" | "delete";
+  action: "edit" | "copy" | "delete";
 };
 
 export type DiagramEdgeActionRequestDetail = {

@@ -1,10 +1,11 @@
+import type { ProjectType } from "@shared/schema";
 import type { ReactFlowInstance, SetViewport } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supportsModelRules } from "../rules/model-rules";
 import { getViewportForBottomPanel } from "../utils/rules-panel-viewport";
 
 export interface UseCanvasSidePanelsParams {
-  projectType: "metamodel" | "instance" | "method";
+  projectType: ProjectType;
   canvasShellRef: React.MutableRefObject<HTMLDivElement | null>;
   getViewport: ReactFlowInstance["getViewport"];
   setViewport: SetViewport;

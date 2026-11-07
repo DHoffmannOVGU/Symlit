@@ -1,17 +1,7 @@
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations, sql } from "drizzle-orm";
-import {
-  pgTable,
-  text,
-  integer,
-  serial,
-  jsonb,
-  timestamp,
-  primaryKey,
-  index,
-  type AnyPgColumn,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, integer, serial, jsonb, timestamp, primaryKey, index } from "drizzle-orm/pg-core";
 import { metamodelSetupSchema, type MetamodelSetup } from "./metamodel-setup";
 
 export const users = pgTable("users", {
@@ -21,10 +11,10 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
-export const projectTypeEnum = ["metamodel", "instance", "method"] as const;
+export const projectTypeEnum = ["metamodel", "instance"] as const;
 export type ProjectType = typeof projectTypeEnum[number];
 
-export const viewTypeEnum = ["view", "pattern", "internal"] as const;
+export const viewTypeEnum = ["view", "pattern"] as const;
 export type ViewType = typeof viewTypeEnum[number];
 
 export const modelRuleCheckEnum = [
@@ -147,18 +137,6 @@ export const modelRuleSchema = z.object({
 
 export type ModelRule = z.infer<typeof modelRuleSchema>;
 
-export const methodStakeholderSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  description: z.string().optional(),
-});
-
-export const methodMetadataSchema = z.object({
-  stakeholders: z.array(methodStakeholderSchema).default([]),
-});
-
-export type MethodStakeholder = z.infer<typeof methodStakeholderSchema>;
-export type MethodMetadata = z.infer<typeof methodMetadataSchema>;
 
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
@@ -167,7 +145,6 @@ export const projects = pgTable("projects", {
   description: text("description"),
   projectType: text("project_type").notNull().default("metamodel"),
   referencedMetamodels: jsonb("referenced_metamodels").$type<number[]>().default(sql`'[]'::jsonb`),
-  methodMetadata: jsonb("method_metadata").$type<MethodMetadata>().default(sql`'{"stakeholders":[]}'::jsonb`),
   metamodelSetup: jsonb("metamodel_setup").$type<MetamodelSetup | null>().default(sql`'null'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 }, (table) => ({
@@ -180,8 +157,6 @@ export const views = pgTable("views", {
   name: text("name").notNull(),
   description: text("description"),
   viewType: text("view_type").notNull().default("view"),
-  parentNodeId: text("parent_node_id"),
-  parentViewId: integer("parent_view_id").references((): AnyPgColumn => views.id, { onDelete: "set null" }),
   modelRules: jsonb("model_rules").$type<ModelRule[]>().default(sql`'[]'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 }, (table) => ({
@@ -280,7 +255,6 @@ export const insertProjectSchema = createInsertSchema(projects)
   .extend({
     projectType: z.enum(projectTypeEnum).optional(),
     referencedMetamodels: z.array(z.number()).optional(),
-    methodMetadata: methodMetadataSchema.optional(),
     metamodelSetup: metamodelSetupSchema.optional().nullable(),
   });
 export const insertViewSchema = createInsertSchema(views)

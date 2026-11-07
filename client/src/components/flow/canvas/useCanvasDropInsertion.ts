@@ -1,3 +1,4 @@
+import type { ProjectType } from "@shared/schema";
 import type { XYPosition } from "@xyflow/react";
 import { useCallback, useEffect, type DragEvent } from "react";
 import type { DiagramNode as Node, NodeData } from "../types";
@@ -15,7 +16,7 @@ export interface UseCanvasDropInsertionParams {
   screenToFlowPosition: (clientPosition: XYPosition, options?: { snapToGrid: boolean; }) => XYPosition;
   handleAddNode: (options?: { nodeType?: "partdef" | "actiondef" | "concerndef" | "agentdef" | "requirementdef" | "eventdef" | "capabilitydef"; typeId?: string; typeLabel?: string; icon?: string; color?: string; position?: { x: number; y: number; }; }) => void;
   viewId: number;
-  projectType: "metamodel" | "instance" | "method";
+  projectType: ProjectType;
   insertNodeIntoView: (nodeId: string, position?: { x: number; y: number; }) => Promise<void>;
   toggleModelRules: () => void;
   clearDragPreview: () => void;

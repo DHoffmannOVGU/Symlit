@@ -1,3 +1,4 @@
+import type { ProjectType } from "@shared/schema";
 import type { ReactFlowInstance } from "@xyflow/react";
 import type { DiagramEdge } from "../types";
 import { randomId } from "@/lib/ids";
@@ -15,7 +16,7 @@ import { subscribeDiagramEvent } from "@/lib/diagram-events";
 
 export interface UseCanvasAiProposalParams {
   viewId: number;
-  projectType: "metamodel" | "instance" | "method";
+  projectType: ProjectType;
   toggleAiAssistant: () => void;
   nodes: Node[];
   edges: DiagramEdge[];

@@ -526,9 +526,7 @@ export default function ProjectList() {
     }
   };
 
-  const visibleProjects = projects?.filter(
-    (project) => project.projectType !== "method",
-  );
+  const visibleProjects = projects;
   const filteredProjects = visibleProjects?.filter((project) => {
     const query = search.toLowerCase();
     return (
@@ -557,7 +555,7 @@ export default function ProjectList() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
                   <Activity className="h-4 w-4" />
                 </div>
-                SymLit workspace
+                Symlit workspace
               </div>
               <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
                 Good to see you{user.username ? `, ${user.username}` : ""}.

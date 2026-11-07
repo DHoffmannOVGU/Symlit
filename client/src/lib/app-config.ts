@@ -3,7 +3,7 @@ import { api, type AppConfig } from "@shared/routes";
 const fallbackConfig: AppConfig = {
   edition: "local",
   version: "unknown",
-  features: { ai: false, internalViews: false },
+  features: { ai: false },
 };
 
 let current: AppConfig = fallbackConfig;

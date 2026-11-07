@@ -18,6 +18,7 @@ import {
   Camera,
   CheckCircle2,
   Sparkles,
+  Wand2,
   Play,
   Square,
   Flag,
@@ -25,7 +26,6 @@ import {
   StepBack,
   StepForward,
   RotateCcw,
-  Layers,
   SlidersHorizontal,
   CircleHelp,
   Network,
@@ -34,7 +34,6 @@ import {
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
 import type { ProjectType } from "@shared/schema";
-import { INTERNAL_VIEWS_ENABLED } from "@/lib/feature-flags";
 
 type Props = {
   projectType: ProjectType;
@@ -50,7 +49,6 @@ type Props = {
   canStepBack?: boolean;
   canStepForward?: boolean;
   canStraightenEdge?: boolean;
-  canOpenInternalView?: boolean;
   snapNodesEnabled?: boolean;
   alwaysShowAccent?: boolean;
   showBackgroundDots?: boolean;
@@ -58,7 +56,6 @@ type Props = {
 
   onUndo: () => void;
   onRedo: () => void;
-  onAddNode: () => void;
   onToggleSnap?: () => void;
   onToggleAlwaysShowAccent?: () => void;
   onToggleBackgroundDots?: () => void;
@@ -71,6 +68,7 @@ type Props = {
   onScreenshot: () => void;
   onValidate: () => void;
   canLayoutSelection?: boolean;
+  canAutoLayout?: boolean;
   canSavePattern?: boolean;
   onSavePattern?: () => void;
   onSetFlowStart?: () => void;
@@ -81,7 +79,6 @@ type Props = {
   onStepForward?: () => void;
   onResetFlow?: () => void;
   onStraightenEdge?: () => void;
-  onOpenInternalView?: () => void;
   onOpenHelp: () => void;
 };
 
@@ -147,7 +144,6 @@ export function DiagramToolbar(props: Props) {
     canStepBack = false,
     canStepForward = false,
     canStraightenEdge = false,
-    canOpenInternalView = false,
     snapNodesEnabled = true,
     alwaysShowAccent = false,
     showBackgroundDots = true,
@@ -158,6 +154,7 @@ export function DiagramToolbar(props: Props) {
     onToggleAlwaysShowAccent,
     onToggleBackgroundDots,
     onToggleNodeDescriptions,
+    onAutoLayout,
     onLayoutSelectedVertical,
     onLayoutSelectedHorizontal,
     onCenterSelectedVertical,
@@ -165,6 +162,7 @@ export function DiagramToolbar(props: Props) {
     onScreenshot,
     onValidate,
     canLayoutSelection = false,
+    canAutoLayout = false,
     canSavePattern = false,
     onSavePattern,
     onSetFlowStart,
@@ -175,7 +173,6 @@ export function DiagramToolbar(props: Props) {
     onStepForward,
     onResetFlow,
     onStraightenEdge,
-    onOpenInternalView,
     onOpenHelp,
   } = props;
 
@@ -289,15 +286,12 @@ export function DiagramToolbar(props: Props) {
             </DropdownMenu>
           )}
 
-          {INTERNAL_VIEWS_ENABLED && onOpenInternalView && (
-            <ToolbarButton
-              icon={Layers}
-              label="Open Internal View"
-              onClick={onOpenInternalView}
-              disabled={!canOpenInternalView}
-              iconClassName="text-primary"
-            />
-          )}
+          <ToolbarButton
+            icon={Wand2}
+            label="Auto Layout"
+            onClick={onAutoLayout}
+            disabled={!canAutoLayout}
+          />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

@@ -20,7 +20,6 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url().optional().or(z.literal("").transform(() => undefined)),
   SYMLIT_DATA_DIR: z.string().min(1).default("./data"),
   SYMLIT_SEED_DEMO: booleanFlag(true),
-  SYMLIT_INTERNAL_VIEWS: booleanFlag(false),
   SYMLIT_USER_NAME: z.string().trim().min(1).max(80).default("Local user"),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),
@@ -39,7 +38,6 @@ export interface AppConfig {
   localUserName: string;
   features: {
     ai: boolean;
-    internalViews: boolean;
   };
 }
 
@@ -76,7 +74,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     localUserName: values.SYMLIT_USER_NAME,
     features: {
       ai: Boolean(values.GEMINI_API_KEY?.trim()),
-      internalViews: values.SYMLIT_INTERNAL_VIEWS,
     },
   };
 }

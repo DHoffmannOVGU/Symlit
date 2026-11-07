@@ -21,7 +21,7 @@ export async function mockLocalSession(
       json: {
         edition: "local",
         version: "e2e",
-        features: { ai: options.ai ?? true, internalViews: false },
+        features: { ai: options.ai ?? true },
       },
     }),
   );

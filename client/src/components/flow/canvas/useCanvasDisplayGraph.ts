@@ -1,6 +1,5 @@
-import { useInternalViews } from "@/hooks/use-internal-views";
+import type { ProjectType } from "@shared/schema";
 import type { ModelRule } from "@shared/schema";
-import type { ExternalCanvasEdge } from "../hooks/useExternalCanvasElements";
 import type { DiagramEdge } from "../types";
 import { useMemo } from "react";
 import type { DiagramNode as Node, NodeData } from "../types";
@@ -10,58 +9,43 @@ import { evaluateModelRuleResults, supportsModelRules } from "../rules/model-rul
 export interface UseCanvasDisplayGraphParams {
   isFlowMode: boolean;
   nodes: Node[];
-  internalViewsQuery: ReturnType<typeof useInternalViews>;
   connectingFromNodeId: string | null;
   isExternalNode: (nodeId: string) => boolean;
   draggingNodeId: string | null;
-  externalEdges: ExternalCanvasEdge[];
-  handleOpenInternalViewForNode: (nodeId: string) => Promise<void>;
   alwaysShowAccent: boolean;
   showNodeDescriptions: boolean;
   flowCurrentTick: number;
   flowSchedule: Map<string, number[]> | null;
   isFlowRunning: boolean;
   flowCompleted: boolean;
-  parentNodeId: string | null | undefined;
-  projectType: "metamodel" | "instance" | "method";
+  projectType: ProjectType;
   activeModelRules: ModelRule[];
   edges: DiagramEdge[];
   inheritedModelRuleIds: Set<string>;
   dragPreviewNode: Node | null;
-  externalRender: { nodes: Node[]; edges: DiagramEdge[]; };
 }
 
 export function useCanvasDisplayGraph({
   isFlowMode,
   nodes,
-  internalViewsQuery,
   connectingFromNodeId,
   isExternalNode,
   draggingNodeId,
-  externalEdges,
-  handleOpenInternalViewForNode,
   alwaysShowAccent,
   showNodeDescriptions,
   flowCurrentTick,
   flowSchedule,
   isFlowRunning,
   flowCompleted,
-  parentNodeId,
   projectType,
   activeModelRules,
   edges,
   inheritedModelRuleIds,
   dragPreviewNode,
-  externalRender,
 }: UseCanvasDisplayGraphParams) {
   const baseDisplayNodes = useMemo(() => {
     const stripFlowTags = !isFlowMode;
     const selectedNodeCount = nodes.filter((node) => node.selected).length;
-    const internalNodeIds = new Set(
-      (internalViewsQuery.data ?? [])
-        .map((view) => view.parentNodeId)
-        .filter((id): id is string => !!id),
-    );
     return nodes.map((node) => {
       const nextNode =
         node.id === connectingFromNodeId
@@ -72,10 +56,8 @@ export function useCanvasDisplayGraph({
           : node;
       const rawData = nextNode.data as unknown as NodeData | undefined;
       const data = rawData;
-      const hasInternalView = internalNodeIds.has(node.id);
-      const isGroupContainer = data?.isGroupContainer === true;
       const isEditableNode = !isExternalNode(node.id);
-      const isConnectableNode = isEditableNode && !isGroupContainer;
+      const isConnectableNode = isEditableNode;
       if (stripFlowTags) {
         if (
           !data?.flowStart &&
@@ -88,21 +70,10 @@ export function useCanvasDisplayGraph({
             connectable: isConnectableNode,
             data: {
               ...data,
-              hasInternalView,
-              isGroupContainer,
-              showActionToolbar:
-                nextNode.selected &&
-                selectedNodeCount === 1 &&
-                !isGroupContainer,
+              showActionToolbar: nextNode.selected && selectedNodeCount === 1,
               suppressActionToolbar:
                 connectingFromNodeId === node.id || draggingNodeId === node.id,
               isReadOnly: isExternalNode(node.id),
-              canOpenInternalViewAction:
-                !isFlowMode &&
-                !isGroupContainer &&
-                !isExternalNode(node.id),
-              externalEdges: isGroupContainer ? externalEdges : undefined,
-              onOpenInternalView: handleOpenInternalViewForNode,
               alwaysShowAccent,
               showDescription: showNodeDescriptions,
             },
@@ -113,23 +84,14 @@ export function useCanvasDisplayGraph({
           connectable: isConnectableNode,
           data: {
             ...data,
-            hasInternalView,
-            isGroupContainer,
-            showActionToolbar:
-              nextNode.selected && selectedNodeCount === 1 && !isGroupContainer,
+            showActionToolbar: nextNode.selected && selectedNodeCount === 1,
             suppressActionToolbar:
               connectingFromNodeId === node.id || draggingNodeId === node.id,
             isReadOnly: isExternalNode(node.id),
-            canOpenInternalViewAction:
-              !isFlowMode &&
-              !isGroupContainer &&
-              !isExternalNode(node.id),
-            externalEdges: isGroupContainer ? externalEdges : undefined,
             flowStart: false,
             flowEnd: false,
             flowTick: undefined,
             flowActive: false,
-            onOpenInternalView: handleOpenInternalViewForNode,
             alwaysShowAccent,
             showDescription: showNodeDescriptions,
           },
@@ -158,18 +120,12 @@ export function useCanvasDisplayGraph({
         connectable: isConnectableNode,
         data: {
           ...data,
-          hasInternalView,
-          isGroupContainer,
-          showActionToolbar:
-            nextNode.selected && selectedNodeCount === 1 && !isGroupContainer,
+          showActionToolbar: nextNode.selected && selectedNodeCount === 1,
           suppressActionToolbar:
             connectingFromNodeId === node.id || draggingNodeId === node.id,
           isReadOnly: isExternalNode(node.id),
-          canOpenInternalViewAction: false,
-          externalEdges: isGroupContainer ? externalEdges : undefined,
           flowTick: shouldShowTick ? visibleTicks : undefined,
           flowActive: isFlowActive,
-          onOpenInternalView: handleOpenInternalViewForNode,
           alwaysShowAccent,
           showDescription: showNodeDescriptions,
         },
@@ -180,14 +136,10 @@ export function useCanvasDisplayGraph({
     flowCompleted,
     flowCurrentTick,
     flowSchedule,
-    handleOpenInternalViewForNode,
     isFlowMode,
     isFlowRunning,
     nodes,
-    internalViewsQuery.data,
     isExternalNode,
-    parentNodeId,
-    externalEdges,
     alwaysShowAccent,
     showNodeDescriptions,
     draggingNodeId,
@@ -260,7 +212,6 @@ export function useCanvasDisplayGraph({
       return [
         ...ruleDecoratedNodes,
         ...(dragPreviewNode ? [dragPreviewNode] : []),
-        ...externalRender.nodes,
       ];
     },
     [
@@ -268,16 +219,12 @@ export function useCanvasDisplayGraph({
       modelRuleViolationByNodeId,
       modelRuleTagsByNodeId,
       dragPreviewNode,
-      externalRender.nodes,
     ],
   );
 
   const displayEdges = useMemo(
     () =>
-      (externalRender.edges.length > 0
-        ? edges.concat(externalRender.edges)
-        : edges
-      ).map((edge) => {
+      edges.map((edge) => {
         const edgeData = (edge.data as CustomEdgeData | undefined) ?? {
           edgeType:
             (edge.type as CustomEdgeData["edgeType"] | undefined) ||
@@ -289,7 +236,7 @@ export function useCanvasDisplayGraph({
             : edge;
         return baseEdge;
       }),
-    [edges, externalRender.edges],
+    [edges],
   );
 
   return {

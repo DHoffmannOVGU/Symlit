@@ -46,7 +46,7 @@ for the same reason. The local user is `admin` of their own projects.
 
 `GET /api/config` returns the public configuration (`edition`, `version`, `features`).
 `client/src/main.tsx` loads it **before** importing the app, so the module-level flags in
-`client/src/lib/feature-flags.ts` (`AI_ASSISTANT_ENABLED`, `INTERNAL_VIEWS_ENABLED`) reflect
+`client/src/lib/feature-flags.ts` (`AI_ASSISTANT_ENABLED`) reflect
 the server's settings.
 
 ## API contract
@@ -66,8 +66,8 @@ Defined in `shared/schema.ts`:
 | Table | Meaning |
 | --- | --- |
 | `users` | Workspace users (one, `local`, in the local edition) |
-| `projects` | `metamodel`, `instance` or `method` (method is hidden in the UI). Instance projects list `referencedMetamodels` |
-| `views` | Diagrams inside a project. `viewType` is `view`, `pattern` (saved pattern) or `internal` (diagram inside a node) |
+| `projects` | `metamodel` or `instance`. Instance projects list `referencedMetamodels` |
+| `views` | Diagrams inside a project. `viewType` is `view` or `pattern` (saved pattern) |
 | `nodes` | Model elements. **They belong to the project, not to a view**; payload is JSON in `data` |
 | `node_views` | Where a node appears in a view (position, parent). Key: `(node_id, view_id)` |
 | `edges` | Relationships, stored per view |
@@ -86,7 +86,7 @@ presets, the renderers/editors, and this document together.
 - `server/storage.ts`: plain CRUD (`IStorage`). It must stay plumbing only.
 - `server/services/*`: business rules.
   - `flow-mutations.ts`: loading, validating, syncing and recovering diagrams; inserting nodes and patterns.
-  - `patterns.ts`, `internal-views.ts`, `model-validation.ts`.
+  - `patterns.ts`, `model-validation.ts`.
   - `gemini-metamodel.ts`: the optional AI assistant.
 - `server/db.ts`: driver selection and migrations. `db` is a live binding that is set once at startup.
 

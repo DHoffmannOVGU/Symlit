@@ -31,7 +31,6 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useLocation } from "wouter";
 
 import PartNode from "../nodes/PartNode";
 import PartDefNode from "../nodes/PartDefNode";
@@ -41,10 +40,9 @@ import AgentDefNode from "../nodes/AgentDefNode";
 import RequirementDefNode from "../nodes/RequirementDefNode";
 import EventDefNode from "../nodes/EventDefNode";
 import CapabilityDefNode from "../nodes/CapabilityDefNode";
-import ExternalStubNode from "../nodes/ExternalStubNode";
 import { ModelRulesPanel } from "../panels/ModelRulesPanel";
 import { MetamodelAiAssistant } from "../panels/MetamodelAiAssistant";
-import type { DiagramNode as Node, NodeData } from "../types";
+import type { NodeData } from "../types";
 import { CanvasTableMode } from "./CanvasTableMode";
 import { ConnectionPreviewLine, edgeTypes, type CustomEdgeData } from "../edges/CustomEdges";
 import { useMetamodelParts } from "../hooks/useMetamodelParts";
@@ -56,7 +54,6 @@ import { DiagramToolbar } from "./DiagramToolBar";
 import { useDiagramCanvas } from "../hooks/useDiagramCanvas";
 import { useDiagramScreenshot } from "../hooks/useDiagramScreenshot";
 import { useDiagramValidation } from "../hooks/useDiagramValidation";
-import { useExternalCanvasElements } from "../hooks/useExternalCanvasElements";
 import { useFlowPlayback } from "../hooks/useFlowPlayback";
 import { EdgeCreateMenu } from "../menus/EdgeCreateMenu";
 import { ScreenshotDialog } from "../dialogs/ScreenshotDialog";
@@ -78,11 +75,6 @@ import {
   subscribeDiagramEvent,
 } from "@/lib/diagram-events";
 import { computeStraightenedEdge } from "./straightenEdge";
-import {
-  useCreateInternalView,
-  useInternalViews,
-} from "@/hooks/use-internal-views";
-import { useNode, useFlow } from "@/hooks/use-flow";
 import { useView } from "@/hooks/use-views";
 import { useDiagramHelpContent } from "./useDiagramHelpContent";
 import { useDiagramCanvasPreferences } from "./useDiagramCanvasPreferences";
@@ -112,7 +104,6 @@ const nodeTypes = {
   requirementdef: RequirementDefNode,
   eventdef: EventDefNode,
   capabilitydef: CapabilityDefNode,
-  externalStub: ExternalStubNode,
 };
 
 export interface DiagramCanvasProps {
@@ -129,7 +120,6 @@ export interface DiagramCanvasProps {
   viewMode?: "build" | "flow";
   displayMode?: "graph" | "table";
   onDisplayModeChange?: (mode: "graph" | "table") => void;
-  parentNodeId?: string | null;
 }
 
 function FlowInner({
@@ -142,18 +132,10 @@ function FlowInner({
   viewMode = "build",
   displayMode = "graph",
   onDisplayModeChange,
-  parentNodeId,
 }: DiagramCanvasProps) {
   const [suspendFlowLoad, setSuspendFlowLoad] = useState(false);
   const canvasShellRef = useRef<HTMLDivElement | null>(null);
   const viewQuery = useView(viewId);
-  const internalViewsQuery = useInternalViews(projectId);
-  const parentNodeQuery = useNode(parentNodeId);
-  const internalView = (internalViewsQuery.data ?? []).find(
-    (v) => v.id === viewId,
-  );
-  const parentViewId = internalView?.parentViewId;
-  const parentViewFlow = useFlow(parentViewId ?? 0);
   const [recoveryOpen, setRecoveryOpen] = useState(false);
   const recoveryQuery = useQuery<FlowRecoveryResponse>({
     queryKey: [api.flow.recovery.path, viewId],
@@ -191,19 +173,11 @@ function FlowInner({
     isSaving,
     debugInfoById,
     isDirty,
-  } = useDiagramCanvas(viewId, projectType, suspendFlowLoad, parentNodeId);
-
-  const { externalEdges, externalRender } = useExternalCanvasElements({
-    parentNodeId,
-    parentViewFlowData: parentViewFlow.data,
-    nodes,
-  });
+  } = useDiagramCanvas(viewId, projectType, suspendFlowLoad);
 
   const { screenToFlowPosition, getViewport, setViewport, fitView } = useReactFlow();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
-  const createInternalView = useCreateInternalView();
 
   const openRecovery = useCallback(() => {
     setSuspendFlowLoad(true);
@@ -613,50 +587,26 @@ function FlowInner({
     );
   }, [limitToValidTargets]);
 
-  const handleOpenInternalViewForNode = useCallback(
-    async (nodeId: string) => {
-      try {
-        const view = await createInternalView.mutateAsync({
-          nodeId,
-          parentViewId: viewId,
-        });
-        setLocation(`/project/${view.projectId}/view/${view.id}`);
-      } catch (err) {
-        toast({
-          variant: "destructive",
-          title: "Failed to open internal view",
-          description:
-            err instanceof Error ? err.message : "Unexpected error occurred.",
-        });
-      }
-    },
-    [createInternalView, setLocation, toast, viewId],
-  );
   const {
     displayNodes,
     displayEdges,
   } = useCanvasDisplayGraph({
     isFlowMode,
     nodes,
-    internalViewsQuery,
     connectingFromNodeId,
     isExternalNode,
     draggingNodeId,
-    externalEdges,
-    handleOpenInternalViewForNode,
     alwaysShowAccent,
     showNodeDescriptions,
     flowCurrentTick,
     flowSchedule,
     isFlowRunning,
     flowCompleted,
-    parentNodeId,
     projectType,
     activeModelRules,
     edges,
     inheritedModelRuleIds,
     dragPreviewNode,
-    externalRender,
   });
 
   const edgeCreateSourceTypeId = useMemo(() => {
@@ -804,30 +754,6 @@ function FlowInner({
   }, [partDefStyleById, projectType, setNodes]);
 
   useEffect(() => {
-    if (!parentNodeId) return;
-    if (!parentNodeQuery.data) return;
-    if (isLoading) return;
-    setNodes((current) => {
-      const alreadyPresent = current.some((n) => n.id === parentNodeId);
-      if (alreadyPresent) return current;
-      const parentData = parentNodeQuery.data!;
-      const isGroupContainer = true;
-      const containerNode: Node = {
-        id: parentData.id,
-        type: parentData.type || "part",
-        position: { x: 100, y: 100 },
-        style: { width: 700, height: 500 },
-        data: {
-          ...(parentData.data as Record<string, unknown>),
-          isGroupContainer,
-          _nodeStyle: { width: 700, height: 500 },
-        },
-      };
-      return [containerNode, ...current];
-    });
-  }, [parentNodeId, parentNodeQuery.data, isLoading, setNodes]);
-
-  useEffect(() => {
     setIsCanvasReady(false);
   }, [viewId]);
 
@@ -933,7 +859,6 @@ function FlowInner({
     metamodelNodeTypeOptions,
     handleInlineNodeFieldChange,
     handleInlineEdgeFieldChange,
-    handleOpenInternalView,
     handleSaveNodeData,
     handleSaveEdgeData,
   } = useCanvasElementActions({
@@ -951,16 +876,10 @@ function FlowInner({
     setSelectedEdgeId,
     requestDelete,
     edgeTypeCycle,
-    selectedNodeId,
-    createInternalView,
-    viewId,
-    setLocation,
-    toast,
   });
   useCanvasActionRequests({
     handleOpenNodePanelForNode,
     handleCopyNode,
-    handleOpenInternalViewForNode,
     handleDeleteNode,
     handleOpenEdgePanelFromTable,
     handleDeleteEdge,
@@ -1143,17 +1062,11 @@ function FlowInner({
                   ?.pathType === "straight",
             )}
             canLayoutSelection={selectedNodeIds.length > 0}
+            canAutoLayout={nodes.length > 0}
             canSavePattern={canSavePattern}
             onSavePattern={openPatternDialog}
             onUndo={undo}
             onRedo={redo}
-            onAddNode={() =>
-              handleAddNode(
-                projectType === "metamodel"
-                  ? { nodeType: "partdef", typeLabel: "Object" }
-                  : undefined,
-              )
-            }
             snapNodesEnabled={snapNodesEnabled}
             alwaysShowAccent={alwaysShowAccent}
             showBackgroundDots={showBackgroundDots}
@@ -1191,8 +1104,6 @@ function FlowInner({
               handleCenterSelected("y", selectedNodeIds)
             }
             onScreenshot={takeScreenshot}
-            canOpenInternalView={!isFlowMode && Boolean(selectedNodeId)}
-            onOpenInternalView={handleOpenInternalView}
             onValidate={handleValidate}
             onStraightenEdge={handleStraightenEdge}
             onToggleSnap={() => setSnapEnabled((current) => !current)}

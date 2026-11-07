@@ -337,4 +337,4 @@ Coverage gates are introduced per module as it is ported, not globally on day on
 - **D3 Hosting target** for the hosted edition (Replit Deployments from GitHub, Fly.io, Render,
   Railway, own VPS) and managed Postgres. Not needed before Phase 6.
 - **D4 Local edition single-user:** OK for now? (Multi-user self-hosting, for example via OIDC, could come later.)
-- **D5** Keep or remove **method projects** (hidden today) and **internal views** (flagged off)?
+- **D5** ~~Keep or remove method projects and internal views?~~ Decided: both removed (migration 0003).

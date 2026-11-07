@@ -22,10 +22,6 @@ import type {
   SyncFlowNodeInput,
 } from "@shared/flow-inputs";
 import { eq, and } from "drizzle-orm";
-import {
-  createInternalViewForNode as createInternalViewForNodeService,
-  getInternalViewByNodeId as getInternalViewByNodeIdService,
-} from "./services/internal-views";
 import { createPattern as createPatternService } from "./services/patterns";
 import {
   getFlow as getFlowService,
@@ -82,12 +78,6 @@ export interface IStorage {
   createView(view: InsertView): Promise<View>;
   updateView(id: number, view: Partial<InsertView>): Promise<View>;
   deleteView(id: number): Promise<void>;
-  getInternalViews(projectId: number): Promise<View[]>;
-  getInternalViewByNodeId(nodeId: string): Promise<View | undefined>;
-  createInternalViewForNode(
-    nodeId: string,
-    overrides?: { name?: string; description?: string; parentViewId?: number },
-  ): Promise<View>;
 
   // Patterns
   getPatterns(projectId: number): Promise<View[]>;
@@ -303,27 +293,6 @@ export class DatabaseStorage implements IStorage {
         placed.map((row) => row.nodeId),
       );
     });
-  }
-
-  async getInternalViews(projectId: number): Promise<View[]> {
-    return db
-      .select()
-      .from(views)
-      .where(
-        and(eq(views.projectId, projectId), eq(views.viewType, "internal")),
-      );
-  }
-
-  // Delegations to services (business logic lives there).
-  getInternalViewByNodeId(nodeId: string): Promise<View | undefined> {
-    return getInternalViewByNodeIdService(nodeId);
-  }
-
-  createInternalViewForNode(
-    nodeId: string,
-    overrides?: { name?: string; description?: string; parentViewId?: number },
-  ): Promise<View> {
-    return createInternalViewForNodeService(nodeId, overrides);
   }
 
   // Patterns

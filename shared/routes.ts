@@ -2,7 +2,6 @@ import { z } from 'zod';
 import {
   insertProjectSchema,
   insertViewSchema,
-  methodMetadataSchema,
   projects,
   views,
   nodes,
@@ -203,7 +202,6 @@ export const appConfigSchema = z.object({
   version: z.string(),
   features: z.object({
     ai: z.boolean(),
-    internalViews: z.boolean(),
   }),
 });
 
@@ -298,7 +296,6 @@ export const api = {
       // Ownership cannot be changed through an update.
       input: insertProjectSchema.omit({ userId: true }).partial().extend({
         referencedMetamodels: z.array(z.number().int().positive()).optional(),
-        methodMetadata: methodMetadataSchema.optional(),
       }),
       responses: {
         200: z.custom<typeof projects.$inferSelect>(),
@@ -385,37 +382,6 @@ export const api = {
       path: '/api/nodes/:nodeId',
       responses: {
         200: z.custom<typeof nodes.$inferSelect>().nullable(),
-        404: errorSchemas.notFound,
-      },
-    },
-  },
-  internalViews: {
-    list: {
-      method: 'GET' as const,
-      path: '/api/projects/:projectId/internal-views',
-      responses: {
-        200: z.array(z.custom<typeof views.$inferSelect>()),
-      },
-    },
-    get: {
-      method: 'GET' as const,
-      path: '/api/nodes/:nodeId/internal-view',
-      responses: {
-        200: z.custom<typeof views.$inferSelect>().nullable(),
-        404: errorSchemas.notFound,
-      },
-    },
-    create: {
-      method: 'POST' as const,
-      path: '/api/nodes/:nodeId/internal-view',
-      input: z.object({
-        name: z.string().min(1).optional(),
-        description: z.string().optional(),
-        parentViewId: z.number().optional(),
-      }),
-      responses: {
-        200: z.custom<typeof views.$inferSelect>(),
-        400: errorSchemas.validation,
         404: errorSchemas.notFound,
       },
     },
