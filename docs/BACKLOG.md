@@ -27,3 +27,6 @@ commit that fixed them.
 - No foreign keys; deletes were hand-written. Foreign keys with cascades, indexes on lookup
   columns, and a cleanup of rows that would violate them were added (migration 0002).
 - Timestamps were stored without a time zone; they are `timestamptz` now (existing values read as UTC).
+- The project list lived at `/api/users/:userId/projects` although the server knows the user;
+  it is `GET /api/projects` now, and project creation no longer requires a `userId`.
+- Unknown API routes answered `{error}` while everything else used `{message}`; all errors use `{message}` now.

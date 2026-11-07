@@ -9,7 +9,7 @@ export function useProjects(userId: number | undefined) {
     queryKey: [api.projects.list.path, userId],
     queryFn: async () => {
       if (!userId) return [];
-      return apiCall(api.projects.list, { params: { userId } });
+      return apiCall(api.projects.list);
     },
     enabled: !!userId,
   });

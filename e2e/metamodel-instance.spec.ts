@@ -152,7 +152,7 @@ async function installApi(page: Page) {
       return;
     }
 
-    if (pathname === "/api/users/1/projects") {
+    if (pathname === "/api/projects" && request.method() === "GET") {
       await fulfillJson(route, [metamodelProject, currentProject]);
     } else if (pathname === "/api/projects/2") {
       await fulfillJson(route, metamodelProject);
@@ -321,7 +321,7 @@ test("shows a visible loading error instead of silently falling back", async ({
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const { pathname } = new URL(request.url());
-    if (pathname === "/api/users/1/projects") {
+    if (pathname === "/api/projects" && request.method() === "GET") {
       await fulfillJson(route, [{ ...instanceProject, referencedMetamodels: [999] }]);
     } else if (pathname === "/api/projects/3") {
       await fulfillJson(route, { ...instanceProject, referencedMetamodels: [999] });

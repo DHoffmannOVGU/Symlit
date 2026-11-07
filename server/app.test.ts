@@ -125,7 +125,7 @@ describe("projects", () => {
     const project = await createProject({ name: "Rover" });
     assert.equal(project.userId, localUserId);
 
-    const list = await request("GET", `/api/users/${localUserId}/projects`);
+    const list = await request("GET", "/api/projects");
     assert.equal(list.status, 200);
     assert.ok(list.json.some((p: { id: number }) => p.id === project.id));
 
@@ -182,7 +182,8 @@ describe("authorization", () => {
       (await request("POST", `/api/views/${foreignView.id}/sync`, sampleFlow("x"))).status,
       403,
     );
-    assert.equal((await request("GET", `/api/users/${stranger.id}/projects`)).status, 403);
+    const mine = (await request("GET", "/api/projects")).json as Array<{ id: number }>;
+    assert.ok(!mine.some((p) => p.id === foreign.id), "foreign projects are not listed");
     assert.ok(await storage.getProject(foreign.id), "foreign project must survive");
   });
 
@@ -285,7 +286,7 @@ describe("API routing", () => {
   test("unknown API paths return JSON 404 and wrong methods 405", async () => {
     const missing = await request("GET", "/api/definitely-not-a-route");
     assert.equal(missing.status, 404);
-    assert.equal(missing.json.error, "Not Found");
+    assert.equal(missing.json.message, "Not Found");
 
     const wrongMethod = await request("PUT", "/api/config");
     assert.equal(wrongMethod.status, 405);

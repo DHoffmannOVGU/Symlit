@@ -93,10 +93,6 @@ export function authorizeWorkspaceApi(): RequestHandler {
     }
 
     try {
-      if (parts[1] === "users" && parts[2] && Number(parts[2]) !== req.workspaceUser.id) {
-        return res.status(403).json({ message: "You cannot access another user's projects" });
-      }
-
       let projectId: number | undefined;
       if (parts[1] === "projects" && parts[2] && Number.isFinite(Number(parts[2]))) {
         projectId = Number(parts[2]);

@@ -231,7 +231,7 @@ export const api = {
   projects: {
     list: {
       method: 'GET' as const,
-      path: '/api/users/:userId/projects',
+      path: '/api/projects',
       responses: {
         200: z.array(z.custom<typeof projects.$inferSelect>()),
       },
@@ -239,7 +239,8 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/projects',
-      input: insertProjectSchema,
+      // The owner is always the current user; a submitted userId is ignored.
+      input: insertProjectSchema.omit({ userId: true }),
       responses: {
         201: z.custom<typeof projects.$inferSelect>(),
         400: errorSchemas.validation,

@@ -20,8 +20,7 @@ test("creates a project in the UI and persists it on the server", async ({ page,
 
   await expect
     .poll(async () => {
-      const me = await (await request.get("/api/auth/me")).json();
-      const projects = await (await request.get(`/api/users/${me.user.id}/projects`)).json();
+      const projects = await (await request.get("/api/projects")).json();
       return projects.some((project: { name: string }) => project.name === name);
     })
     .toBe(true);

@@ -565,12 +565,12 @@ export async function registerRoutes(
     if (!req.path.startsWith("/api")) return next();
     const matches = apiRoutePatterns.filter((route) => route.regex.test(req.path));
     if (matches.length === 0) {
-      return res.status(404).json({ error: "Not Found", path: req.path, method: req.method });
+      return res.status(404).json({ message: "Not Found", path: req.path, method: req.method });
     }
     const allowed = Array.from(new Set(matches.map((route) => route.method)));
     res.set("Allow", allowed.join(", "));
     return res.status(405).json({
-      error: "Method Not Allowed",
+      message: "Method Not Allowed",
       path: req.path,
       method: req.method,
       allowed,

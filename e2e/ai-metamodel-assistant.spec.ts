@@ -82,7 +82,7 @@ async function installAiApi(page: Page) {
       await fulfillJson(route, { success: true });
       return;
     }
-    if (pathname === "/api/users/1/projects") {
+    if (pathname === "/api/projects" && request.method() === "GET") {
       await fulfillJson(route, [project]);
     } else if (pathname === "/api/projects/10") {
       await fulfillJson(route, project);

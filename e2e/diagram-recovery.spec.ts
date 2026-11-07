@@ -154,7 +154,7 @@ async function installRecoveryApi(page: Page) {
       return;
     }
 
-    if (pathname === "/api/users/1/projects") {
+    if (pathname === "/api/projects" && request.method() === "GET") {
       await fulfillJson(route, [project]);
     } else if (pathname === "/api/projects/1") {
       await fulfillJson(route, project);
@@ -414,7 +414,7 @@ async function installRelationshipApi(page: Page) {
       return;
     }
 
-    if (pathname === "/api/users/1/projects") {
+    if (pathname === "/api/projects" && request.method() === "GET") {
       await fulfillJson(route, created ? [relationshipProject] : []);
     } else if (pathname === "/api/projects/2") {
       await fulfillJson(route, relationshipProject);
@@ -462,7 +462,7 @@ async function installInstanceRelationshipApi(page: Page) {
       return;
     }
 
-    if (pathname === "/api/users/1/projects") {
+    if (pathname === "/api/projects" && request.method() === "GET") {
       await fulfillJson(route, [relationshipProject, instanceRelationshipProject]);
     } else if (pathname === "/api/projects/3") {
       await fulfillJson(route, instanceRelationshipProject);
