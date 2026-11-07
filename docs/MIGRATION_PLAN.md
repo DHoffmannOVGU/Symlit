@@ -1,13 +1,42 @@
 # Symlit: Replit → GitHub migration plan
 
-Status: **proposal, nothing ported yet**. This document is based on an analysis of the
-Replit export (`Symlit.zip`, last Replit commit `bdc7732 Implement invitation-only
-registration logic…`, 217 commits). It describes how to bring the app to GitHub so that
+Status: **local edition imported (Phases 0, 1 and 3 done for the local edition; Phase 2 partly).**
+Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc7732`, 217 commits).
 
-1. an **open-source local edition** runs on a laptop with no external accounts, and
-2. a **hosted edition** adds the features that only make sense, or only work, as a managed service,
+### Decisions taken
 
-and how to do that step by step, feature by feature, with better test coverage along the way.
+- **Only the local edition lives in this repository for now.** Hosted features (Clerk accounts,
+  guest workspaces, members and invitations, public share links, legacy workspace claim) were
+  left out of the import entirely and are deferred. They are not in this repository's history.
+  When the hosted edition is picked up again, it starts from the Replit export and plugs into
+  the seams described in §4. Where it should live (D1) is decided at that point.
+- **Fresh git history** (D2): the Replit history is not imported, because it contains a plain-text API key.
+- **PostgreSQL everywhere**: Docker Compose or embedded PGlite locally (§4.4).
+- **Local edition is single-user** (D4).
+- The **AI assistant** stays in the local edition as an optional feature (bring your own Gemini key).
+
+### Progress
+
+| Item | State |
+| --- | --- |
+| Clean import without Replit artefacts, secrets or hosted code | done |
+| Lockfile from the public npm registry, package renamed `symlit`, licence aligned to Apache-2.0, unused dependencies and Replit plugins removed | done |
+| Versioned migrations (`migrations/0000_initial.sql`), applied on startup and by `npm run db:migrate` | done |
+| PGlite (default) and PostgreSQL drivers; `docker-compose.yml`; `Dockerfile` | done (image build not yet verified) |
+| Validated configuration (`server/config.ts`), `GET /api/config`, runtime feature flags | done |
+| App factory (`createApp`), demo seed moved out of route registration | done |
+| Security findings 2–5 (no sessions any more; same-origin only; no response bodies in logs; error handler fixed) | done |
+| Implicit local user, no login; UI gating for the AI assistant and internal views | done |
+| Unused `patterns`/`pattern_nodes`/`pattern_edges` tables dropped (Phase 5 item) | done |
+| Tests: config, API integration (incl. ownership checks), DB tests on PGlite **and** PostgreSQL, full-stack Playwright spec | done |
+| CI (typecheck, tests on PGlite and PostgreSQL 16, build, migration drift check, Playwright) | done |
+| Split `server/routes.ts` into domain routers (Phase 2.3) | open |
+| Foreign keys, indexes, `/api/projects` listing (Phase 5) | open |
+| Frontend decomposition (Phase 7) | open |
+| Hosted edition (Phases 4 and 6) | deferred |
+
+The rest of this document is the original analysis and plan. Hosted-edition sections are kept for
+when that work resumes.
 
 ---
 
