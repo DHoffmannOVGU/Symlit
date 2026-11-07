@@ -161,6 +161,8 @@ export const errorSchemas = {
   }),
 };
 
+export type ProjectExportOptions = z.infer<typeof projectExportInputSchema>;
+
 export const projectExportInputSchema = z.object({
   format: z.enum(["json", "elements-csv", "relationships-csv"]).default("json"),
   viewIds: z.array(z.number().int().positive()).optional(),
@@ -270,8 +272,9 @@ export const api = {
     update: {
       method: 'PATCH' as const,
       path: '/api/projects/:id',
-      input: insertProjectSchema.partial().extend({
-        referencedMetamodels: z.array(z.number()).optional(),
+      // Ownership cannot be changed through an update.
+      input: insertProjectSchema.omit({ userId: true }).partial().extend({
+        referencedMetamodels: z.array(z.number().int().positive()).optional(),
         methodMetadata: methodMetadataSchema.optional(),
       }),
       responses: {

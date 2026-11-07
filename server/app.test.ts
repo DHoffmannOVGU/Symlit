@@ -427,3 +427,59 @@ describe("element identity and lifecycle", () => {
     assert.equal(new Set(result.nodes.map((n: { id: string }) => n.id)).size, 4);
   });
 });
+
+describe("project integrity", () => {
+  test("only accessible metamodel projects can be referenced", async () => {
+    const instance = await createProject({ name: "Refs" });
+    const otherInstance = await createProject({ name: "Not a metamodel" });
+    const stranger = await storage.getOrCreateUser("reference-stranger");
+    const foreignMetamodel = await storage.createProject({
+      userId: stranger.id,
+      name: "Foreign MM",
+      projectType: "metamodel",
+    });
+
+    for (const [ids, message] of [
+      [[otherInstance.id], /not a metamodel/],
+      [[foreignMetamodel.id], /not found/],
+      [[987654], /not found/],
+      [[instance.id], /itself/],
+    ] as const) {
+      const res = await request("PATCH", `/api/projects/${instance.id}`, {
+        referencedMetamodels: ids,
+      });
+      assert.equal(res.status, 400, `${ids} -> ${res.text}`);
+      assert.match(res.json.message, message);
+    }
+
+    const created = await request("POST", "/api/projects", {
+      name: "Sneaky",
+      projectType: "instance",
+      referencedMetamodels: [foreignMetamodel.id],
+    });
+    assert.equal(created.status, 400);
+  });
+
+  test("a reference to a since-deleted metamodel does not block other edits", async () => {
+    const metamodel = await createProject({ name: "Short-lived", projectType: "metamodel" });
+    const instance = await createProject({ name: "Survivor" });
+    await request("PATCH", `/api/projects/${instance.id}`, { referencedMetamodels: [metamodel.id] });
+    await request("DELETE", `/api/projects/${metamodel.id}`);
+
+    const renamed = await request("PATCH", `/api/projects/${instance.id}`, {
+      name: "Survivor 2",
+      referencedMetamodels: [metamodel.id],
+    });
+    assert.equal(renamed.status, 200, renamed.text);
+    const cleared = await request("PATCH", `/api/projects/${instance.id}`, { referencedMetamodels: [] });
+    assert.deepEqual(cleared.json.referencedMetamodels, []);
+  });
+
+  test("the owner of a project cannot be changed through an update", async () => {
+    const project = await createProject();
+    const other = await storage.getOrCreateUser("would-be-owner");
+    const res = await request("PATCH", `/api/projects/${project.id}`, { userId: other.id, name: "Mine" });
+    assert.equal(res.status, 200);
+    assert.equal(res.json.userId, localUserId);
+  });
+});

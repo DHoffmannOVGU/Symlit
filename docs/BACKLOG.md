@@ -20,8 +20,10 @@ commit that fixed them.
   the same node id in several views, although the data model supports it.
 
 ### Server
-- **Project export logic lives in a route handler.** `server/routes/export.ts` builds JSON and CSV
-  (about 170 lines) inside the handler; it belongs in a service with its own unit tests.
+- **Export ignores nested metamodel references.** "Include referenced metamodels" exports only
+  the directly referenced metamodels, while the editor resolves references recursively
+  (`metamodel-reference-resolution.ts`). An export of an instance whose metamodel builds on
+  another metamodel is therefore incomplete.
 
 ## Done
 - Element ids were `node_${Date.now()}`, and template ids were fixed strings: creating a template
@@ -36,3 +38,10 @@ commit that fixed them.
 - Unknown API routes answered `{error}` while everything else used `{message}`; all errors use `{message}` now.
 - Gemini model names were hard-coded; `GEMINI_MODEL` now accepts a comma-separated fallback list.
 - `server/routes.ts` (1,155 lines on Replit) is split into one module per area under `server/routes/`.
+- Project export logic lived in the route handler; it is `server/services/project-export.ts` now, with tests.
+- CSV export did not neutralise spreadsheet formulas (`=`, `+`, `-`, `@` at the start of a cell).
+- Exporting with referenced metamodels failed with "Project not found" when a referenced metamodel had been deleted.
+- `referencedMetamodels` was not validated: a project could reference itself, instance projects,
+  missing projects or another user's metamodel. New references are now checked.
+- `PATCH /api/projects/:id` accepted `userId`, so an update could change a project's owner.
+- `tsconfig.json` had no `target`, so type checking assumed ES3.
