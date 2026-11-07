@@ -79,3 +79,33 @@ test("renders a diagram saved through the API and keeps it after reload", async 
   await expect(page.locator(".react-flow__node")).toHaveCount(2);
   await expect(page.locator(".react-flow__edge")).toHaveCount(1);
 });
+
+test("restores the size an element was resized to", async ({ page, request }) => {
+  const project = await (
+    await request.post("/api/projects", { data: { name: "Sizes", projectType: "instance" } })
+  ).json();
+  const view = await (
+    await request.post(`/api/projects/${project.id}/views`, { data: { name: "Sized" } })
+  ).json();
+  const id = `sized-${project.id}`;
+  await request.post(`/api/views/${view.id}/sync`, {
+    data: {
+      nodes: [
+        {
+          id,
+          type: "part",
+          position: { x: 0, y: 0 },
+          data: { label: "Big", type: "Object", _nodeStyle: { width: 420, height: 240 } },
+        },
+      ],
+      edges: [],
+    },
+  });
+
+  await page.goto(`/project/${project.id}/view/${view.id}`);
+  const node = page.locator(`.react-flow__node[data-id="${id}"]`);
+  await expect(node).toHaveCSS("width", "420px");
+  await expect(node).toHaveCSS("height", "240px");
+  // Loading a diagram must not mark it as changed.
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+});

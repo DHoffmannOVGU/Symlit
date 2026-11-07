@@ -2,7 +2,6 @@ import React from "react";
 import { Handle, Position, NodeProps, NodeResizer } from "@xyflow/react";
 import * as Icons from "lucide-react";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
-import { INTERNAL_VIEWS_ENABLED } from "@/lib/feature-flags";
 
 interface PartNodeData {
   label: string;
@@ -15,16 +14,6 @@ interface PartNodeData {
   flowEnd?: boolean;
   flowTick?: number | number[];
   flowActive?: boolean;
-  hasInternalView?: boolean;
-  isGroupContainer?: boolean;
-  externalEdges?: Array<{
-    id: string;
-    label?: string;
-    type: "input" | "output";
-    side: "left" | "right" | "top" | "bottom";
-    otherNodeName: string;
-  }>;
-  onOpenInternalView?: (nodeId: string) => void;
   alwaysShowAccent?: boolean;
   ruleAccentColor?: string;
   ruleEmphasis?: "none" | "soft" | "strong";
@@ -37,7 +26,6 @@ interface PartNodeData {
   }>;
   showActionToolbar?: boolean;
   isReadOnly?: boolean;
-  canOpenInternalViewAction?: boolean;
   suppressActionToolbar?: boolean;
   showDescription?: boolean;
 }
@@ -77,7 +65,6 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
   const ruleStateLabel = nodeData.ruleStateLabel?.trim();
   const ruleStatusItems = nodeData.ruleStatusItems || [];
   const modelRuleTags = nodeData.modelRuleTags || [];
-  const isGroupContainer = Boolean(nodeData.isGroupContainer);
   const shouldShowRuleAccent =
     ruleEmphasis !== "none" && Boolean(nodeData.ruleAccentColor);
   const idleAccentBorderColor = shouldShowRuleAccent
@@ -103,7 +90,6 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
     : undefined;
   const showActionToolbar = Boolean(nodeData.showActionToolbar);
   const isReadOnly = Boolean(nodeData.isReadOnly);
-  const canOpenInternalViewAction = Boolean(nodeData.canOpenInternalViewAction);
   const suppressActionToolbar = Boolean(nodeData.suppressActionToolbar);
   const showDescription = nodeData.showDescription !== false;
   const description = nodeData.description?.trim();
@@ -111,7 +97,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
 
   const handleAction = (
     event: React.MouseEvent<HTMLButtonElement>,
-    action: "edit" | "copy" | "open-internal-view" | "delete",
+    action: "edit" | "copy" | "delete",
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -120,63 +106,6 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
       action,
     });
   };
-
-  if (isGroupContainer) {
-    return (
-      <>
-        <NodeResizer
-          minWidth={300}
-          minHeight={200}
-          isVisible={selected}
-          lineStyle={{ borderColor: accentColor, borderWidth: 2 }}
-          handleClassName="h-3 w-3 bg-white border-2 rounded"
-          handleStyle={{ borderColor: accentColor }}
-        />
-        <Handle type="source" position={Position.Left} id="left" style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
-        <Handle type="source" position={Position.Right} id="right" style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
-        <Handle type="source" position={Position.Top} id="top" style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
-        <Handle type="source" position={Position.Bottom} id="bottom" style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
-        <Handle type="target" position={Position.Left} id="left-target" style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
-        <Handle type="target" position={Position.Right} id="right-target" style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
-        <Handle type="target" position={Position.Top} id="top-target" style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
-        <Handle type="target" position={Position.Bottom} id="bottom-target" style={{ opacity: 0, pointerEvents: "none" }} isConnectable={false} />
-        <div
-          className="w-full h-full rounded-2xl border-2 border-dashed relative"
-          style={{
-            borderColor: accentColor,
-            backgroundColor: nodeData.color
-              ? `${accentColor}0A`
-              : "hsl(var(--primary) / 0.04)",
-            boxShadow: selected
-              ? `0 0 0 2px ${accentColor}40, inset 0 0 0 1px ${accentColor}20`
-              : `inset 0 0 0 1px ${accentColor}15`,
-          }}
-        >
-          <div
-            className="absolute top-3 left-4 flex items-center gap-2 pointer-events-none select-none"
-          >
-            <div
-              className="p-1 rounded"
-              style={{ backgroundColor: iconBg, color: accentColor }}
-            >
-              <IconComponent className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex flex-col">
-              <span
-                className="text-[10px] font-mono uppercase tracking-wider"
-                style={{ color: accentColor, opacity: 0.7 }}
-              >
-                {typeLabel}
-              </span>
-              <span className="text-sm font-semibold text-foreground leading-tight">
-                {nodeData.label}
-              </span>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
 
   const getArrowIcon = (type: "source" | "target", position: Position) => {
     if (position === Position.Top) return type === "target" ? Icons.ArrowDown : Icons.ArrowUp;
@@ -303,24 +232,6 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
                   >
                     <Icons.Copy className="h-3.5 w-3.5" />
                   </button>
-                  {INTERNAL_VIEWS_ENABLED && (
-                    <button
-                    type="button"
-                    className={`
-                      inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-slate-700 transition-colors
-                      ${canOpenInternalViewAction ? "hover:bg-slate-100" : "cursor-not-allowed opacity-40"}
-                    `}
-                    title={canOpenInternalViewAction ? "Open internal view" : "Internal views are unavailable here"}
-                    onMouseDown={(event) => event.stopPropagation()}
-                    onClick={(event) => {
-                      if (!canOpenInternalViewAction) return;
-                      handleAction(event, "open-internal-view");
-                    }}
-                    disabled={!canOpenInternalViewAction}
-                  >
-                    <Icons.Layers className="h-3.5 w-3.5" />
-                  </button>
-                  )}
                   <button
                     type="button"
                     className={`

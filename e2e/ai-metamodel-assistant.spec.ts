@@ -90,8 +90,6 @@ async function installAiApi(page: Page) {
       await fulfillJson(route, [view]);
     } else if (pathname === "/api/views/10") {
       await fulfillJson(route, view);
-    } else if (pathname === "/api/projects/10/internal-views") {
-      await fulfillJson(route, []);
     } else if (pathname === "/api/views/10/flow") {
       await fulfillJson(route, { nodes: [], edges: [] });
     } else {

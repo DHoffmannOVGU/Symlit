@@ -526,9 +526,7 @@ export default function ProjectList() {
     }
   };
 
-  const visibleProjects = projects?.filter(
-    (project) => project.projectType !== "method",
-  );
+  const visibleProjects = projects;
   const filteredProjects = visibleProjects?.filter((project) => {
     const query = search.toLowerCase();
     return (

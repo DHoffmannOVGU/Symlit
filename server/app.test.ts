@@ -15,7 +15,7 @@ const config: AppConfig = {
   database: { driver: "pglite", dataDir: null },
   seedDemo: false,
   localUserName: "Test Engineer",
-  features: { ai: false, internalViews: false },
+  features: { ai: false },
 };
 
 let database: DatabaseHandle;
@@ -93,7 +93,7 @@ describe("configuration and identity", () => {
     const res = await request("GET", "/api/config");
     assert.equal(res.status, 200);
     assert.equal(res.json.edition, "local");
-    assert.deepEqual(res.json.features, { ai: false, internalViews: false });
+    assert.deepEqual(res.json.features, { ai: false });
     assert.equal(typeof res.json.version, "string");
   });
 

@@ -162,8 +162,6 @@ async function installRecoveryApi(page: Page) {
       await fulfillJson(route, [view]);
     } else if (pathname === "/api/views/1") {
       await fulfillJson(route, view);
-    } else if (pathname === "/api/projects/1/internal-views") {
-      await fulfillJson(route, []);
     } else if (pathname === "/api/views/1/flow/recovery") {
       await fulfillJson(route, recoveryFlow);
     } else if (pathname === "/api/views/1/flow") {
@@ -422,8 +420,6 @@ async function installRelationshipApi(page: Page) {
       await fulfillJson(route, [relationshipView]);
     } else if (pathname === "/api/views/2") {
       await fulfillJson(route, relationshipView);
-    } else if (pathname === "/api/projects/2/internal-views") {
-      await fulfillJson(route, []);
     } else if (pathname === "/api/views/2/flow") {
       await fulfillJson(route, {
         nodes: relationshipNodes,
@@ -470,8 +466,6 @@ async function installInstanceRelationshipApi(page: Page) {
       await fulfillJson(route, [instanceRelationshipView]);
     } else if (pathname === "/api/views/3") {
       await fulfillJson(route, instanceRelationshipView);
-    } else if (pathname === "/api/projects/3/internal-views") {
-      await fulfillJson(route, []);
     } else if (pathname === "/api/views/3/flow") {
       await fulfillJson(route, {
         nodes: instanceRelationshipNodes,

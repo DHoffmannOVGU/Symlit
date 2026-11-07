@@ -42,7 +42,6 @@ const edges = [{ id: "edge-1", source: "object-1", target: "concern-1" }] as Edg
 test("makes the shared rules workspace available to metamodel and instance editors", () => {
   assert.equal(supportsModelRules("metamodel"), true);
   assert.equal(supportsModelRules("instance"), true);
-  assert.equal(supportsModelRules("method"), false);
 });
 
 test("classifies an object from a numeric attribute", () => {

@@ -1,5 +1,6 @@
+import type { Project } from "@shared/schema";
+import type { ProjectType } from "@shared/schema";
 import type { View } from "@shared/schema";
-import type { ModelRuleCondition } from "@shared/schema";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { type SidebarViewNodeListArgs } from "./SidebarViewNodeList";
 import { type MouseEvent } from "react";
@@ -22,7 +23,7 @@ import { SidebarViewList } from "./SidebarViewList";
 import { SidebarPatternPalette } from "./SidebarPatternPalette";
 
 export interface SidebarTabsContentProps {
-  projectType: "metamodel" | "instance" | "method" | undefined;
+  projectType: ProjectType | undefined;
   views: View[];
   orderedViews: View[];
   currentViewId: number | undefined;
@@ -38,7 +39,7 @@ export interface SidebarTabsContentProps {
   hasReferencedMetamodels: boolean;
   includeReferencedMetamodelViews: boolean;
   setIncludeReferencedMetamodelViews: React.Dispatch<React.SetStateAction<boolean>>;
-  referencedViews: { project: { projectType: string; id: number; name: string; createdAt: Date | null; userId: number; description: string | null; referencedMetamodels: number[] | null; methodMetadata: { stakeholders: { id: string; name: string; description?: string | undefined; }[]; } | null; metamodelSetup: { description: string; version: 1; purpose: "custom" | "system-context" | "requirements" | "behavior" | "architecture"; nodeTypes: ("partdef" | "actiondef" | "concerndef" | "agentdef" | "requirementdef" | "eventdef" | "capabilitydef")[]; relationTypes: ("association" | "aggregation" | "composition" | "generalization" | "dependency" | "realization")[]; } | null; }; views: { id: number; name: string; createdAt: Date | null; description: string | null; projectId: number; viewType: string; parentNodeId: string | null; parentViewId: number | null; modelRules: { id: string; name: string; enabled: boolean; targetType: string; check?: "missing-name" | "missing-description" | "duplicate-name" | "no-connections" | undefined; severity?: "warning" | "error" | undefined; condition?: ModelRuleCondition | undefined; outcome?: { kind: "tag"; label: string; color?: string | undefined; } | { severity: "warning" | "error"; kind: "issue"; message?: string | undefined; } | undefined; }[] | null; }[]; isLoading: boolean; isError: boolean; }[];
+  referencedViews: { project: Project; views: View[]; isLoading: boolean; isError: boolean; }[];
   referencedFlowByViewId: Map<number, UseQueryResult<{ nodes: { id: string; type: string; projectId: number; position: { x: number; y: number; }; data?: unknown; createdAt?: unknown; parentId?: string | null | undefined; }[]; edges: { id: string; source: string; target: string; data?: any; edgeType?: string | undefined; sourceHandle?: string | null | undefined; targetHandle?: string | null | undefined; }[]; } | null, Error>>;
   renderMetamodelCreatePalette: () => React.JSX.Element;
 }

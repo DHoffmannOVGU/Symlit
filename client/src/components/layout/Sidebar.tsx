@@ -13,10 +13,8 @@ import {
   type DragEvent,
   type MouseEvent,
 } from "react";
-import { useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { useToast } from "@/hooks/use-toast";
 import type { FlowNode, Project, View } from "@shared/schema";
 import type { ProjectType } from "@shared/schema";
 import {
@@ -30,7 +28,6 @@ import {
   subscribeDiagramEvent,
 } from "@/lib/diagram-events";
 import { EditViewDialog } from "@/components/layout/EditViewDialog";
-import { useCreateInternalView } from "@/hooks/use-internal-views";
 import { Sidebar as ShadcnSidebar, useSidebar } from "@/components/ui/sidebar";
 import {
   BASE_METAMODEL_ID,
@@ -83,8 +80,6 @@ export function Sidebar({
     visibleRole === "admin" ||
     visibleRole === "architect" ||
     visibleRole === "engineer";
-  const { toast } = useToast();
-  const [, setLocation] = useLocation();
   const { setOpenMobile, isMobile } = useSidebar();
   const [editingView, setEditingView] = useState<View | null>(null);
   const [expandedViews, setExpandedViews] = useState<Set<number>>(new Set());
@@ -103,7 +98,6 @@ export function Sidebar({
     useState<boolean>(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const { isExporting, exportProject } = useProjectExport(projectId);
-  const createInternalView = useCreateInternalView();
   const {
     draggedViewId,
     setViewDropTarget,
@@ -230,25 +224,6 @@ export function Sidebar({
     return ids;
   }, [currentFlowQuery.data]);
 
-  const handleOpenInternalView = async (event: MouseEvent, nodeId: string) => {
-    event.preventDefault();
-    event.stopPropagation();
-    try {
-      const view = await createInternalView.mutateAsync({
-        nodeId,
-        parentViewId: currentViewId,
-      });
-      setLocation(`/project/${view.projectId}/view/${view.id}`);
-      if (isMobile) setOpenMobile(false);
-    } catch (err) {
-      toast({
-        variant: "destructive",
-        title: "Failed to open internal view",
-        description:
-          err instanceof Error ? err.message : "Unexpected error occurred.",
-      });
-    }
-  };
 
   const currentSelectedNodeId = useMemo(() => {
     if (!currentViewId) return null;
@@ -533,7 +508,6 @@ export function Sidebar({
       getCanonicalTypeId={getCanonicalTypeId}
       handleMetamodelNodeDragStart={handleMetamodelNodeDragStart}
       handleInsertNode={handleInsertNode}
-      handleOpenInternalView={handleOpenInternalView}
       {...args}
     />
   );

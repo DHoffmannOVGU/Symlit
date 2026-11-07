@@ -4,7 +4,6 @@ import { subscribeDiagramEvent } from "@/lib/diagram-events";
 export interface UseCanvasActionRequestsParams {
   handleOpenNodePanelForNode: (nodeId: string) => void;
   handleCopyNode: (nodeId: string) => void;
-  handleOpenInternalViewForNode: (nodeId: string) => Promise<void>;
   handleDeleteNode: (nodeId: string) => void;
   handleOpenEdgePanelFromTable: (edgeId: string) => void;
   handleDeleteEdge: (edgeId: string) => void;
@@ -15,7 +14,6 @@ export interface UseCanvasActionRequestsParams {
 export function useCanvasActionRequests({
   handleOpenNodePanelForNode,
   handleCopyNode,
-  handleOpenInternalViewForNode,
   handleDeleteNode,
   handleOpenEdgePanelFromTable,
   handleDeleteEdge,
@@ -34,10 +32,6 @@ export function useCanvasActionRequests({
           handleCopyNode(detail.nodeId);
           return;
         }
-        if (detail.action === "open-internal-view") {
-          void handleOpenInternalViewForNode(detail.nodeId);
-          return;
-        }
         if (detail.action === "delete") {
           handleDeleteNode(detail.nodeId);
         }
@@ -45,7 +39,6 @@ export function useCanvasActionRequests({
     [
       handleCopyNode,
       handleDeleteNode,
-      handleOpenInternalViewForNode,
       handleOpenNodePanelForNode,
     ],
   );

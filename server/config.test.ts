@@ -12,7 +12,7 @@ test("runs with no environment at all: embedded database, loopback, AI off", () 
     dataDir: path.resolve("./data", "pg"),
   });
   assert.equal(config.seedDemo, true);
-  assert.deepEqual(config.features, { ai: false, internalViews: false });
+  assert.deepEqual(config.features, { ai: false });
 });
 
 test("uses PostgreSQL when DATABASE_URL is set", () => {
@@ -34,10 +34,9 @@ test(":memory: data dir keeps the embedded database in RAM", () => {
 test("enables optional features from the environment", () => {
   const config = loadConfig({
     GEMINI_API_KEY: "key",
-    SYMLIT_INTERNAL_VIEWS: "true",
     SYMLIT_SEED_DEMO: "0",
   });
-  assert.deepEqual(config.features, { ai: true, internalViews: true });
+  assert.deepEqual(config.features, { ai: true });
   assert.equal(config.seedDemo, false);
 });
 

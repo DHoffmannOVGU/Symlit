@@ -6,22 +6,12 @@ import {
   useProjects,
   useUpdateProject,
 } from "@/hooks/use-projects";
-import { useDeleteView, useView, useViews } from "@/hooks/use-views";
+import { useView, useViews } from "@/hooks/use-views";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { DiagramCanvas } from "@/components/flow/canvas/DiagramCanvas";
 import { CreateViewDialog } from "@/components/layout/CreateViewDialog";
 import { EditViewDialog } from "@/components/layout/EditViewDialog";
-import {
-  Layers,
-  Loader2,
-  Plus,
-  ArrowRight,
-  Settings2,
-  ArrowLeft,
-  Trash2,
-  Save,
-  BookOpen,
-} from "lucide-react";
+import { Layers, Loader2, Plus, ArrowRight, Settings2, Save, BookOpen } from "lucide-react";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -39,17 +29,6 @@ import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import type { Project, ProjectType, View } from "@shared/schema";
 import type { MetamodelSetup } from "@shared/metamodel-setup";
-import { useToast } from "@/hooks/use-toast";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   dispatchDiagramEvent,
   subscribeDiagramEvent,
@@ -72,7 +51,6 @@ export default function ProjectView() {
     refreshSession,
   } = useAuth();
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
 
   // Routes: /project/:id or /project/:id/view/:viewId
   const [, paramsProject] = useRoute("/project/:id");
@@ -86,7 +64,6 @@ export default function ProjectView() {
   const { data: currentView } = useView(viewId ?? 0);
   const { data: allProjects } = useProjects(userId);
   const updateProject = useUpdateProject();
-  const deleteView = useDeleteView();
 
   const [isCreateViewOpen, setIsCreateViewOpen] = useState(false);
   const [editingView, setEditingView] = useState<View | null>(null);
@@ -96,7 +73,6 @@ export default function ProjectView() {
   const [diagramDisplayMode, setDiagramDisplayMode] = useState<
     "graph" | "table"
   >("graph");
-  const [internalDeleteOpen, setInternalDeleteOpen] = useState(false);
   const [activeDiagramDirtyState, setActiveDiagramDirtyState] = useState(false);
   const [activeDiagramSaveState, setActiveDiagramSaveState] = useState(false);
   const [quickstartOpen, setQuickstartOpen] = useState(false);
@@ -222,35 +198,6 @@ export default function ProjectView() {
     }
   };
 
-  const handleBackToParentView = () => {
-    if (currentView?.parentViewId) {
-      setLocation(`/project/${projectId}/view/${currentView.parentViewId}`);
-    } else {
-      setLocation(`/project/${projectId}`);
-    }
-  };
-
-  const handleDeleteInternalView = async () => {
-    if (!currentView) return;
-    try {
-      await deleteView.mutateAsync({
-        id: currentView.id,
-        projectId: currentView.projectId,
-      });
-      toast({
-        title: "Internal view deleted",
-        description: "The internal view has been deleted.",
-      });
-      setInternalDeleteOpen(false);
-      handleBackToParentView();
-    } catch (error: any) {
-      toast({
-        title: "Delete failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleSaveDiagram = () => {
     if (!viewId) return;
@@ -277,9 +224,6 @@ export default function ProjectView() {
 
   // Not found handling
   if (!project) return <Redirect to="/projects" />;
-  if (project.projectType === "method") {
-    return <Redirect to="/projects" />;
-  }
 
   const availableMetamodels = (
     allProjects?.filter(
@@ -300,7 +244,6 @@ export default function ProjectView() {
           description: "This referenced metamodel is unavailable.",
           projectType: "metamodel",
           referencedMetamodels: [],
-          methodMetadata: null,
           metamodelSetup: null,
           createdAt: null,
         }),
@@ -372,11 +315,6 @@ export default function ProjectView() {
                         Pattern
                       </span>
                     )}
-                    {currentView?.viewType === "internal" && (
-                      <span className="text-[10px] uppercase tracking-wider text-slate-700 bg-slate-200 px-2 py-0.5 rounded-full">
-                        Internal
-                      </span>
-                    )}
                     <span className="text-sm text-muted-foreground truncate max-w-[100px] md:max-w-[200px]">
                       {currentView?.name ?? views?.find((v) => v.id === viewId)?.name}
                     </span>
@@ -398,30 +336,6 @@ export default function ProjectView() {
                   </Button>
                 )}
 
-                {currentView?.viewType === "internal" && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={handleBackToParentView}
-                      data-testid="button-back-to-parent-view"
-                    >
-                      <ArrowLeft className="h-4 w-4" />
-                      Back
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 text-destructive"
-                      onClick={() => setInternalDeleteOpen(true)}
-                      data-testid="button-delete-internal-view"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </Button>
-                  </>
-                )}
 
                 {project.projectType === "instance" && (
                   <MetamodelSelector
@@ -484,7 +398,6 @@ export default function ProjectView() {
                 viewMode="build"
                 displayMode={diagramDisplayMode}
                 onDisplayModeChange={setDiagramDisplayMode}
-                parentNodeId={currentView?.parentNodeId}
               />
             ) : (
               <div className="flex-1 overflow-y-auto bg-slate-50/30 p-4 md:p-8">
@@ -592,32 +505,6 @@ export default function ProjectView() {
           open={!!editingView}
           onOpenChange={(open) => !open && setEditingView(null)}
         />
-        {currentView?.viewType === "internal" && (
-          <AlertDialog
-            open={internalDeleteOpen}
-            onOpenChange={setInternalDeleteOpen}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete internal view?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will permanently delete the internal view{" "}
-                  <strong>{currentView.name}</strong> and all its diagram
-                  content. This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={handleDeleteInternalView}
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
       </div>
     </SidebarProvider>
   );

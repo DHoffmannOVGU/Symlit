@@ -7,18 +7,11 @@ commit that fixed them.
 ## Open
 
 ### Data model
-- **Internal views of deleted elements are left behind.** An element is now deleted when it
-  leaves its last diagram, but `views.parent_node_id` of its internal views is not cleaned up
-  (`server/services/internal-views.ts`). Internal views are behind `SYMLIT_INTERNAL_VIEWS`, so
-  this only matters once that feature is turned on.
 - **Element ids are global primary keys.** Ids are now random UUIDs, so collisions are
   practically impossible. A composite key `(project_id, id)` would make the
   model cleaner, but every edge, placement and reference would have to change.
-- **`node_views.parent_id` and `views.parent_node_id` have no foreign keys.** Parent elements
-  may legitimately live outside the view, so they were left unconstrained.
-- **Internal views accept a `parentViewId` from any project.** `POST /api/nodes/:nodeId/internal-view`
-  checks the node's project but not the project of the `parentViewId` in the body
-  (`server/services/internal-views.ts`). Fix before enabling internal views.
+- **`node_views.parent_id` has no foreign key.** Parent elements may legitimately live outside
+  the view, so it was left unconstrained.
 - **Starter templates cannot reuse an element in two views.** `validateStarterTemplate` rejects
   the same node id in several views, although the data model supports it.
 
@@ -91,3 +84,5 @@ commit that fixed them.
 - The server stored any element `data`; it now requires an object with string text fields and a list of attributes (other fields stay open).
 - The built server only found its migrations when started from the repository root; it now also looks next to the entry point.
 - `DiagramCanvas.tsx` (2,813 lines) and `Sidebar.tsx` (2,015 lines) were split into hooks and components (1,378 and 640 lines now).
+- Method projects and internal views were removed (decision D5), including their data (migration 0003).
+- Resized elements lost their size on reload: the size was saved but only restored for internal-view containers. It is restored for every element now.

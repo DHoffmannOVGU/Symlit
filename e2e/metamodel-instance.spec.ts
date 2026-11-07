@@ -187,11 +187,6 @@ async function installApi(page: Page) {
             (edge as { targetHandle?: string | null }).targetHandle ?? null,
         })),
       });
-    } else if (
-      pathname === "/api/projects/2/internal-views" ||
-      pathname === "/api/projects/3/internal-views"
-    ) {
-      await fulfillJson(route, []);
     } else {
       await fulfillJson(route, []);
     }

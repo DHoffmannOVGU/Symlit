@@ -22,7 +22,7 @@ export function useDiagramHelpContent(
       return {
         title: "Metamodel Editor Help",
         description:
-          "Use the metamodel editor to define the standard node types, relationships, and internal structure that instance models can build on.",
+          "Use the metamodel editor to define the standard node types, and relationships that instance models can build on.",
         shortcuts: [
           { key: "Ctrl/Cmd + S", description: "Save the current diagram." },
           {
@@ -42,7 +42,6 @@ export function useDiagramHelpContent(
           "Use the Node Types tab in the sidebar to create the seven standard metamodel node types.",
           "Drag a node type from the sidebar onto the canvas to place it precisely.",
           "Create and validate relationships to define which structures are allowed in instance models.",
-          "Open internal views from selected nodes to model nested structure in more detail.",
         ],
       };
     }
@@ -71,7 +70,6 @@ export function useDiagramHelpContent(
           "Mark start and end nodes, then run or step through the flow from the canvas toolbar.",
           "Use the flow run card to monitor progress, current tick, and active endpoints.",
           "Edit nodes and relationships while checking whether the instance still follows the metamodel.",
-          "Open internal views for deeper structure when needed outside the flow path.",
         ],
       };
     }
@@ -99,7 +97,6 @@ export function useDiagramHelpContent(
         "Drag referenced metamodel types into the canvas to create typed instance nodes.",
         "Use patterns and alignment tools to assemble diagrams more quickly.",
         "Validate the model to check whether nodes and relationships conform to the metamodel.",
-        "Open internal views from selected nodes to work on nested parts of the system.",
       ],
     };
   }, [isFlowMode, projectType]);
