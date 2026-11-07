@@ -16,6 +16,9 @@ commit that fixed them.
   model cleaner, but every edge, placement and reference would have to change.
 - **`node_views.parent_id` and `views.parent_node_id` have no foreign keys.** Parent elements
   may legitimately live outside the view, so they were left unconstrained.
+- **Internal views accept a `parentViewId` from any project.** `POST /api/nodes/:nodeId/internal-view`
+  checks the node's project but not the project of the `parentViewId` in the body
+  (`server/services/internal-views.ts`). Fix before enabling internal views.
 - **Starter templates cannot reuse an element in two views.** `validateStarterTemplate` rejects
   the same node id in several views, although the data model supports it.
 
@@ -40,6 +43,14 @@ commit that fixed them.
   code could be split further once `DiagramCanvas.tsx` is decomposed.
 - **Zooming the page is disabled** (`maximum-scale=1` in `client/index.html`). Probably meant to
   stop mobile browsers zooming the canvas, but it also blocks accessibility zoom.
+- **The quickstart guide is tied to the project name.** `ProjectView.tsx` treats a project as
+  the quickstart when its name is exactly "SymLit Quickstart"; renaming it loses the guide, and any
+  project given that name gets it. A template id stored on the project would be robust.
+- **Unused debug info.** `useDiagramCanvas` computes `debugInfoById` for every element and
+  `DiagramCanvas` passes it to `NodeAttributePanel`, which declares a `debugInfo` prop but never
+  renders it. Remove it or show it behind a developer setting.
+- **Product name is spelled three ways** in code and UI: "MBSE Lite" (old docs), "SymLit"
+  (templates, project list) and "Symlit" (repository, package).
 - **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
 
 ## Done

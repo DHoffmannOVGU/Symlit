@@ -30,8 +30,12 @@ Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc
 | Unused `patterns`/`pattern_nodes`/`pattern_edges` tables dropped (Phase 5 item) | done |
 | Tests: config, API integration (incl. ownership checks), DB tests on PGlite **and** PostgreSQL, full-stack Playwright spec | done |
 | CI (typecheck, tests on PGlite and PostgreSQL 16, build, migration drift check, Playwright) | done |
-| Split `server/routes.ts` into domain routers (Phase 2.3) | open |
-| Foreign keys, indexes, `/api/projects` listing (Phase 5) | open |
+| Split `server/routes.ts` into domain routers (Phase 2.3) | done |
+| Foreign keys, indexes, timestamptz, `GET /api/projects` (Phase 5) | done |
+| Element id collisions fixed; elements deleted when in no diagram | done |
+| ESLint in CI, dead code and unused UI components/dependencies removed | done |
+| Fonts bundled (no third-party requests), pages lazy-loaded | done |
+| Smaller findings | tracked in [`BACKLOG.md`](BACKLOG.md) |
 | Frontend decomposition (Phase 7) | open |
 | Hosted edition (Phases 4 and 6) | deferred |
 
