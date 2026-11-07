@@ -56,7 +56,7 @@ and response schemas. The server registers handlers from it, the client calls it
 `apiCall()` (`client/src/lib/api-client.ts`), and the 404/405 fallback for unknown `/api` paths
 is derived from it.
 
-To add an endpoint: add it to `shared/routes.ts`, implement it in `server/routes.ts`, add a client
+To add an endpoint: add it to `shared/routes.ts`, implement it in `server/routes/`, add a client
 hook, and add an API test in `server/app.test.ts`.
 
 ## Domain model
@@ -82,7 +82,7 @@ presets, the renderers/editors, and this document together.
 
 ## Server layout
 
-- `server/routes.ts`: thin handlers. They parse input, call storage or services, and map errors to HTTP.
+- `server/routes/`: thin handlers, one module per area (`projects`, `views`, `flow`, `patterns`, `export`, `ai`, `session`). They parse input, call storage or services, and map errors to HTTP. `routes/index.ts` registers them and the JSON 404/405 fallback.
 - `server/storage.ts`: plain CRUD (`IStorage`). It must stay plumbing only.
 - `server/services/*`: business rules.
   - `flow-mutations.ts`: loading, validating, syncing and recovering diagrams; inserting nodes and patterns.

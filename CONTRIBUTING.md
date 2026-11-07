@@ -27,7 +27,7 @@ npm run test:postgres
 
 ## Guidelines
 
-- **API changes** start in `shared/routes.ts` (the contract), then the handler in `server/routes.ts`,
+- **API changes** start in `shared/routes.ts` (the contract), then the handler in `server/routes/`,
   then the client hook. Add a test in `server/app.test.ts`.
 - **Schema changes:** edit `shared/schema.ts`, then run `npm run db:generate` and commit the new file in
   `migrations/`. Never edit a migration that has already been merged.

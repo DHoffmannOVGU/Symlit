@@ -19,6 +19,10 @@ commit that fixed them.
 - **Starter templates cannot reuse an element in two views.** `validateStarterTemplate` rejects
   the same node id in several views, although the data model supports it.
 
+### Server
+- **Project export logic lives in a route handler.** `server/routes/export.ts` builds JSON and CSV
+  (about 170 lines) inside the handler; it belongs in a service with its own unit tests.
+
 ## Done
 - Element ids were `node_${Date.now()}`, and template ids were fixed strings: creating a template
   twice failed with a 500, and two elements created in the same millisecond collided.
@@ -31,3 +35,4 @@ commit that fixed them.
   it is `GET /api/projects` now, and project creation no longer requires a `userId`.
 - Unknown API routes answered `{error}` while everything else used `{message}`; all errors use `{message}` now.
 - Gemini model names were hard-coded; `GEMINI_MODEL` now accepts a comma-separated fallback list.
+- `server/routes.ts` (1,155 lines on Replit) is split into one module per area under `server/routes/`.

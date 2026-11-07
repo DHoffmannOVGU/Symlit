@@ -1,6 +1,6 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import { createServer, type Server } from "node:http";
-import { registerRoutes } from "./routes";
+import { registerRoutes } from "./routes/index";
 import { authorizeWorkspaceApi, createLocalAuth } from "./auth";
 import type { AppConfig } from "./config";
 import { log } from "./log";
