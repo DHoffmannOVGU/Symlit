@@ -13,7 +13,9 @@ async function main() {
   log(
     config.database.driver === "postgres"
       ? "using PostgreSQL from DATABASE_URL"
-      : `using embedded PGlite database in ${config.database.dataDir}`,
+      : config.database.dataDir
+        ? `using embedded PGlite database in ${config.database.dataDir}`
+        : "using an in-memory PGlite database (data is lost on exit)",
     "db",
   );
 

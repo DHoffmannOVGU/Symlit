@@ -69,3 +69,4 @@ commit that fixed them.
   and an e2e test checks that no request leaves the machine. The page also had no `<title>`.
 - Everything was one 1.76 MB JavaScript bundle; pages are lazy-loaded, so the project list needs about 510 kB.
 - The server stored any element `data`; it now requires an object with string text fields and a list of attributes (other fields stay open).
+- The built server only found its migrations when started from the repository root; it now also looks next to the entry point.

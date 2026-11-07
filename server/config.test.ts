@@ -49,3 +49,20 @@ test("rejects invalid values with a readable message", () => {
   assert.throws(() => loadConfig({ PORT: "not-a-port" }), /Invalid Symlit configuration:[\s\S]*PORT/);
   assert.throws(() => loadConfig({ SYMLIT_SEED_DEMO: "maybe" }), /SYMLIT_SEED_DEMO/);
 });
+
+test("migrations are found next to the entry point when not in the working directory", async () => {
+  const { mkdtemp, mkdir, writeFile, rm } = await import("node:fs/promises");
+  const { tmpdir } = await import("node:os");
+  const { resolveMigrationsDir } = await import("./db");
+  const root = await mkdtemp(path.join(tmpdir(), "symlit-root-"));
+  try {
+    const real = path.join(root, "app", "migrations");
+    await mkdir(path.join(real, "meta"), { recursive: true });
+    await writeFile(path.join(real, "meta", "_journal.json"), "{}");
+    const missing = path.join(root, "elsewhere", "migrations");
+    assert.equal(resolveMigrationsDir([missing, real]), real);
+    assert.equal(resolveMigrationsDir([missing]), missing, "falls back to the first candidate");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});

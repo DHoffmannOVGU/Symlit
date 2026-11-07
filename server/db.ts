@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { drizzle as drizzlePg, type NodePgDatabase } from "drizzle-orm/node-postgres";
@@ -31,7 +32,26 @@ const uninitialised = new Proxy({} as Database, {
  */
 export let db: Database = uninitialised;
 
-export const MIGRATIONS_DIR = path.resolve(process.cwd(), "migrations");
+/**
+ * Finds the migrations folder: next to the working directory (development,
+ * tests), or next to the running entry point (`dist/index.cjs` or
+ * `server/index.ts`) so the built server can be started from anywhere.
+ */
+export function resolveMigrationsDir(
+  candidates: string[] = [
+    path.resolve(process.cwd(), "migrations"),
+    ...(process.argv[1]
+      ? [path.resolve(path.dirname(process.argv[1]), "..", "migrations")]
+      : []),
+  ],
+): string {
+  return (
+    candidates.find((dir) => existsSync(path.join(dir, "meta", "_journal.json"))) ??
+    candidates[0]
+  );
+}
+
+export const MIGRATIONS_DIR = resolveMigrationsDir();
 
 export async function openDatabase(
   config: DatabaseConfig,
