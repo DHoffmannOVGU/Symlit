@@ -1,19 +1,16 @@
+import { useCanvasInsertion } from "./useCanvasInsertion";
+import { useCanvasAiProposal } from "./useCanvasAiProposal";
+import { useCanvasDropInsertion } from "./useCanvasDropInsertion";
+import { useEdgeRelationConfirmation } from "./useEdgeRelationConfirmation";
+import { useCanvasActionRequests } from "./useCanvasActionRequests";
 import { useCanvasSidePanels } from "./useCanvasSidePanels";
 import { useCanvasDisplayGraph } from "./useCanvasDisplayGraph";
 import { usePatternCreation } from "./usePatternCreation";
 import { useCanvasTableSelection } from "./useCanvasTableSelection";
 import { useCanvasElementActions } from "./useCanvasElementActions";
 import { useCanvasTableRows } from "./useCanvasTableRows";
-import { randomId } from "@/lib/ids";
 // DiagramCanvas.tsx
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type DragEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   Controls,
@@ -42,22 +39,12 @@ import CapabilityDefNode from "../nodes/CapabilityDefNode";
 import ExternalStubNode from "../nodes/ExternalStubNode";
 import { ModelRulesPanel } from "../panels/ModelRulesPanel";
 import { MetamodelAiAssistant } from "../panels/MetamodelAiAssistant";
-import { AI_ASSISTANT_ENABLED } from "@/lib/feature-flags";
 import type { DiagramNode as Node, NodeData } from "../types";
 import { CanvasTableMode } from "./CanvasTableMode";
-import {
-  ConnectionPreviewLine,
-  edgeTypes,
-  getEdgeSemanticDefaults,
-  getEdgeMarkers,
-  type CustomEdgeData,
-} from "../edges/CustomEdges";
+import { ConnectionPreviewLine, edgeTypes, type CustomEdgeData } from "../edges/CustomEdges";
 import { useMetamodelParts } from "../hooks/useMetamodelParts";
 import { useEdgeCreation } from "../hooks/useEdgeCreation";
-import {
-  EdgeRelationConfirmationProvider,
-  type PendingEdgeRelationConfirmation,
-} from "../edges/EdgeRelationConfirmation";
+import { EdgeRelationConfirmationProvider } from "../edges/EdgeRelationConfirmation";
 
 import {
   Dialog,
@@ -87,19 +74,11 @@ import {
   getTypeAncestors,
   mergeParentMaps,
 } from "@shared/metamodel-inheritance";
-import { supportsModelRules } from "../rules/model-rules";
-import {
-  buildMetamodelProposalElements,
-  chooseMetamodelProposalLayoutDirection,
-} from "../utils/ai-metamodel-apply";
-import { layoutSelectedNodesWithDagre } from "../utils/dagre-layout";
-import type { AiMetamodelProposal } from "@shared/ai-metamodel";
-import { api, buildUrl } from "@shared/routes";
+import { api } from "@shared/routes";
 import type { FlowRecoveryResponse } from "@shared/routes";
 import type { FlowEdgeInput, SyncFlowNodeInput } from "@shared/flow-inputs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiCall } from "@/lib/api-client";
-import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   dispatchDiagramEvent,
@@ -112,11 +91,6 @@ import {
 } from "@/hooks/use-internal-views";
 import { useNode, useFlow } from "@/hooks/use-flow";
 import { useView } from "@/hooks/use-views";
-import {
-  METAMODEL_NODE_DRAG_MIME,
-  type SidebarCreateMetamodelNodeDragPayload,
-  type SidebarNodeTransfer,
-} from "./diagramCanvasTypes";
 import { useDiagramHelpContent } from "./useDiagramHelpContent";
 import { useDiagramCanvasPreferences } from "./useDiagramCanvasPreferences";
 import { useDiagramLeaveConfirmation } from "./useDiagramLeaveConfirmation";
@@ -275,8 +249,6 @@ function FlowInner({
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
   const [isNodePanelOpen, setIsNodePanelOpen] = useState(false);
   const [isEdgePanelOpen, setIsEdgePanelOpen] = useState(false);
-  const [pendingEdgeRelation, setPendingEdgeRelation] =
-    useState<PendingEdgeRelationConfirmation | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{
     nodeIds: string[];
@@ -284,10 +256,6 @@ function FlowInner({
     label?: string;
   } | null>(null);
   const [isCanvasReady, setIsCanvasReady] = useState(false);
-
-  useEffect(() => {
-    setPendingEdgeRelation(null);
-  }, [viewId]);
   const {
     snapNodesEnabled,
     setSnapEnabled,
@@ -319,11 +287,6 @@ function FlowInner({
     setNodes,
     takeSnapshot,
   });
-  const pendingSelectionRef = useRef<{
-    beforeIds: Set<string>;
-    mode: "single" | "pattern";
-    targetNodeId?: string;
-  } | null>(null);
 
   const isFlowMode = viewMode === "flow" && projectType === "instance";
   const isTableMode = displayMode === "table";
@@ -344,65 +307,6 @@ function FlowInner({
         })()
       : undefined;
   const helpContent = useDiagramHelpContent(projectType, isFlowMode);
-
-  const insertNodeIntoView = useCallback(
-    async (nodeId: string, position?: { x: number; y: number }) => {
-      pendingSelectionRef.current = {
-        beforeIds: new Set(nodes.map((node) => node.id)),
-        mode: "single",
-        targetNodeId: nodeId,
-      };
-      try {
-        const targetPosition =
-          position ??
-          screenToFlowPosition({
-            x: window.innerWidth / 2,
-            y: window.innerHeight / 2,
-          });
-        const url = buildUrl(api.flow.insertNode.path, { viewId, nodeId });
-        await apiRequest(api.flow.insertNode.method, url, {
-          position: targetPosition,
-        });
-        const nodeUrl = buildUrl(api.nodes.get.path, { nodeId });
-        const nodeRes = await apiRequest("GET", nodeUrl);
-        const insertedNode = api.nodes.get.responses[200].parse(
-          await nodeRes.json(),
-        );
-        if (!insertedNode) throw new Error("Inserted node not found");
-
-        setNodes((current) => {
-          if (current.some((node) => node.id === insertedNode.id)) {
-            return current.map((node) => ({
-              ...node,
-              selected: node.id === insertedNode.id,
-            }));
-          }
-
-          return [
-            ...current.map((node) => ({ ...node, selected: false })),
-            {
-              id: insertedNode.id,
-              type: insertedNode.type,
-              position: targetPosition,
-              selected: true,
-              data: insertedNode.data as Record<string, unknown>,
-            },
-          ];
-        });
-        setSelectedEdgeId(null);
-        setSelectedNodeId(insertedNode.id);
-      } catch (error) {
-        pendingSelectionRef.current = null;
-        console.error("Failed to insert node into view:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to insert node. Please try again.",
-        });
-      }
-    },
-    [nodes, screenToFlowPosition, setNodes, viewId, toast],
-  );
 
   const externalNodeIds = useMemo(
     () =>
@@ -456,89 +360,18 @@ function FlowInner({
       viewId,
     });
   }, [selectedNodeId, viewId]);
-
-  const insertPatternIntoView = useCallback(
-    async (patternId: number) => {
-      pendingSelectionRef.current = {
-        beforeIds: new Set(nodes.map((node) => node.id)),
-        mode: "pattern",
-      };
-      try {
-        const center = screenToFlowPosition({
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-        });
-        const url = buildUrl(api.flow.insertPattern.path, {
-          viewId,
-          patternId,
-        });
-        await apiRequest(api.flow.insertPattern.method, url, {
-          position: center,
-        });
-        await queryClient.invalidateQueries({
-          queryKey: [api.flow.get.path, viewId],
-        });
-      } catch (error) {
-        pendingSelectionRef.current = null;
-        console.error("Failed to insert pattern into view:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to insert pattern. Please try again.",
-        });
-      }
-    },
-    [nodes, queryClient, screenToFlowPosition, viewId],
-  );
-
-  useEffect(() => {
-    const pending = pendingSelectionRef.current;
-    if (!pending) return;
-    if (nodes.length === 0) return;
-
-    const newNodeIds = nodes
-      .filter((node) => !pending.beforeIds.has(node.id))
-      .map((node) => node.id);
-
-    if (pending.mode === "single") {
-      const targetId =
-        pending.targetNodeId &&
-        new Set(nodes.map((node) => node.id)).has(pending.targetNodeId)
-          ? pending.targetNodeId
-          : newNodeIds[0];
-
-      if (!targetId) return;
-      pendingSelectionRef.current = null;
-      setSelectedEdgeId(null);
-      setNodes((current) =>
-        current.map((node) => ({
-          ...node,
-          selected: node.id === targetId,
-        })),
-      );
-      return;
-    }
-
-    if (newNodeIds.length === 0) return;
-    const newIdSet = new Set(newNodeIds);
-    pendingSelectionRef.current = null;
-    setSelectedEdgeId(null);
-    setNodes((current) =>
-      current.map((node) => ({
-        ...node,
-        selected: newIdSet.has(node.id),
-      })),
-    );
-  }, [nodes, setNodes, setSelectedEdgeId]);
-
-  useEffect(
-    () =>
-      subscribeDiagramEvent("insert-pattern-into-view", (detail) => {
-        if (detail.viewId !== viewId) return;
-        void insertPatternIntoView(detail.patternId);
-      }),
-    [insertPatternIntoView, viewId],
-  );
+  const {
+    insertNodeIntoView,
+  } = useCanvasInsertion({
+    nodes,
+    screenToFlowPosition,
+    viewId,
+    setNodes,
+    setSelectedEdgeId,
+    setSelectedNodeId,
+    toast,
+    queryClient,
+  });
 
   const {
     availablePartDefs,
@@ -588,148 +421,20 @@ function FlowInner({
     getViewport,
     setViewport,
   });
-
-  const createNodeFromTypeAtPosition = useCallback(
-    (
-      typeId: string,
-      position?: { x: number; y: number },
-      fallback?: { typeLabel?: string; icon?: string; color?: string },
-    ) => {
-      const typeNode = availablePartDefNodes.find((node) => node.id === typeId);
-      const data = typeNode?.data as NodeData | undefined;
-      const style = partDefStyleById.get(typeId);
-      const targetPosition =
-        position ??
-        screenToFlowPosition({
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-        });
-      handleAddNode({
-        typeId,
-        typeLabel: data?.label ?? fallback?.typeLabel,
-        icon: style?.icon ?? data?.icon ?? fallback?.icon,
-        color: style?.color ?? data?.color ?? fallback?.color,
-        position: targetPosition,
-      });
-    },
-    [
-      availablePartDefNodes,
-      handleAddNode,
-      partDefStyleById,
-      screenToFlowPosition,
-    ],
-  );
-
-  useEffect(
-    () =>
-      subscribeDiagramEvent("insert-node-into-view", (detail) => {
-        if (detail.viewId !== viewId) return;
-        if (
-          detail.mode === "create-instance-node" &&
-          projectType === "instance"
-        ) {
-          createNodeFromTypeAtPosition(
-            detail.typeId ?? detail.nodeId,
-            detail.position,
-            {
-              typeLabel: detail.typeLabel,
-              icon: detail.icon,
-              color: detail.color,
-            },
-          );
-          return;
-        }
-        void insertNodeIntoView(detail.nodeId, detail.position);
-      }),
-    [createNodeFromTypeAtPosition, insertNodeIntoView, projectType, viewId],
-  );
-
-  useEffect(
-    () =>
-      subscribeDiagramEvent("create-metamodel-node-in-view", (detail) => {
-        if (detail.viewId !== viewId || projectType !== "metamodel") return;
-
-        handleAddNode({
-          nodeType: detail.nodeType,
-          typeId: detail.parentTypeId,
-          typeLabel:
-            detail.typeLabel ??
-            (detail.nodeType === "actiondef"
-              ? "Behavior"
-              : detail.nodeType === "concerndef"
-                ? "Concern"
-                : detail.nodeType === "agentdef"
-                  ? "Performer"
-                  : detail.nodeType === "requirementdef"
-                    ? "Requirement"
-                    : detail.nodeType === "eventdef"
-                      ? "Event"
-                      : detail.nodeType === "capabilitydef"
-                        ? "Capability"
-                        : "Object"),
-          icon: detail.icon,
-          color: detail.color,
-        });
-      }),
-    [handleAddNode, projectType, viewId],
-  );
-
-  useEffect(
-    () =>
-      subscribeDiagramEvent("model-rules-toggle-request", (detail) => {
-        if (detail.viewId === viewId && supportsModelRules(projectType)) {
-          toggleModelRules();
-        }
-      }),
-    [projectType, toggleModelRules, viewId],
-  );
-
-  useEffect(
-    () => subscribeDiagramEvent("metamodel-ai-assistant-toggle-request", (detail) => {
-      if (AI_ASSISTANT_ENABLED && detail.viewId === viewId && projectType === "metamodel") toggleAiAssistant();
-    }),
-    [projectType, toggleAiAssistant, viewId],
-  );
-
-  const handleApplyAiProposal = useCallback((proposal: AiMetamodelProposal) => {
-    const additions = buildMetamodelProposalElements(
-      proposal,
-      nodes,
-      edges,
-      (kind) => `ai_${kind}_${randomId()}`,
-    );
-    if (!additions.nodes.length && !additions.edges.length) {
-      toast({
-        title: "Nothing to apply",
-        description:
-          additions.skipped[0] ??
-          "The proposal contains no valid additions.",
-      });
-      return;
-    }
-    const layoutDirection = chooseMetamodelProposalLayoutDirection(proposal);
-    const nextEdges = [...edges, ...additions.edges];
-    const nextNodes = layoutSelectedNodesWithDagre(
-      [...nodes, ...additions.nodes],
-      nextEdges,
-      additions.nodes.map((node) => node.id),
-      layoutDirection,
-    );
-    takeSnapshot(nodes, edges);
-    setNodes(nextNodes);
-    setEdges(nextEdges);
-    toast({
-      title: "AI proposal applied",
-      description: [
-        `Added ${additions.nodes.length} element${additions.nodes.length === 1 ? "" : "s"} and ${additions.edges.length} relationship${additions.edges.length === 1 ? "" : "s"}, arranged ${layoutDirection === "TB" ? "vertically" : "horizontally"}.`,
-        additions.skipped.length
-          ? `Skipped ${additions.skipped.length} invalid item${additions.skipped.length === 1 ? "" : "s"}.`
-          : "",
-      ].filter(Boolean).join(" "),
-    });
-    window.requestAnimationFrame(() => { void fitView({ duration: 600 }); });
-  }, [edges, fitView, nodes, setEdges, setNodes, takeSnapshot, toast]);
-
+  const {
+    handleApplyAiProposal,
+  } = useCanvasAiProposal({
+    viewId,
+    projectType,
+    toggleAiAssistant,
+    nodes,
+    edges,
+    toast,
+    takeSnapshot,
+    setNodes,
+    setEdges,
+    fitView,
+  });
   useEffect(
     () =>
       subscribeDiagramEvent("diagram-save-request", (detail) => {
@@ -738,76 +443,19 @@ function FlowInner({
       }),
     [handleSave, viewId],
   );
-
-  const handleCanvasDrop = useCallback(
-    (event: DragEvent) => {
-      const raw = event.dataTransfer.getData(METAMODEL_NODE_DRAG_MIME);
-      if (!raw) return;
-
-      event.preventDefault();
-      clearDragPreview();
-
-      try {
-        const payload = JSON.parse(raw) as
-          | SidebarNodeTransfer
-          | SidebarCreateMetamodelNodeDragPayload;
-        if (!payload || payload.viewId !== viewId) return;
-
-        const position = screenToFlowPosition({
-          x: event.clientX,
-          y: event.clientY,
-        });
-        if ("nodeType" in payload && projectType === "metamodel") {
-          handleAddNode({
-            nodeType: payload.nodeType,
-            typeId: payload.parentTypeId,
-            typeLabel:
-              payload.typeLabel ??
-              (payload.nodeType === "actiondef"
-                ? "Behavior"
-                : payload.nodeType === "concerndef"
-                  ? "Concern"
-                  : payload.nodeType === "agentdef"
-                    ? "Performer"
-                    : payload.nodeType === "requirementdef"
-                      ? "Requirement"
-                    : payload.nodeType === "eventdef"
-                      ? "Event"
-                      : payload.nodeType === "capabilitydef"
-                        ? "Capability"
-                        : "Object"),
-            icon: payload.icon,
-            color: payload.color,
-            position,
-          });
-          return;
-        }
-        if (!("nodeId" in payload) || !payload.nodeId) return;
-        if (
-          payload.mode === "create-instance-node" &&
-          projectType === "instance"
-        ) {
-          createNodeFromTypeAtPosition(payload.typeId ?? payload.nodeId, position, {
-            typeLabel: payload.typeLabel,
-            icon: payload.icon,
-            color: payload.color,
-          });
-          return;
-        }
-        void insertNodeIntoView(payload.nodeId, position);
-      } catch (error) {
-        console.error("Failed to parse dropped metamodel node payload:", error);
-      }
-    },
-    [
-      createNodeFromTypeAtPosition,
-      handleAddNode,
-      insertNodeIntoView,
-      projectType,
-      screenToFlowPosition,
-      viewId,
-    ],
-  );
+  const {
+    handleCanvasDrop,
+  } = useCanvasDropInsertion({
+    availablePartDefNodes,
+    partDefStyleById,
+    screenToFlowPosition,
+    handleAddNode,
+    viewId,
+    projectType,
+    insertNodeIntoView,
+    toggleModelRules,
+    clearDragPreview,
+  });
   const typeMetaById = useMemo(
     () =>
       new Map(
@@ -920,80 +568,13 @@ function FlowInner({
     modelRules: activeModelRules,
     inheritedModelRuleIds,
   });
-
-  const handleCanvasEdgeCreated = useCallback(
-    (confirmation: PendingEdgeRelationConfirmation | null) => {
-      setPendingEdgeRelation(confirmation);
-    },
-    [],
-  );
-
-  const handleConfirmEdgeRelation = useCallback(
-    (edgeId: string, relationId: string) => {
-      if (!pendingEdgeRelation || pendingEdgeRelation.edgeId !== edgeId) return;
-      const relation = pendingEdgeRelation.options.find(
-        (option) => option.id === relationId,
-      );
-      if (!relation) return;
-
-      setEdges((current) =>
-        current.map((edge) => {
-          if (edge.id !== edgeId) return edge;
-          const existingData =
-            (edge.data as CustomEdgeData | undefined) ?? {
-              edgeType: relation.edgeType,
-            };
-          const { data, markerStart, markerEnd } = getEdgeMarkers({
-            ...existingData,
-            ...getEdgeSemanticDefaults(relation.edgeType),
-            edgeType: relation.edgeType,
-            flowType: relation.flowType,
-            label: relation.label,
-          });
-          return {
-            ...edge,
-            type: data.edgeType,
-            data,
-            markerStart,
-            markerEnd,
-          };
-        }),
-      );
-      setPendingEdgeRelation(null);
-    },
-    [pendingEdgeRelation, setEdges],
-  );
-
-  const handleRejectEdgeRelation = useCallback(
-    (edgeId: string) => {
-      if (!pendingEdgeRelation || pendingEdgeRelation.edgeId !== edgeId) return;
-      setEdges((current) =>
-        current.map((edge) => {
-          if (edge.id !== edgeId) return edge;
-          const existingData =
-            (edge.data as CustomEdgeData | undefined) ?? {
-              edgeType: "association",
-            };
-          const { data, markerStart, markerEnd } = getEdgeMarkers({
-            ...existingData,
-            label: undefined,
-          });
-          return { ...edge, data, markerStart, markerEnd };
-        }),
-      );
-      setPendingEdgeRelation(null);
-    },
-    [pendingEdgeRelation, setEdges],
-  );
-
-  const edgeRelationConfirmationValue = useMemo(
-    () => ({
-      pending: pendingEdgeRelation,
-      onConfirm: handleConfirmEdgeRelation,
-      onReject: handleRejectEdgeRelation,
-    }),
-    [handleConfirmEdgeRelation, handleRejectEdgeRelation, pendingEdgeRelation],
-  );
+  const {
+    handleCanvasEdgeCreated,
+    edgeRelationConfirmationValue,
+  } = useEdgeRelationConfirmation({
+    viewId,
+    setEdges,
+  });
 
   const {
     connectingFromNodeId,
@@ -1383,62 +964,16 @@ function FlowInner({
     setLocation,
     toast,
   });
-
-  useEffect(
-    () =>
-      subscribeDiagramEvent("diagram-node-action-request", (detail) => {
-        if (!detail.nodeId) return;
-        if (detail.action === "edit") {
-          handleOpenNodePanelForNode(detail.nodeId);
-          return;
-        }
-        if (detail.action === "copy") {
-          handleCopyNode(detail.nodeId);
-          return;
-        }
-        if (detail.action === "open-internal-view") {
-          void handleOpenInternalViewForNode(detail.nodeId);
-          return;
-        }
-        if (detail.action === "delete") {
-          handleDeleteNode(detail.nodeId);
-        }
-      }),
-    [
-      handleCopyNode,
-      handleDeleteNode,
-      handleOpenInternalViewForNode,
-      handleOpenNodePanelForNode,
-    ],
-  );
-
-  useEffect(
-    () =>
-      subscribeDiagramEvent("diagram-edge-action-request", (detail) => {
-        if (!detail.edgeId) return;
-        if (detail.action === "edit") {
-          handleOpenEdgePanelFromTable(detail.edgeId);
-          return;
-        }
-        if (detail.action === "delete") {
-          handleDeleteEdge(detail.edgeId);
-          return;
-        }
-        if (detail.action === "toggle-type") {
-          handleToggleEdgeType(detail.edgeId);
-          return;
-        }
-        if (detail.action === "reverse-direction") {
-          handleReverseEdgeDirection(detail.edgeId);
-        }
-      }),
-    [
-      handleDeleteEdge,
-      handleOpenEdgePanelFromTable,
-      handleReverseEdgeDirection,
-      handleToggleEdgeType,
-    ],
-  );
+  useCanvasActionRequests({
+    handleOpenNodePanelForNode,
+    handleCopyNode,
+    handleOpenInternalViewForNode,
+    handleDeleteNode,
+    handleOpenEdgePanelFromTable,
+    handleDeleteEdge,
+    handleToggleEdgeType,
+    handleReverseEdgeDirection,
+  });
 
   const handleConfirmDelete = useCallback(() => {
     if (!pendingDelete) return;
