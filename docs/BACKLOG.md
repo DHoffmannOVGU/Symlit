@@ -16,26 +16,20 @@ commit that fixed them.
   the same node id in several views, although the data model supports it.
 
 ### Server
-- **Export ignores nested metamodel references.** "Include referenced metamodels" exports only
-  the directly referenced metamodels, while the editor resolves references recursively
-  (`metamodel-reference-resolution.ts`). An export of an instance whose metamodel builds on
-  another metamodel is therefore incomplete.
 
 - **Relationship data is still unchecked.** Edge `data` is `z.any()` because the same schema
   parses stored relationships on load; tightening it needs a check of what older diagrams contain.
 
 ### Client
-- **Seven React hook dependency warnings** (`npm run lint`), in `DiagramCanvas.tsx`, `useDiagramCanvas.ts`,
+- **Auto layout spreads small diagrams very wide.** The tree layout (`entitree-flex`) places
+  siblings far apart, so after Auto Layout a five-element diagram is zoomed out with tiny cards.
+- **The export dialog stays open after downloading.** It could close itself after a successful export.
+- **Six React hook dependency warnings** (`npm run lint`), in `DiagramCanvas.tsx`, `useDiagramCanvas.ts`,
   `useEdgeCreation.ts` and others. Some are missing dependencies (possible stale values), others
   unnecessary ones. Each needs a look with the canvas tests running, not a blanket fix.
 - **The diagram editor chunk is still 1.1 MB.** Pages are lazy-loaded now, but React Flow, the
   panels and layout engines (`dagre`, `entitree-flex`) load as one chunk. The panels and layout
   code could be split further once `DiagramCanvas.tsx` is decomposed.
-- **Zooming the page is disabled** (`maximum-scale=1` in `client/index.html`). Probably meant to
-  stop mobile browsers zooming the canvas, but it also blocks accessibility zoom.
-- **The quickstart guide is tied to the project name.** `ProjectView.tsx` treats a project as
-  the quickstart when its name is exactly "Symlit Quickstart" (or the old "SymLit Quickstart"); renaming it loses the guide, and any
-  project given that name gets it. A template id stored on the project would be robust.
 - **Unused debug info.** `useDiagramCanvas` computes `debugInfoById` for every element and
   `DiagramCanvas` passes it to `NodeAttributePanel`, which declares a `debugInfo` prop but never
   renders it. Remove it or show it behind a developer setting.
@@ -46,8 +40,6 @@ commit that fixed them.
   `sidebar-parts/`). Naming them (e.g. `ReferencedPaletteItem`) would make the components easier to read.
 - **One unexplained browser-test failure in about 120 runs** (a `toHaveCount` assertion, most
   likely in the edge-drawing spec) while splitting the canvas. It did not reproduce in repeated runs.
-- **The demo project's relationship has no handles**, so React Flow draws small marker stubs on
-  the elements' top and bottom edges (`server/seed.ts`). Also present before the refactor.
 - **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
 
 ## Done
@@ -83,3 +75,10 @@ commit that fixed them.
 - Resized elements lost their size on reload: the size was saved but only restored for internal-view containers. It is restored for every element now.
 - The product name was spelled "MBSE Lite", "SymLit" and "Symlit"; it is "Symlit" everywhere now.
 - The toolbar received `onAddNode`/`onAutoLayout` without buttons; there is now an Auto Layout button (undoable), and the unused add-node wiring is gone.
+- Export with referenced metamodels now follows references recursively (a metamodel building on another one).
+- Projects store the template they were created from (`template_id`); the old name-based quickstart detection is gone.
+- Page zoom is allowed again; gestures on the canvas still pan/zoom the diagram only.
+- The demo project's relationship connects proper side handles.
+- Every diagram containing a relationship counted as changed right after opening (the saved baseline ignored load-time defaults), which triggered needless "unsaved changes" prompts. Fixed.
+- Switching directly between an instance model and a metamodel left the sidebar blank (the tab state was reused with values the other project type does not have). Fixed.
+- The old single-project quickstart was replaced by the guided tutorial.

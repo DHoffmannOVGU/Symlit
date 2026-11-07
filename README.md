@@ -20,7 +20,10 @@ machine. It needs no accounts and no cloud services.
 - **Multiple views per project:** an element is stored once and can appear in several diagrams.
 - **Patterns:** save a selection as a reusable pattern and insert it elsewhere.
 - **Model rules and validation**, plus a guided recovery dialog for damaged diagrams.
-- **Starter templates and a quickstart guide.**
+- **A guided tutorial** that builds a small drone model with you: about 15 minutes, seven hands-on
+  lessons covering metamodels, typed models, validation, model rules, table view, auto layout,
+  patterns and export. Steps tick off as you work; "Show me" points at the right button.
+- **Starter templates.**
 - **Export** to JSON or CSV (elements and relationships), and diagram screenshots.
 - **Optional AI metamodel assistant** (Google Gemini, bring your own API key).
 
@@ -37,7 +40,7 @@ npm run dev
 
 Open http://localhost:5000. That's it: with no configuration, Symlit stores its data in an
 embedded PostgreSQL database ([PGlite](https://pglite.dev)) under `./data/`, and creates a
-demo project on first start.
+demo project on first start. New to Symlit? Press **Start the guided tutorial** on the project list.
 
 ### With a dedicated PostgreSQL server (Docker)
 

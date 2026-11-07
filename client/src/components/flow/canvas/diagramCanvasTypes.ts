@@ -47,6 +47,8 @@ export type DiagramSaveStateDetail = {
 export type DiagramModelNodeCreatedDetail = {
   viewId: number;
   nodeId: string;
+  /** Set when the element is an instance of a referenced metamodel type. */
+  typeId?: string;
 };
 
 export type DiagramModelEdgeCreatedDetail = {

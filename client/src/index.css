@@ -368,3 +368,29 @@
 .react-flow__edge.validation-issue .react-flow__edge-text {
   fill: hsl(var(--destructive)) !important;
 }
+
+/* Guided tutorial: "Show me" highlight. */
+@keyframes tutorial-spotlight-pulse {
+  0%, 100% { box-shadow: 0 0 0 3px hsl(var(--primary) / 0.9), 0 0 0 8px hsl(var(--primary) / 0.25); }
+  50% { box-shadow: 0 0 0 3px hsl(var(--primary) / 0.9), 0 0 0 14px hsl(var(--primary) / 0); }
+}
+.tutorial-spotlight {
+  position: relative;
+  z-index: 40;
+  border-radius: 0.5rem;
+  animation: tutorial-spotlight-pulse 1.2s ease-in-out 3;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-spotlight {
+    animation: none;
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.9);
+  }
+}
+
+/* Page zoom stays available for accessibility; gestures on the diagram canvas
+   pan and zoom the diagram instead of the page. */
+.react-flow__pane,
+.react-flow__node,
+.react-flow__edge {
+  touch-action: none;
+}

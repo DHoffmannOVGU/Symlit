@@ -74,6 +74,8 @@ test("renders a diagram saved through the API and keeps it after reload", async 
   await expect(page.locator(".react-flow__node")).toHaveCount(2);
   await expect(page.getByText("Battery", { exact: true })).toBeVisible();
   await expect(page.locator(".react-flow__edge")).toHaveCount(1);
+  // Opening a diagram with relationships must not mark it as changed.
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
 
   await page.reload();
   await expect(page.locator(".react-flow__node")).toHaveCount(2);

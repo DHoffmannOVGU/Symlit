@@ -134,6 +134,23 @@ SQL migration to `migrations/`. Commit both. CI fails if the schema and migratio
 | API | `server/app.test.ts` (real app on a random port) | same as above |
 | Browser | `e2e/*.spec.ts` (Playwright) | real server with an in-memory database. Some specs mock the API to cover edge cases |
 
+## Guided tutorial
+
+- `shared/tutorial.ts` defines the lessons and steps and the content of the two tutorial projects
+  (a *Drone types* metamodel and a *Delivery drone* instance model typed by it).
+- `POST /api/tutorial` (`server/services/tutorial.ts`) creates both projects, marked with
+  `projects.template_id` (`tutorial-metamodel` / `tutorial-instance`); `DELETE /api/tutorial`
+  removes them.
+- Steps wait for *signals*: element/relationship created and save requests come from the existing
+  diagram events; everything else is reported with `emitTutorialSignal()` (`client/src/lib/tutorial-signals.ts`)
+  where the action happens (validation, model rules, table view, auto layout, pattern, export,
+  attribute added). A signal completes the first open step waiting for it in the open project.
+- `client/src/lib/tutorial-progress.ts` holds the pure progress logic (unit-tested); progress is
+  stored in the browser per tutorial run. `useTutorialCoach` and `TutorialCoach` render the docked
+  coach on tutorial projects; `TutorialCard` is the entry point on the project list.
+- To add a step: add it to `TUTORIAL_LESSONS`, emit its signal where the action happens, and give
+  it a `highlight` selector for "Show me".
+
 ## Design decisions
 
 Short records of non-obvious decisions are kept in [`docs/decisions/`](decisions/).

@@ -332,6 +332,28 @@ export const api = {
       },
     },
   },
+  tutorial: {
+    create: {
+      method: 'POST' as const,
+      path: '/api/tutorial',
+      responses: {
+        201: z.object({
+          metamodel: z.custom<typeof projects.$inferSelect>(),
+          instance: z.custom<typeof projects.$inferSelect>(),
+          metamodelViewId: z.number(),
+          instanceViewId: z.number(),
+        }),
+        500: errorSchemas.internal,
+      },
+    },
+    delete: {
+      method: 'DELETE' as const,
+      path: '/api/tutorial',
+      responses: {
+        200: z.object({ deletedProjects: z.number() }),
+      },
+    },
+  },
   views: {
     list: {
       method: 'GET' as const,
