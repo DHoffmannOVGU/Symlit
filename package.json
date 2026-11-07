@@ -48,7 +48,6 @@
     "date-fns": "^3.6.0",
     "drizzle-orm": "^0.39.3",
     "drizzle-zod": "^0.7.0",
-    "entitree-flex": "^0.4.1",
     "express": "^4.21.2",
     "framer-motion": "^11.18.2",
     "html-to-image": "^1.11.13",

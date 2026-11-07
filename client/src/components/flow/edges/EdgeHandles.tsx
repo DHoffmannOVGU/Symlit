@@ -30,7 +30,8 @@ export const AnchorHandles = ({
   onDraggingChange?: (dragging: boolean) => void;
 }) => {
   const { screenToFlowPosition, setEdges } = useReactFlow();
-  const transform = useStore((state) => state?.transform) ?? [0, 0, 1];
+  // Only the zoom level is needed; selecting a number keeps it stable between renders.
+  const zoom = useStore((state) => state?.transform?.[2] ?? 1);
   const [dragging, setDragging] = useState<"source" | "target" | null>(null);
   const [activeSnapSide, setActiveSnapSide] = useState<AnchorSide | null>(null);
 
@@ -66,7 +67,7 @@ export const AnchorHandles = ({
         x: event.clientX,
         y: event.clientY,
       });
-      const threshold = 16 / (transform[2] || 1);
+      const threshold = 16 / (zoom || 1);
       const snapSide = getSnapSide(rect, flowPoint, threshold);
       const isSource = dragging === "source";
       const anchor: EdgeAnchor = snapSide
@@ -100,7 +101,7 @@ export const AnchorHandles = ({
     screenToFlowPosition,
     sourceRect,
     targetRect,
-    transform,
+    zoom,
     updateAnchor,
   ]);
 

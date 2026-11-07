@@ -16,7 +16,7 @@ import { flowSyncInputSchema } from "@shared/routes";
 import type { DiagramEdge, DiagramNode } from "../types";
 import { useUndoRedo } from "@/hooks/use-undo-redo";
 import {
-  getLayoutedElementsEntitree,
+  getAutoLayout,
   NODE_WIDTH,
   NODE_HEIGHT,
 } from "../utils/autolayout";
@@ -339,7 +339,7 @@ export function useDiagramCanvas(
     if (nodes.length === 0) return;
     takeSnapshot(nodes, edges);
     const { nodes: layoutedNodes, edges: layoutedEdges } =
-      getLayoutedElementsEntitree(nodes, edges);
+      getAutoLayout(nodes, edges);
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
     // Fit after the new positions have rendered.

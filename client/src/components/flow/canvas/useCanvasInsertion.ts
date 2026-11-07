@@ -123,7 +123,7 @@ export function useCanvasInsertion({
         });
       }
     },
-    [nodes, queryClient, screenToFlowPosition, viewId],
+    [nodes, queryClient, screenToFlowPosition, toast, viewId],
   );
 
   useEffect(() => {

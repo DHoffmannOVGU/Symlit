@@ -383,7 +383,6 @@ export function useEdgeCreation({
       setNodes,
       setEdges,
       takeSnapshot,
-      availablePartDefEdges,
       pendingConnectionSource,
       relationEdges,
       parentMap,
