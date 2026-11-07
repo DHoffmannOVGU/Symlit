@@ -28,9 +28,6 @@ commit that fixed them.
 - **Seven React hook dependency warnings** (`npm run lint`), in `DiagramCanvas.tsx`, `useDiagramCanvas.ts`,
   `useEdgeCreation.ts` and others. Some are missing dependencies (possible stale values), others
   unnecessary ones. Each needs a look with the canvas tests running, not a blanket fix.
-- **Toolbar ignores `onAddNode` and `onAutoLayout`.** `DiagramToolbar` receives both handlers,
-  but has no button for them, so auto layout of the whole diagram is not reachable from the toolbar.
-  Decide whether to bring the buttons back or remove the props and the callers' wiring.
 - **The diagram editor chunk is still 1.1 MB.** Pages are lazy-loaded now, but React Flow, the
   panels and layout engines (`dagre`, `entitree-flex`) load as one chunk. The panels and layout
   code could be split further once `DiagramCanvas.tsx` is decomposed.
@@ -85,3 +82,4 @@ commit that fixed them.
 - Method projects and internal views were removed (decision D5), including their data (migration 0003).
 - Resized elements lost their size on reload: the size was saved but only restored for internal-view containers. It is restored for every element now.
 - The product name was spelled "MBSE Lite", "SymLit" and "Symlit"; it is "Symlit" everywhere now.
+- The toolbar received `onAddNode`/`onAutoLayout` without buttons; there is now an Auto Layout button (undoable), and the unused add-node wiring is gone.

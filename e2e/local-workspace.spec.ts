@@ -109,3 +109,49 @@ test("restores the size an element was resized to", async ({ page, request }) =>
   // Loading a diagram must not mark it as changed.
   await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
 });
+
+test("auto layout spreads out overlapping elements and can be undone", async ({ page, request }) => {
+  const project = await (
+    await request.post("/api/projects", { data: { name: "Layout", projectType: "instance" } })
+  ).json();
+  const view = await (
+    await request.post(`/api/projects/${project.id}/views`, { data: { name: "Tangle" } })
+  ).json();
+  const id = (name: string) => `${name}-${project.id}`;
+  const stacked = (name: string) => ({
+    id: id(name),
+    type: "part",
+    position: { x: 100, y: 100 },
+    data: { label: name, type: "Object" },
+  });
+  const link = (from: string, to: string) => ({
+    id: `${from}-${to}-${project.id}`,
+    source: id(from),
+    target: id(to),
+    edgeType: "association",
+    sourceHandle: null,
+    targetHandle: null,
+  });
+  await request.post(`/api/views/${view.id}/sync`, {
+    data: {
+      nodes: [stacked("root"), stacked("left"), stacked("right")],
+      edges: [link("root", "left"), link("root", "right")],
+    },
+  });
+
+  await page.goto(`/project/${project.id}/view/${view.id}`);
+  await expect(page.locator(".react-flow__node")).toHaveCount(3);
+  const positions = () =>
+    page.locator(".react-flow__node").evaluateAll((nodes) =>
+      nodes.map((node) => (node as HTMLElement).style.transform).sort(),
+    );
+  const before = await positions();
+  expect(new Set(before).size).toBe(1);
+
+  await page.getByTitle("Auto Layout").click();
+  await expect.poll(async () => new Set(await positions()).size).toBe(3);
+  await expect(page.getByTestId("button-save-diagram-header")).toBeEnabled();
+
+  await page.getByTitle("Undo").click();
+  await expect.poll(positions).toEqual(before);
+});

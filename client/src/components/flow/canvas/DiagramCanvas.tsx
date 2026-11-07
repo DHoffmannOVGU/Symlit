@@ -1062,17 +1062,11 @@ function FlowInner({
                   ?.pathType === "straight",
             )}
             canLayoutSelection={selectedNodeIds.length > 0}
+            canAutoLayout={nodes.length > 0}
             canSavePattern={canSavePattern}
             onSavePattern={openPatternDialog}
             onUndo={undo}
             onRedo={redo}
-            onAddNode={() =>
-              handleAddNode(
-                projectType === "metamodel"
-                  ? { nodeType: "partdef", typeLabel: "Object" }
-                  : undefined,
-              )
-            }
             snapNodesEnabled={snapNodesEnabled}
             alwaysShowAccent={alwaysShowAccent}
             showBackgroundDots={showBackgroundDots}

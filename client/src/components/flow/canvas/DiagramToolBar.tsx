@@ -18,6 +18,7 @@ import {
   Camera,
   CheckCircle2,
   Sparkles,
+  Wand2,
   Play,
   Square,
   Flag,
@@ -55,7 +56,6 @@ type Props = {
 
   onUndo: () => void;
   onRedo: () => void;
-  onAddNode: () => void;
   onToggleSnap?: () => void;
   onToggleAlwaysShowAccent?: () => void;
   onToggleBackgroundDots?: () => void;
@@ -68,6 +68,7 @@ type Props = {
   onScreenshot: () => void;
   onValidate: () => void;
   canLayoutSelection?: boolean;
+  canAutoLayout?: boolean;
   canSavePattern?: boolean;
   onSavePattern?: () => void;
   onSetFlowStart?: () => void;
@@ -153,6 +154,7 @@ export function DiagramToolbar(props: Props) {
     onToggleAlwaysShowAccent,
     onToggleBackgroundDots,
     onToggleNodeDescriptions,
+    onAutoLayout,
     onLayoutSelectedVertical,
     onLayoutSelectedHorizontal,
     onCenterSelectedVertical,
@@ -160,6 +162,7 @@ export function DiagramToolbar(props: Props) {
     onScreenshot,
     onValidate,
     canLayoutSelection = false,
+    canAutoLayout = false,
     canSavePattern = false,
     onSavePattern,
     onSetFlowStart,
@@ -282,6 +285,13 @@ export function DiagramToolbar(props: Props) {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+
+          <ToolbarButton
+            icon={Wand2}
+            label="Auto Layout"
+            onClick={onAutoLayout}
+            disabled={!canAutoLayout}
+          />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

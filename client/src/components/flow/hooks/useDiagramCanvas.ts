@@ -331,27 +331,17 @@ export function useDiagramCanvas(
   );
 
   const handleAutoLayout = useCallback(() => {
-    setNodes((currentNodes) => {
-      if (currentNodes.length === 0) return currentNodes;
-
-      setEdges((currentEdges) => {
-        takeSnapshot(currentNodes, currentEdges);
-        const { nodes: layoutedNodes, edges: layoutedEdges } =
-          getLayoutedElementsEntitree(currentNodes, currentEdges);
-
-        setNodes(() => layoutedNodes);
-        
-        // Use requestAnimationFrame to ensure nodes are rendered before fitting view
-        requestAnimationFrame(() => {
-          fitView({ duration: 800 });
-        });
-        
-        return layoutedEdges;
-      });
-
-      return currentNodes;
+    if (nodes.length === 0) return;
+    takeSnapshot(nodes, edges);
+    const { nodes: layoutedNodes, edges: layoutedEdges } =
+      getLayoutedElementsEntitree(nodes, edges);
+    setNodes(layoutedNodes);
+    setEdges(layoutedEdges);
+    // Fit after the new positions have rendered.
+    requestAnimationFrame(() => {
+      fitView({ duration: 800 });
     });
-  }, [setNodes, setEdges, takeSnapshot, fitView]);
+  }, [nodes, edges, setNodes, setEdges, takeSnapshot, fitView]);
 
   const handleLayoutSelected = useCallback(
     (direction: "TB" | "LR", selectedNodeIds: string[]) => {
