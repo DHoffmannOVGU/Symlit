@@ -260,6 +260,15 @@ test("recovers a corrupted saved view without losing valid nodes or relationship
         type: "part",
         data: { label: "Invalid position" },
       },
+      // Exists, but is not placed in this view: the relationship below is
+      // dangling from the diagram's point of view. (Edges to elements that do
+      // not exist at all are rejected by foreign keys.)
+      {
+        id: `${suffix}-missing-node`,
+        projectId: project.id,
+        type: "part",
+        data: { label: "Not in this diagram" },
+      },
     ]);
     await db.insert(nodeViews).values([
       {

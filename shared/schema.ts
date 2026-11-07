@@ -9,6 +9,8 @@ import {
   jsonb,
   timestamp,
   primaryKey,
+  index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { metamodelSetupSchema, type MetamodelSetup } from "./metamodel-setup";
 
@@ -16,7 +18,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   displayName: text("display_name"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
 export const projectTypeEnum = ["metamodel", "instance", "method"] as const;
@@ -160,57 +162,66 @@ export type MethodMetadata = z.infer<typeof methodMetadataSchema>;
 
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   projectType: text("project_type").notNull().default("metamodel"),
   referencedMetamodels: jsonb("referenced_metamodels").$type<number[]>().default(sql`'[]'::jsonb`),
   methodMetadata: jsonb("method_metadata").$type<MethodMetadata>().default(sql`'{"stakeholders":[]}'::jsonb`),
   metamodelSetup: jsonb("metamodel_setup").$type<MetamodelSetup | null>().default(sql`'null'::jsonb`),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  userIdIdx: index("projects_user_id_idx").on(table.userId),
+}));
 
 export const views = pgTable("views", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").notNull(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   description: text("description"),
   viewType: text("view_type").notNull().default("view"),
   parentNodeId: text("parent_node_id"),
-  parentViewId: integer("parent_view_id"),
+  parentViewId: integer("parent_view_id").references((): AnyPgColumn => views.id, { onDelete: "set null" }),
   modelRules: jsonb("model_rules").$type<ModelRule[]>().default(sql`'[]'::jsonb`),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  projectIdIdx: index("views_project_id_idx").on(table.projectId),
+}));
 
 export const nodes = pgTable("nodes", {
   id: text("id").primaryKey(),
-  projectId: integer("project_id").notNull(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   type: text("type").notNull().default("default"),
   data: jsonb("data").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  projectIdIdx: index("nodes_project_id_idx").on(table.projectId),
+}));
 
 export const nodeViews = pgTable("node_views", {
-  nodeId: text("node_id").notNull(),
-  viewId: integer("view_id").notNull(),
+  nodeId: text("node_id").notNull().references(() => nodes.id, { onDelete: "cascade" }),
+  viewId: integer("view_id").notNull().references(() => views.id, { onDelete: "cascade" }),
   position: jsonb("position").notNull(),
   parentId: text("parent_id"),
-  createdAt: timestamp("created_at").defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.nodeId, table.viewId] }),
+  viewIdx: index("node_views_view_id_idx").on(table.viewId),
 }));
 
 export const edges = pgTable("edges", {
   id: text("id").primaryKey(),
-  viewId: integer("view_id").notNull(),
-  source: text("source").notNull(),
-  target: text("target").notNull(),
+  viewId: integer("view_id").notNull().references(() => views.id, { onDelete: "cascade" }),
+  source: text("source").notNull().references(() => nodes.id, { onDelete: "cascade" }),
+  target: text("target").notNull().references(() => nodes.id, { onDelete: "cascade" }),
   edgeType: text("edge_type").notNull().default("association"),
   sourceHandle: text("source_handle"),
   targetHandle: text("target_handle"),
   data: jsonb("data"),
-  createdAt: timestamp("created_at").defaultNow(),
-});
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  viewIdIdx: index("edges_view_id_idx").on(table.viewId),
+}));
 
 // === RELATIONS ===
 

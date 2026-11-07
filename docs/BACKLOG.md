@@ -13,7 +13,9 @@ commit that fixed them.
   this only matters once that feature is turned on.
 - **Element ids are global primary keys.** Ids are now random UUIDs, so collisions are
   practically impossible. A composite key `(project_id, id)` would make the
-  model cleaner, but every edge, placement and reference would have to change. Revisit with the foreign keys.
+  model cleaner, but every edge, placement and reference would have to change.
+- **`node_views.parent_id` and `views.parent_node_id` have no foreign keys.** Parent elements
+  may legitimately live outside the view, so they were left unconstrained.
 - **Starter templates cannot reuse an element in two views.** `validateStarterTemplate` rejects
   the same node id in several views, although the data model supports it.
 
@@ -22,3 +24,6 @@ commit that fixed them.
   twice failed with a 500, and two elements created in the same millisecond collided.
 - Elements were never deleted when removed from diagrams; they now are once they are in no
   diagram, and a migration removes existing leftovers.
+- No foreign keys; deletes were hand-written. Foreign keys with cascades, indexes on lookup
+  columns, and a cleanup of rows that would violate them were added (migration 0002).
+- Timestamps were stored without a time zone; they are `timestamptz` now (existing values read as UTC).

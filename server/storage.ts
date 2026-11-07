@@ -21,7 +21,7 @@ import type {
   PatternNodeInput,
   SyncFlowNodeInput,
 } from "@shared/flow-inputs";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import {
   createInternalViewForNode as createInternalViewForNodeService,
   getInternalViewByNodeId as getInternalViewByNodeIdService,
@@ -256,22 +256,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteProject(id: number): Promise<void> {
-    const viewRows = await db
-      .select({ id: views.id })
-      .from(views)
-      .where(eq(views.projectId, id));
-    const viewIds = viewRows.map((row) => row.id);
-
-    await db.transaction(async (tx) => {
-      if (viewIds.length > 0) {
-        await tx.delete(nodeViews).where(inArray(nodeViews.viewId, viewIds));
-        await tx.delete(edges).where(inArray(edges.viewId, viewIds));
-      }
-      await tx.delete(nodes).where(eq(nodes.projectId, id));
-      await tx.delete(views).where(eq(views.projectId, id));
-      await tx.delete(projects).where(eq(projects.id, id));
-    });
+    // Views, elements, placements and relationships cascade in the database.
+    await db.delete(projects).where(eq(projects.id, id));
   }
+
 
 
   // Views
@@ -308,8 +296,7 @@ export class DatabaseStorage implements IStorage {
         .select({ nodeId: nodeViews.nodeId })
         .from(nodeViews)
         .where(eq(nodeViews.viewId, id));
-      await tx.delete(nodeViews).where(eq(nodeViews.viewId, id));
-      await tx.delete(edges).where(eq(edges.viewId, id));
+      // Placements and relationships of the view cascade in the database.
       await tx.delete(views).where(eq(views.id, id));
       await deleteUnplacedNodes(
         tx,
