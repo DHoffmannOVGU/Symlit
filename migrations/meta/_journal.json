@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1794073559675,
+      "tag": "0000_initial",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794074914540,
+      "tag": "0001_delete_unplaced_nodes",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794075104261,
+      "tag": "0002_foreign_keys_indexes_timestamptz",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,342 @@
+import type { UseQueryResult } from "@tanstack/react-query";
+import type { ModelRuleCondition } from "@shared/schema";
+import type { Project } from "@shared/schema";
+import type { View } from "@shared/schema";
+import { type DragEvent } from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import * as Icons from "lucide-react";
+import type { FlowNode } from "@shared/schema";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  BASE_METAMODEL_ID,
+  type SidebarCreateMetamodelNodeDetail,
+  type SidebarCreateMetamodelNodeDragPayload,
+} from "../sidebar/SidebarConstants";
+
+export interface MetamodelCreatePaletteContext {
+  selectedMetamodelCreateProjectId: string;
+  referencedProjects: Project[];
+  getReferencedFlowQueriesForSelection: (projectId: string, viewId: string) => UseQueryResult<{ nodes: { id: string; type: string; position: { x: number; y: number; }; projectId: number; data?: unknown; createdAt?: unknown; parentId?: string | null | undefined; }[]; edges: { id: string; source: string; target: string; data?: any; edgeType?: string | undefined; sourceHandle?: string | null | undefined; targetHandle?: string | null | undefined; }[]; } | null, Error>[];
+  selectedMetamodelCreateViewId: string;
+  filteredMetamodelCreateViews: View[];
+  hasReferencedMetamodels: boolean;
+  setSelectedMetamodelCreateProjectId: React.Dispatch<React.SetStateAction<string>>;
+  setSelectedMetamodelCreateViewId: React.Dispatch<React.SetStateAction<string>>;
+  visibleMetamodelNodeTypes: { type: "partdef" | "actiondef" | "concerndef" | "agentdef" | "requirementdef" | "eventdef" | "capabilitydef"; label: string; description: string; iconName: string; color: string; }[];
+  currentViewId: number | undefined;
+  handleCreateMetamodelNode: (options: Omit<SidebarCreateMetamodelNodeDetail, "viewId">) => void;
+  handleMetamodelNodeTypeDragStart: (event: DragEvent<HTMLButtonElement>, payload: SidebarCreateMetamodelNodeDragPayload) => void;
+  retryReferencedFlows: (projectId: string, viewId: string) => void;
+  metamodelCreatePaletteItems: ({ project: { id: number; name: string; createdAt: Date | null; userId: number; description: string | null; projectType: string; referencedMetamodels: number[] | null; methodMetadata: { stakeholders: { id: string; name: string; description?: string | undefined; }[]; } | null; metamodelSetup: { description: string; version: 1; purpose: "custom" | "system-context" | "requirements" | "behavior" | "architecture"; nodeTypes: ("partdef" | "actiondef" | "concerndef" | "agentdef" | "requirementdef" | "eventdef" | "capabilitydef")[]; relationTypes: ("association" | "aggregation" | "composition" | "generalization" | "dependency" | "realization")[]; } | null; }; view: { id: number; name: string; createdAt: Date | null; description: string | null; projectId: number; viewType: string; parentNodeId: string | null; parentViewId: number | null; modelRules: { id: string; name: string; enabled: boolean; targetType: string; check?: "missing-name" | "missing-description" | "duplicate-name" | "no-connections" | undefined; severity?: "warning" | "error" | undefined; condition?: ModelRuleCondition | undefined; outcome?: { kind: "tag"; label: string; color?: string | undefined; } | { kind: "issue"; severity: "warning" | "error"; message?: string | undefined; } | undefined; }[] | null; }; node: { id: string; data: unknown; createdAt: Date | null; type: string; projectId: number; }; meta: { label: string; typeLabel: string; iconName: string; color: string; }; } & { duplicateCount: number; })[];
+  getCanonicalTypeId: (node: FlowNode) => string;
+}
+
+export function MetamodelCreatePalette({
+  selectedMetamodelCreateProjectId,
+  referencedProjects,
+  getReferencedFlowQueriesForSelection,
+  selectedMetamodelCreateViewId,
+  filteredMetamodelCreateViews,
+  hasReferencedMetamodels,
+  setSelectedMetamodelCreateProjectId,
+  setSelectedMetamodelCreateViewId,
+  visibleMetamodelNodeTypes,
+  currentViewId,
+  handleCreateMetamodelNode,
+  handleMetamodelNodeTypeDragStart,
+  retryReferencedFlows,
+  metamodelCreatePaletteItems,
+  getCanonicalTypeId,
+
+}: MetamodelCreatePaletteContext) {
+    const selectedProject =
+      selectedMetamodelCreateProjectId === BASE_METAMODEL_ID
+        ? null
+        : referencedProjects.find(
+            (project) => String(project.id) === selectedMetamodelCreateProjectId,
+          ) ?? null;
+
+    const selectedMetamodelCreateFlowQueries =
+      getReferencedFlowQueriesForSelection(
+        selectedMetamodelCreateProjectId,
+        selectedMetamodelCreateViewId,
+      );
+    const paletteLoading =
+      selectedMetamodelCreateProjectId !== BASE_METAMODEL_ID &&
+      selectedMetamodelCreateFlowQueries.some((query) => query.isFetching);
+    const paletteError =
+      selectedMetamodelCreateProjectId !== BASE_METAMODEL_ID &&
+      selectedMetamodelCreateFlowQueries.some((query) => query.isError);
+
+    const showAllMetamodelCreateViewsOption =
+      filteredMetamodelCreateViews.length > 1;
+
+    return (
+      <div className="space-y-3 px-1">
+        {hasReferencedMetamodels ? (
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+            <div className="grid gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                  Parent Metamodel
+                </Label>
+                <Select
+                  value={selectedMetamodelCreateProjectId}
+                  onValueChange={setSelectedMetamodelCreateProjectId}
+                >
+                  <SelectTrigger className="border-white/10 bg-white/5 text-white">
+                    <SelectValue placeholder="Select metamodel" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={BASE_METAMODEL_ID}>
+                      Common Model
+                    </SelectItem>
+                    {referencedProjects.map((project) => (
+                      <SelectItem key={project.id} value={String(project.id)}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedMetamodelCreateProjectId !== BASE_METAMODEL_ID &&
+              filteredMetamodelCreateViews.length > 1 ? (
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+                    Diagram
+                  </Label>
+                  <Select
+                    value={selectedMetamodelCreateViewId}
+                    onValueChange={setSelectedMetamodelCreateViewId}
+                  >
+                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
+                      <SelectValue placeholder="Select diagram" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {showAllMetamodelCreateViewsOption ? (
+                        <SelectItem value="all">All diagrams</SelectItem>
+                      ) : null}
+                      {filteredMetamodelCreateViews.map((view) => (
+                        <SelectItem key={view.id} value={String(view.id)}>
+                          {view.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </div>
+            {selectedProject?.description && (
+              <p className="mt-3 text-xs text-white/50">
+                {selectedProject.description}
+              </p>
+            )}
+            {selectedMetamodelCreateProjectId === BASE_METAMODEL_ID ? (
+              <p className="mt-3 text-xs text-white/50">
+                Create one of the {visibleMetamodelNodeTypes.length} enabled
+                magic node types.
+              </p>
+            ) : (
+              <p className="mt-3 text-xs text-white/50">
+                Create a child class that inherits from a referenced metamodel type.
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
+            These are the 7 standard node types that can be used in the metamodel.
+          </div>
+        )}
+
+        {selectedMetamodelCreateProjectId === BASE_METAMODEL_ID ? (
+          <>
+             {visibleMetamodelNodeTypes.map((item) => {
+              const IconComponent =
+                (Icons as Record<string, any>)[item.iconName] || Icons.Box;
+              const disabled = !currentViewId;
+              return (
+                <button
+                  key={item.type}
+                  type="button"
+                  onClick={() =>
+                    handleCreateMetamodelNode({
+                      nodeType: item.type,
+                      typeLabel: item.label,
+                      icon: item.iconName,
+                      color: item.color,
+                    })
+                  }
+                  disabled={disabled}
+                  draggable={!disabled}
+                  onDragStart={(event) =>
+                    handleMetamodelNodeTypeDragStart(event, {
+                      viewId: currentViewId!,
+                      nodeType: item.type,
+                      typeLabel: item.label,
+                      icon: item.iconName,
+                      color: item.color,
+                    })
+                  }
+                  className={cn(
+                    "w-full rounded-lg border border-white/10 bg-white/5 p-3 text-left transition-colors",
+                    disabled
+                      ? "cursor-not-allowed opacity-50"
+                      : "cursor-grab hover:bg-white/10 hover:border-white/20 active:cursor-grabbing",
+                  )}
+                  data-testid={`button-create-sidebar-${item.type}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span
+                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
+                      style={{
+                        backgroundColor: `${item.color}25`,
+                        color: item.color,
+                      }}
+                    >
+                      <IconComponent className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-white">
+                        {item.label}
+                      </span>
+                      <span className="block text-xs text-white/55">
+                        {item.description}
+                      </span>
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </>
+        ) : (
+          <>
+            {paletteLoading && (
+              <div className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/55">
+                Loading referenced classes...
+              </div>
+            )}
+
+            {paletteError && (
+              <div className="rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                Failed to load referenced classes.
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="mt-1 h-auto px-0 text-xs text-red-100 underline hover:bg-transparent hover:text-white"
+                  onClick={() =>
+                    retryReferencedFlows(
+                      selectedMetamodelCreateProjectId,
+                      selectedMetamodelCreateViewId,
+                    )
+                  }
+                  data-testid="button-retry-referenced-classes"
+                >
+                  Try again
+                </Button>
+              </div>
+            )}
+
+            {!paletteLoading && !paletteError && (
+              <div className="space-y-2">
+                {metamodelCreatePaletteItems.length === 0 ? (
+                  <div className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-white/45">
+                    No classes found for this filter.
+                  </div>
+                ) : (
+                  metamodelCreatePaletteItems.map(
+                    ({ node, meta, view, duplicateCount }) => {
+                      const IconComponent =
+                        (Icons as Record<string, any>)[meta.iconName] || Icons.Box;
+                      const typeId = getCanonicalTypeId(node);
+                      const nodeType = (node.type || "partdef") as SidebarCreateMetamodelNodeDetail["nodeType"];
+                      const disabled = !currentViewId;
+                      const dragPayload = currentViewId
+                        ? {
+                            viewId: currentViewId,
+                            nodeType,
+                            parentTypeId: typeId,
+                            typeLabel: meta.label,
+                            icon: meta.iconName,
+                            color: meta.color,
+                          }
+                        : null;
+
+                      return (
+                        <button
+                          key={`metamodel-create-${typeId}`}
+                          type="button"
+                          onClick={() =>
+                            handleCreateMetamodelNode({
+                              nodeType,
+                              parentTypeId: typeId,
+                              typeLabel: meta.label,
+                              icon: meta.iconName,
+                              color: meta.color,
+                            })
+                          }
+                          disabled={disabled}
+                          draggable={Boolean(dragPayload)}
+                          onDragStart={(event) =>
+                            dragPayload
+                              ? handleMetamodelNodeTypeDragStart(event, dragPayload)
+                              : undefined
+                          }
+                          className={cn(
+                            "w-full rounded-lg border p-3 text-left transition-colors",
+                            disabled
+                              ? "cursor-not-allowed border-white/10 bg-white/[0.04] opacity-50"
+                              : "cursor-grab border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 active:cursor-grabbing",
+                          )}
+                          data-testid={`button-create-child-class-${typeId}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span
+                              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md"
+                              style={{
+                                backgroundColor: `${meta.color}25`,
+                                color: meta.color,
+                              }}
+                            >
+                              <IconComponent className="h-4 w-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-medium text-white">
+                                {meta.label}
+                              </span>
+                              <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-white/50">
+                                {meta.typeLabel && <span>{meta.typeLabel}</span>}
+                                <span>{view.name}</span>
+                                {duplicateCount > 1 && <span>{duplicateCount} diagrams</span>}
+                              </span>
+                              <span className="mt-1 block text-[11px] text-white/40">
+                                New child class
+                              </span>
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    },
+                  )
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {!currentViewId && (
+          <div className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-white/45">
+            Select a diagram view to create node types.
+          </div>
+        )}
+      </div>
+    );
+  }
