@@ -1,3 +1,4 @@
+import { newNodeId } from "@/lib/ids";
 // src/diagram/hooks/useDiagramCanvas.ts
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -245,7 +246,7 @@ export function useDiagramCanvas(
       },
     ) => {
       takeSnapshot(nodes, edges);
-      const id = `node_${Date.now()}`;
+      const id = newNodeId();
       const nodeType =
         projectType === "metamodel"
           ? options?.nodeType ?? "partdef"

@@ -311,3 +311,118 @@ describe("demo seed", () => {
     assert.equal(await seedDemoProject(other.id), true);
   });
 });
+
+describe("element identity and lifecycle", () => {
+  const starterBody = (name: string) => ({
+    userId: localUserId,
+    name,
+    projectType: "instance",
+    views: [
+      {
+        name: "Overview",
+        nodes: [
+          { id: "tpl-a", type: "part", position: { x: 0, y: 0 }, data: { label: "A", type: "Object" } },
+          { id: "tpl-b", type: "part", position: { x: 300, y: 0 }, data: { label: "B", type: "Object" } },
+        ],
+        edges: [
+          { id: "tpl-ab", source: "tpl-a", target: "tpl-b", edgeType: "association", sourceHandle: null, targetHandle: null },
+        ],
+      },
+      {
+        name: "Detail",
+        nodes: [{ id: "tpl-c", type: "part", position: { x: 50, y: 50 }, data: { label: "C", type: "Object" } }],
+        edges: [],
+      },
+    ],
+  });
+
+  test("the same template can be instantiated repeatedly", async () => {
+    const first = await request("POST", "/api/projects/starter", starterBody("Template 1"));
+    const second = await request("POST", "/api/projects/starter", starterBody("Template 2"));
+    assert.equal(first.status, 201, first.text);
+    assert.equal(second.status, 201, second.text);
+
+    const viewsOf = async (projectId: number) =>
+      (await request("GET", `/api/projects/${projectId}/views`)).json as Array<{ id: number; name: string }>;
+    const [firstOverview, firstDetail] = (await viewsOf(first.json.project.id)).sort((a, b) => a.id - b.id);
+    const [secondOverview] = (await viewsOf(second.json.project.id)).sort((a, b) => a.id - b.id);
+
+    const firstFlow = (await request("GET", `/api/views/${firstOverview.id}/flow`)).json;
+    const detailFlow = (await request("GET", `/api/views/${firstDetail.id}/flow`)).json;
+    const secondFlow = (await request("GET", `/api/views/${secondOverview.id}/flow`)).json;
+
+    const firstIds = firstFlow.nodes.map((n: { id: string }) => n.id);
+    const secondIds = secondFlow.nodes.map((n: { id: string }) => n.id);
+    assert.equal(firstIds.length, 2);
+    assert.ok(!firstIds.includes("tpl-a"), "template ids are replaced");
+    assert.equal(firstIds.filter((id: string) => secondIds.includes(id)).length, 0);
+    assert.equal(detailFlow.nodes.length, 1);
+    assert.ok(!firstIds.includes(detailFlow.nodes[0].id));
+    assert.ok(firstIds.includes(firstFlow.edges[0].source));
+  });
+
+  test("an element is deleted once it is removed from its last diagram", async () => {
+    const project = await createProject();
+    const first = await createView(project.id, "First");
+    const second = await createView(project.id, "Second");
+    const flow = sampleFlow(`life${project.id}`);
+    const [a, b] = flow.nodes;
+    await request("POST", `/api/views/${first.id}/sync`, flow);
+    await request("POST", `/api/views/${second.id}/nodes/${a.id}/insert`, { position: { x: 0, y: 0 } });
+
+    // Remove both elements from the first diagram: A is still in the second one.
+    const cleared = await request("POST", `/api/views/${first.id}/sync`, { nodes: [], edges: [] });
+    assert.ok(cleared.status < 300, cleared.text);
+    assert.ok(await storage.getNodeById(a.id), "A is still placed in the second diagram");
+    assert.equal(await storage.getNodeById(b.id), undefined, "B was in no other diagram");
+
+    // Deleting the last diagram that contains A deletes A.
+    assert.equal((await request("DELETE", `/api/views/${second.id}`)).status, 204);
+    assert.equal(await storage.getNodeById(a.id), undefined);
+  });
+
+  test("removing a referenced metamodel element from an instance diagram keeps it", async () => {
+    const metamodel = await createProject({ name: "MM", projectType: "metamodel" });
+    const mmView = await createView(metamodel.id, "Types");
+    const typeNode = {
+      id: `mm-type-${metamodel.id}`,
+      type: "partdef",
+      position: { x: 0, y: 0 },
+      data: { label: "Sensor" },
+    };
+    await request("POST", `/api/views/${mmView.id}/sync`, { nodes: [typeNode], edges: [] });
+
+    const instance = await createProject({ name: "Inst" });
+    await request("PATCH", `/api/projects/${instance.id}`, { referencedMetamodels: [metamodel.id] });
+    const instView = await createView(instance.id);
+    const placed = await request("POST", `/api/views/${instView.id}/sync`, { nodes: [typeNode], edges: [] });
+    assert.ok(placed.status < 300, placed.text);
+    await request("POST", `/api/views/${instView.id}/sync`, { nodes: [], edges: [] });
+
+    assert.ok(await storage.getNodeById(typeNode.id), "metamodel element survives");
+  });
+
+  test("a pattern can be inserted twice into the same diagram", async () => {
+    const project = await createProject();
+    const view = await createView(project.id);
+    const flow = sampleFlow(`pat${project.id}`);
+    const created = await request("POST", `/api/projects/${project.id}/patterns`, {
+      name: "Pair",
+      nodes: flow.nodes.map(({ id, type, position, data }) => ({ nodeId: id, type, position, data })),
+      edges: flow.edges.map(({ source, target }) => ({ source, target })),
+    });
+    assert.ok(created.status < 300, created.text);
+    const [pattern] = (await request("GET", `/api/projects/${project.id}/patterns`)).json;
+
+    for (const x of [0, 400]) {
+      const res = await request("POST", `/api/views/${view.id}/patterns/${pattern.id}/insert`, {
+        position: { x, y: 0 },
+      });
+      assert.ok(res.status < 300, res.text);
+    }
+    const result = (await request("GET", `/api/views/${view.id}/flow`)).json;
+    assert.equal(result.nodes.length, 4);
+    assert.equal(result.edges.length, 2);
+    assert.equal(new Set(result.nodes.map((n: { id: string }) => n.id)).size, 4);
+  });
+});

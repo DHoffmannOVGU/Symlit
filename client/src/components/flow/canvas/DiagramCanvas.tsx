@@ -1,3 +1,4 @@
+import { newNodeId, randomId } from "@/lib/ids";
 // DiagramCanvas.tsx
 import {
   useCallback,
@@ -764,12 +765,11 @@ function FlowInner({
   );
 
   const handleApplyAiProposal = useCallback((proposal: AiMetamodelProposal) => {
-    const stamp = Date.now();
     const additions = buildMetamodelProposalElements(
       proposal,
       nodes,
       edges,
-      (kind, index) => `ai_${kind}_${stamp}_${index}`,
+      (kind) => `ai_${kind}_${randomId()}`,
     );
     if (!additions.nodes.length && !additions.edges.length) {
       toast({
@@ -1980,7 +1980,7 @@ function FlowInner({
 
       takeSnapshot(nodes, edges);
       const newNode: Node = {
-        id: `node_${Date.now()}`,
+        id: newNodeId(),
         type: sourceNode.type,
         position: {
           x: sourceNode.position.x + 40,

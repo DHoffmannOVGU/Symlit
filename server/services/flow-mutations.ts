@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { db } from "../db";
 import {
   edges,
@@ -18,7 +19,7 @@ import {
   flowResponseSchema,
   flowSyncInputSchema,
 } from "@shared/routes";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notExists, sql } from "drizzle-orm";
 
 export type StarterViewFlowInput = {
   nodes: SyncFlowNodeInput[];
@@ -57,6 +58,43 @@ export function validateStarterTemplate(
   if (new Set(edgeIds).size !== edgeIds.length) {
     throw new Error("Starter template contains duplicate edge IDs");
   }
+}
+
+/**
+ * Element and relationship ids are global primary keys, so template ids
+ * (which are fixed strings) must be replaced by fresh ids every time a
+ * template is instantiated. A node that appears in several starter views is
+ * the same element, so the mapping is shared across all views.
+ */
+export function assignFreshStarterIds<T extends StarterViewFlowInput>(
+  starterViews: T[],
+  createId: (kind: "node" | "edge") => string = (kind) => `${kind}_${randomUUID()}`,
+): T[] {
+  const nodeIds = new Map<string, string>();
+  const mapNode = (id: string) => {
+    let mapped = nodeIds.get(id);
+    if (!mapped) {
+      mapped = createId("node");
+      nodeIds.set(id, mapped);
+    }
+    return mapped;
+  };
+  for (const view of starterViews) view.nodes.forEach((node) => mapNode(node.id));
+
+  return starterViews.map((view) => ({
+    ...view,
+    nodes: view.nodes.map((node) => ({
+      ...node,
+      id: mapNode(node.id),
+      parentId: node.parentId ? (nodeIds.get(node.parentId) ?? node.parentId) : node.parentId,
+    })),
+    edges: view.edges.map((edge) => ({
+      ...edge,
+      id: createId("edge"),
+      source: nodeIds.get(edge.source) ?? edge.source,
+      target: nodeIds.get(edge.target) ?? edge.target,
+    })),
+  }));
 }
 
 export function buildStarterViewRecords(
@@ -233,6 +271,37 @@ export async function getFlowRecovery(viewId: number) {
   };
 }
 
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/**
+ * Elements live at project scope and are placed in diagrams through
+ * `node_views`. An element is deleted once it is no longer placed in any
+ * diagram (including pattern and internal views). Only the given candidate
+ * ids are considered, so unrelated rows are never touched.
+ */
+export async function deleteUnplacedNodes(
+  tx: Transaction,
+  candidateIds: Iterable<string>,
+): Promise<number> {
+  const ids = Array.from(new Set(candidateIds));
+  if (ids.length === 0) return 0;
+  const deleted = await tx
+    .delete(nodes)
+    .where(
+      and(
+        inArray(nodes.id, ids),
+        notExists(
+          tx
+            .select({ one: sql`1` })
+            .from(nodeViews)
+            .where(eq(nodeViews.nodeId, nodes.id)),
+        ),
+      ),
+    )
+    .returning({ id: nodes.id });
+  return deleted.length;
+}
+
 export async function syncFlow(
   viewId: number,
   newNodes: SyncFlowNodeInput[],
@@ -267,6 +336,10 @@ export async function syncFlow(
   );
 
   await db.transaction(async (tx) => {
+    const previouslyPlaced = await tx
+      .select({ nodeId: nodeViews.nodeId })
+      .from(nodeViews)
+      .where(eq(nodeViews.viewId, viewId));
     await tx.delete(nodeViews).where(eq(nodeViews.viewId, viewId));
     await tx.delete(edges).where(eq(edges.viewId, viewId));
 
@@ -318,6 +391,14 @@ export async function syncFlow(
       const edgesWithView = newEdges.map((edge) => ({ ...edge, viewId }));
       await tx.insert(edges).values(edgesWithView);
     }
+
+    const keptIds = new Set(nodeIds);
+    await deleteUnplacedNodes(
+      tx,
+      previouslyPlaced
+        .map((row) => row.nodeId)
+        .filter((id) => !keptIds.has(id)),
+    );
   });
 }
 
@@ -391,7 +472,6 @@ export async function insertPatternIntoView(
     .where(eq(edges.viewId, patternView.id));
 
   const idMap = new Map<string, string>();
-  const now = Date.now();
   const positions = nodesRows.map(
     (node) => node.position as { x: number; y: number },
   );
@@ -404,7 +484,7 @@ export async function insertPatternIntoView(
   await db.transaction(async (tx) => {
     for (let i = 0; i < nodesRows.length; i += 1) {
       const oldId = nodesRows[i].id;
-      const newId = `node_${patternId}_${now}_${i}`;
+      const newId = `node_${randomUUID()}`;
       idMap.set(oldId, newId);
     }
 
@@ -439,7 +519,7 @@ export async function insertPatternIntoView(
           const source = idMap.get(edge.source) ?? edge.source;
           const target = idMap.get(edge.target) ?? edge.target;
           return {
-            id: `edge_${patternId}_${now}_${index}`,
+            id: `edge_${randomUUID()}`,
             viewId,
             source,
             target,

@@ -1,3 +1,4 @@
+import { newEdgeId, newNodeId } from "@/lib/ids";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { Connection } from "@xyflow/react";
@@ -180,7 +181,7 @@ export function useEdgeCreation({
         label: defaultRelation?.label,
         flowType,
       });
-      const edgeId = `edge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const edgeId = newEdgeId();
 
       takeSnapshot(nodes, edges);
       setEdges((currentEdges) => {
@@ -340,7 +341,7 @@ export function useEdgeCreation({
             : node,
         ),
       );
-      const edgeId = `edge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const edgeId = newEdgeId();
       setEdges((eds) => {
         const nextEdges = addEdge<DiagramEdge>(
           {
@@ -471,7 +472,7 @@ export function useEdgeCreation({
         "touches" in event && event.touches?.[0]
           ? { x: event.touches[0].clientX, y: event.touches[0].clientY }
           : { x: (event as MouseEvent).clientX, y: (event as MouseEvent).clientY };
-      const ghostId = connectingGhostId ?? `ghost_${Date.now()}`;
+      const ghostId = connectingGhostId ?? newNodeId();
       if (!connectingGhostId) {
         const flowPoint = screenToFlowPosition(point);
         const labelBase = "Object";

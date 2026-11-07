@@ -32,6 +32,8 @@ import {
   getFlowRecovery as getFlowRecoveryService,
   insertNodeIntoView as insertNodeIntoViewService,
   insertPatternIntoView as insertPatternIntoViewService,
+  assignFreshStarterIds,
+  deleteUnplacedNodes,
   buildStarterViewRecords,
   validateStarterTemplate,
   type StarterViewFlowInput,
@@ -197,6 +199,7 @@ export class DatabaseStorage implements IStorage {
     >,
   ): Promise<{ project: Project; firstViewId: number | null }> {
     validateStarterTemplate(starterViews);
+    const instantiatedViews = assignFreshStarterIds(starterViews);
 
     return db.transaction(async (tx) => {
       const [project] = await tx
@@ -205,7 +208,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
       let firstViewId: number | null = null;
 
-      for (const starterView of starterViews) {
+      for (const starterView of instantiatedViews) {
         const [view] = await tx
           .insert(views)
           .values({
@@ -301,9 +304,17 @@ export class DatabaseStorage implements IStorage {
 
   async deleteView(id: number): Promise<void> {
     await db.transaction(async (tx) => {
+      const placed = await tx
+        .select({ nodeId: nodeViews.nodeId })
+        .from(nodeViews)
+        .where(eq(nodeViews.viewId, id));
       await tx.delete(nodeViews).where(eq(nodeViews.viewId, id));
       await tx.delete(edges).where(eq(edges.viewId, id));
       await tx.delete(views).where(eq(views.id, id));
+      await deleteUnplacedNodes(
+        tx,
+        placed.map((row) => row.nodeId),
+      );
     });
   }
 

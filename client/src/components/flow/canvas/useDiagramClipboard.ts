@@ -1,3 +1,4 @@
+import { newNodeId } from "@/lib/ids";
 import { useCallback, useEffect, useRef } from "react";
 import type { CopiedNodeSnapshot } from "./diagramCanvasTypes";
 import type {
@@ -81,14 +82,14 @@ export function useDiagramClipboard({
     const idMap = new Map(
       copiedNodes.map((node) => [
         node.id,
-        `node_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        newNodeId(),
       ]),
     );
     const nextNodes = copiedNodes.map((node, index) => {
       const sourceData = node.data ?? {};
       const baseLabel =
         typeof sourceData.label === "string" ? sourceData.label : "Untitled";
-      const nextId = idMap.get(node.id) ?? `node_${Date.now()}_${index}`;
+      const nextId = idMap.get(node.id) ?? newNodeId();
       const nextParentId =
         node.parentId && copiedIdSet.has(node.parentId)
           ? (idMap.get(node.parentId) ?? node.parentId)

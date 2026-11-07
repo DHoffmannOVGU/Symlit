@@ -6,6 +6,7 @@ import { db } from "../db";
 import { useTestDatabase } from "../testing/test-db";
 import { edges, nodeViews, nodes, projects, users, views } from "@shared/schema";
 import {
+  assignFreshStarterIds,
   buildStarterViewRecords,
   getFlow,
   getFlowRecovery,
@@ -373,4 +374,33 @@ test("recovers a corrupted saved view without losing valid nodes or relationship
     await db.delete(projects).where(eq(projects.id, project.id));
     await db.delete(users).where(and(eq(users.id, user.id), eq(users.username, username)));
   }
+});
+test("assigns fresh ids to template elements and keeps shared elements shared", () => {
+  let counter = 0;
+  const [first, second] = assignFreshStarterIds(
+    [
+      {
+        name: "One",
+        nodes: [
+          { id: "a", position: { x: 0, y: 0 }, data: {} },
+          { id: "b", position: { x: 1, y: 1 }, data: {}, parentId: "a" },
+        ],
+        edges: [{ id: "ab", source: "a", target: "b", edgeType: "association", sourceHandle: null, targetHandle: null }],
+      },
+      {
+        name: "Two",
+        nodes: [{ id: "a", position: { x: 5, y: 5 }, data: {} }],
+        edges: [],
+      },
+    ],
+    (kind) => `${kind}-${++counter}`,
+  );
+  const [a, b] = first.nodes;
+  assert.notEqual(a.id, "a");
+  assert.equal(b.parentId, a.id, "parent references follow the new id");
+  assert.equal(first.edges[0].source, a.id);
+  assert.equal(first.edges[0].target, b.id);
+  assert.notEqual(first.edges[0].id, "ab");
+  assert.equal(second.nodes[0].id, a.id, "the same template element stays one element");
+  assert.equal(new Set([a.id, b.id, first.edges[0].id]).size, 3);
 });
