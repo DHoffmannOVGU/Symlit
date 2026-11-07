@@ -41,8 +41,9 @@ export async function seedDemoProject(ownerUserId: number): Promise<boolean> {
         source: `demo-${project.id}-system`,
         target: `demo-${project.id}-external`,
         edgeType: "association",
-        sourceHandle: null,
-        targetHandle: null,
+        // Connect the right side of System to the left side of External Entity.
+        sourceHandle: "right",
+        targetHandle: "left",
       },
     ],
   );

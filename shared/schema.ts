@@ -145,6 +145,8 @@ export const projects = pgTable("projects", {
   description: text("description"),
   projectType: text("project_type").notNull().default("metamodel"),
   referencedMetamodels: jsonb("referenced_metamodels").$type<number[]>().default(sql`'[]'::jsonb`),
+  /** Template the project was created from (e.g. the tutorial), if any. */
+  templateId: text("template_id"),
   metamodelSetup: jsonb("metamodel_setup").$type<MetamodelSetup | null>().default(sql`'null'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 }, (table) => ({

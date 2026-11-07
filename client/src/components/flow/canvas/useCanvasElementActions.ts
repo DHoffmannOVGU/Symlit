@@ -1,3 +1,4 @@
+import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import type { ProjectType } from "@shared/schema";
 import type { PartTypeOption } from "../hooks/useMetamodelParts";
 import type { DiagramEdge } from "../types";
@@ -44,6 +45,9 @@ export function useCanvasElementActions({
     (nodeId: string, data: NodeData) => {
       if (isExternalNode(nodeId)) return;
       takeSnapshot(nodes, edges);
+      const previousAttributes =
+        (nodes.find((n) => n.id === nodeId)?.data as NodeData | undefined)?.attributes?.length ?? 0;
+      if ((data.attributes?.length ?? 0) > previousAttributes) emitTutorialSignal("attribute-added");
       const nextNodes = nodes.map((n) =>
         n.id === nodeId
           ? {

@@ -1,3 +1,4 @@
+import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { useCallback, useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +37,7 @@ export function useProjectExport(projectId: number): UseProjectExportResult {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(blobUrl);
+      emitTutorialSignal("exported");
       toast({
         title: "Export created",
         description: "Your download should start shortly.",

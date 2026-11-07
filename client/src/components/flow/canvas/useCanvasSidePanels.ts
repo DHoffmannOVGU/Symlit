@@ -1,3 +1,4 @@
+import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import type { ProjectType } from "@shared/schema";
 import type { ReactFlowInstance, SetViewport } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -28,6 +29,7 @@ export function useCanvasSidePanels({
   const modelRulesPanelVisible = modelRulesOpen && supportsModelRules(projectType);
 
   const openModelRules = useCallback(() => {
+    emitTutorialSignal("rules-opened");
     if (!rulesViewportBaselineRef.current) {
       const bounds = canvasShellRef.current?.getBoundingClientRect();
       rulesViewportBaselineRef.current = {

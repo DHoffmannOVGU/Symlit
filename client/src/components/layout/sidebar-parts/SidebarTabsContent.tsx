@@ -69,6 +69,9 @@ export function SidebarTabsContent({
     <SidebarContent className="bg-[#1e293b]">
               {projectType === "instance" ? (
                 <Tabs
+                  // Keyed so the selected tab resets when switching between an
+                  // instance model and a metamodel (their tab values differ).
+                  key={`instance-${projectId}`}
                   defaultValue="metamodels"
                   className="flex h-full flex-col px-2 pt-3"
                 >
@@ -140,6 +143,7 @@ export function SidebarTabsContent({
                 </Tabs>
               ) : (
                 <Tabs
+                  key={`metamodel-${projectId}`}
                   defaultValue="node-types"
                   className="flex h-full flex-col px-2 pt-3"
                 >

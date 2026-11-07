@@ -502,3 +502,74 @@ describe("element data validation", () => {
     assert.deepEqual(loaded.nodes[0].data, rich);
   });
 });
+
+describe("guided tutorial", () => {
+  test("creates a metamodel and an instance model typed by it", async () => {
+    const res = await request("POST", "/api/tutorial");
+    assert.equal(res.status, 201, res.text);
+    const { metamodel, instance, metamodelViewId, instanceViewId } = res.json;
+    assert.equal(metamodel.templateId, "tutorial-metamodel");
+    assert.equal(metamodel.projectType, "metamodel");
+    assert.equal(instance.templateId, "tutorial-instance");
+    assert.deepEqual(instance.referencedMetamodels, [metamodel.id]);
+
+    const types = (await request("GET", `/api/views/${metamodelViewId}/flow`)).json;
+    const typeIds = new Set(types.nodes.map((node: { id: string }) => `mm:${metamodel.id}:${node.id}`));
+    assert.ok(types.nodes.length >= 3);
+    assert.ok(types.edges.length >= 2);
+
+    const model = (await request("GET", `/api/views/${instanceViewId}/flow`)).json;
+    assert.ok(model.nodes.length >= 3);
+    for (const node of model.nodes) {
+      assert.ok(typeIds.has(node.data.typeId), `${node.data.label} is typed by a metamodel element`);
+      assert.equal(node.data.inheritStyle, true);
+    }
+    // Side-by-side elements connect right to left, stacked ones bottom to top.
+    const handles = model.edges.map((edge: { sourceHandle: string | null; targetHandle: string | null }) => `${edge.sourceHandle}->${edge.targetHandle}`).sort();
+    assert.deepEqual(handles, ["null->null", "right->left"]);
+  });
+
+  test("a second tutorial gets its own elements, and removing deletes all tutorial projects", async () => {
+    const first = (await request("POST", "/api/tutorial")).json;
+    const second = (await request("POST", "/api/tutorial")).json;
+    assert.notEqual(first.metamodel.id, second.metamodel.id);
+    const keep = await createProject({ name: "Mine" });
+
+    const removed = await request("DELETE", "/api/tutorial");
+    assert.equal(removed.status, 200);
+    assert.ok(removed.json.deletedProjects >= 4);
+    const remaining = (await request("GET", "/api/projects")).json as Array<{ id: number; templateId: string | null }>;
+    assert.ok(remaining.every((project) => !project.templateId?.startsWith("tutorial")));
+    assert.ok(remaining.some((project) => project.id === keep.id), "own projects are kept");
+  });
+});
+
+describe("export of nested metamodel references", () => {
+  test("includes metamodels referenced by referenced metamodels, once each", async () => {
+    const base = await createProject({ name: "Base vocabulary", projectType: "metamodel" });
+    const derived = await createProject({ name: "Derived vocabulary", projectType: "metamodel" });
+    assert.equal((await request("PATCH", `/api/projects/${derived.id}`, { referencedMetamodels: [base.id] })).status, 200);
+    const model = await createProject({ name: "Model" });
+    await request("PATCH", `/api/projects/${model.id}`, { referencedMetamodels: [derived.id, base.id] });
+
+    const res = await request("POST", `/api/projects/${model.id}/export`, {
+      format: "json",
+      includeReferencedMetamodels: true,
+    });
+    assert.equal(res.status, 200, res.text);
+    const names = JSON.parse(res.text).referencedMetamodels.map((entry: { project: { name: string } }) => entry.project.name);
+    assert.deepEqual(names.sort(), ["Base vocabulary", "Derived vocabulary"]);
+  });
+});
+
+describe("demo seed connection points", () => {
+  test("the demo relationship connects side handles", async () => {
+    const owner = await storage.getOrCreateUser("seed-handles");
+    await seedDemoProject(owner.id);
+    const [project] = await storage.getProjectsByUser(owner.id);
+    const [view] = await storage.getViews(project.id);
+    const flow = await storage.getFlow(view.id);
+    assert.equal(flow.edges[0].sourceHandle, "right");
+    assert.equal(flow.edges[0].targetHandle, "left");
+  });
+});

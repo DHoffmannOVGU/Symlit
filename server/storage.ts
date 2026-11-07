@@ -65,6 +65,7 @@ export interface IStorage {
     starterViews: Array<
       StarterViewFlowInput & { name: string; description?: string }
     >,
+    options?: { preserveIds?: boolean },
   ): Promise<{ project: Project; firstViewId: number | null }>;
   updateProject(
     id: number,
@@ -187,9 +188,14 @@ export class DatabaseStorage implements IStorage {
     starterViews: Array<
       StarterViewFlowInput & { name: string; description?: string }
     >,
+    options: { preserveIds?: boolean } = {},
   ): Promise<{ project: Project; firstViewId: number | null }> {
     validateStarterTemplate(starterViews);
-    const instantiatedViews = assignFreshStarterIds(starterViews);
+    // Callers that generate unique ids themselves (the tutorial, which links
+    // instance elements to metamodel types by id) can keep them.
+    const instantiatedViews = options.preserveIds
+      ? starterViews
+      : assignFreshStarterIds(starterViews);
 
     return db.transaction(async (tx) => {
       const [project] = await tx

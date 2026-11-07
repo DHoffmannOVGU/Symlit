@@ -176,10 +176,14 @@ export function useDiagramCanvas(
 
     setNodes(mappedNodes);
     setEdges(mappedEdges);
+    // Compare later edits against what was loaded into the canvas, not the raw
+    // server records: loading adds defaults (e.g. relationship markers and line
+    // styles), which would otherwise make every diagram with relationships look
+    // unsaved right after opening it.
     setLastSavedSignature(
       normalizeFlow(
-        flowData.nodes as SerializableNode[],
-        flowData.edges as SerializableEdge[],
+        mappedNodes as SerializableNode[],
+        mappedEdges as SerializableEdge[],
         projectType,
       ),
     );
@@ -317,6 +321,7 @@ export function useDiagramCanvas(
       dispatchDiagramEvent("diagram-model-node-created", {
         viewId,
         nodeId: id,
+        ...(options?.typeId ? { typeId: options.typeId } : {}),
       });
     },
     [

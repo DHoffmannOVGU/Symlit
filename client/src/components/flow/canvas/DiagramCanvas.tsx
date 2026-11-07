@@ -1,3 +1,4 @@
+import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { DiagramLoadError } from "./DiagramLoadError";
 import { SavePatternDialog } from "./SavePatternDialog";
 import { DiagramHelpDialog } from "./DiagramHelpDialog";
@@ -1090,7 +1091,10 @@ function FlowInner({
             onStepBack={handleStepBack}
             onStepForward={handleStepForward}
             onResetFlow={handleResetFlow}
-            onAutoLayout={handleAutoLayout}
+            onAutoLayout={() => {
+              handleAutoLayout();
+              emitTutorialSignal("auto-layout");
+            }}
             onLayoutSelectedVertical={() =>
               handleLayoutSelected("TB", selectedNodeIds)
             }
@@ -1104,7 +1108,10 @@ function FlowInner({
               handleCenterSelected("y", selectedNodeIds)
             }
             onScreenshot={takeScreenshot}
-            onValidate={handleValidate}
+            onValidate={() => {
+              handleValidate();
+              emitTutorialSignal("validation-run");
+            }}
             onStraightenEdge={handleStraightenEdge}
             onToggleSnap={() => setSnapEnabled((current) => !current)}
             onToggleAlwaysShowAccent={() =>

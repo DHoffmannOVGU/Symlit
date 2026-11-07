@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { api } from "@shared/routes";
-import {
-  getProjectTemplate,
-  getProjectTemplateViews,
-  PROJECT_TEMPLATES,
-} from "./project-templates";
+import { getProjectTemplateViews, PROJECT_TEMPLATES } from "./project-templates";
 
 test("every starter template has a valid, view-local flow shape", () => {
   for (const template of PROJECT_TEMPLATES) {
@@ -38,17 +34,16 @@ test("every starter template has a valid, view-local flow shape", () => {
   }
 });
 
-test("the tutorial template parses as a complete multi-view starter payload", () => {
-  const template = getProjectTemplate("tutorial");
-  const payload = api.projects.createStarter.input.parse({
-    userId: 7,
-    name: template.projectName,
-    description: template.projectDescription,
-    projectType: template.projectType,
-    views: getProjectTemplateViews(template),
-  });
-
-  assert.equal(payload.views.length, 3);
-  assert.ok(payload.views.every((view) => view.nodes.length > 0));
-  assert.ok(payload.views.every((view) => view.edges.length > 0));
+test("every template parses as a starter payload", () => {
+  for (const template of PROJECT_TEMPLATES.filter((candidate) => candidate.id !== "blank")) {
+    const payload = api.projects.createStarter.input.parse({
+      userId: 7,
+      name: template.projectName,
+      description: template.projectDescription,
+      projectType: template.projectType,
+      views: getProjectTemplateViews(template),
+    });
+    assert.ok(payload.views.length > 0, template.id);
+    assert.ok(payload.views.every((view) => view.nodes.length > 0), template.id);
+  }
 });

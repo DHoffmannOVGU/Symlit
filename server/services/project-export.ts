@@ -147,23 +147,27 @@ export async function buildProjectExport(
         })),
       )
     : undefined;
+  // Referenced metamodels are collected recursively (a metamodel can build on
+  // another one), each once, skipping deleted or unreadable projects.
+  const collectReferencedMetamodels = async () => {
+    const visited = new Set<number>([projectId]);
+    const collected: Array<{ project: Project; views: ReturnType<typeof serializeViews> }> = [];
+    const queue = [...((exportData.project.referencedMetamodels ?? []) as number[])];
+    while (queue.length > 0) {
+      const metamodelId = queue.shift()!;
+      if (visited.has(metamodelId)) continue;
+      visited.add(metamodelId);
+      const target = await storage.getProject(metamodelId);
+      if (!target || target.projectType !== "metamodel" || !(await canRead(target))) continue;
+      const metamodel = await storage.getProjectExportData(metamodelId);
+      collected.push({ project: metamodel.project, views: serializeViews(metamodel.views) });
+      queue.push(...((target.referencedMetamodels ?? []) as number[]));
+    }
+    return collected;
+  };
   const referencedMetamodels =
-    options.includeReferencedMetamodels &&
-    exportData.project.projectType === "instance"
-      ? await Promise.all(
-          ((exportData.project.referencedMetamodels ?? []) as number[]).map(
-            async (metamodelId) => {
-              // Skip references that were deleted or are not readable.
-              const target = await storage.getProject(metamodelId);
-              if (!target || !(await canRead(target))) return null;
-              const metamodel = await storage.getProjectExportData(metamodelId);
-              return {
-                project: metamodel.project,
-                views: serializeViews(metamodel.views),
-              };
-            },
-          ),
-        )
+    options.includeReferencedMetamodels && exportData.project.projectType === "instance"
+      ? await collectReferencedMetamodels()
       : undefined;
   const payload = JSON.stringify(
     {
@@ -182,7 +186,7 @@ export async function buildProjectExport(
       views: serializeViews(selectedViews),
       ...(patterns ? { patterns: serializeViews(patterns) } : {}),
       ...(referencedMetamodels
-        ? { referencedMetamodels: referencedMetamodels.filter((entry) => entry !== null) }
+        ? { referencedMetamodels }
         : {}),
     },
     null,

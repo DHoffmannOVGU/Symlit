@@ -1,3 +1,4 @@
+import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import type { QueryClient } from "@tanstack/react-query";
 import type { DiagramEdge } from "../types";
 import { useCallback, useState } from "react";
@@ -82,6 +83,7 @@ export function usePatternCreation({
     });
     setPatternDialogOpen(false);
     setPatternSnapshot(null);
+    emitTutorialSignal("pattern-saved");
   }, [
     patternDescription,
     patternName,

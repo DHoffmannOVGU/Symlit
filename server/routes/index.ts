@@ -8,6 +8,7 @@ import { registerFlowRoutes } from "./flow";
 import { registerPatternRoutes } from "./patterns";
 import { registerProjectRoutes } from "./projects";
 import { registerSessionRoutes } from "./session";
+import { registerTutorialRoutes } from "./tutorial";
 import { registerViewRoutes } from "./views";
 
 type ApiRoutePattern = { method: string; path: string; regex: RegExp };
@@ -47,6 +48,7 @@ export async function registerRoutes(
   registerSessionRoutes(app, config);
   registerAiRoutes(app, config);
   registerProjectRoutes(app);
+  registerTutorialRoutes(app);
   registerExportRoutes(app);
   registerViewRoutes(app);
   registerPatternRoutes(app);

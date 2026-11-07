@@ -1,3 +1,8 @@
+import { apiCall } from "@/lib/api-client";
+import { api } from "@shared/routes";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { useState, useEffect } from "react";
 import { useRoute, Redirect, Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
@@ -11,7 +16,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { DiagramCanvas } from "@/components/flow/canvas/DiagramCanvas";
 import { CreateViewDialog } from "@/components/layout/CreateViewDialog";
 import { EditViewDialog } from "@/components/layout/EditViewDialog";
-import { Layers, Loader2, Plus, ArrowRight, Settings2, Save, BookOpen } from "lucide-react";
+import { Layers, Loader2, Plus, ArrowRight, Settings2, Save } from "lucide-react";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -34,15 +39,13 @@ import {
   subscribeDiagramEvent,
 } from "@/lib/diagram-events";
 import { rememberRecentProject } from "@/lib/recent-projects";
-import { QuickstartGuide } from "@/components/projects/QuickstartGuide";
+import { TutorialCoach } from "@/components/tutorial/TutorialCoach";
+import { useTutorialCoach } from "@/components/tutorial/useTutorialCoach";
 import { WorkspaceUnavailable } from "@/components/WorkspaceUnavailable";
-import {
-  getQuickstartProgress,
-  updateQuickstartProgress,
-  type QuickstartProgress,
-} from "@/lib/quickstart-progress";
 
 export default function ProjectView() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const {
     user,
     userId,
@@ -75,12 +78,12 @@ export default function ProjectView() {
   >("graph");
   const [activeDiagramDirtyState, setActiveDiagramDirtyState] = useState(false);
   const [activeDiagramSaveState, setActiveDiagramSaveState] = useState(false);
-  const [quickstartOpen, setQuickstartOpen] = useState(false);
-  const [quickstartProgress, setQuickstartProgress] =
-    useState<QuickstartProgress>(() => getQuickstartProgress(userId, projectId));
-  // Projects created before the rename are still called "SymLit Quickstart".
-  const isQuickstartProject =
-    project?.name === "Symlit Quickstart" || project?.name === "SymLit Quickstart";
+  const tutorialCoach = useTutorialCoach({
+    project: project ?? undefined,
+    allProjects,
+    viewId,
+    isDiagramDirty: activeDiagramDirtyState,
+  });
 
   useEffect(() => {
     if (project?.referencedMetamodels) {
@@ -94,72 +97,6 @@ export default function ProjectView() {
     }
   }, [project?.id, userId]);
 
-  useEffect(() => {
-    if (!isQuickstartProject || !userId) {
-      setQuickstartProgress(getQuickstartProgress());
-      return;
-    }
-    setQuickstartProgress(getQuickstartProgress(userId, projectId));
-  }, [isQuickstartProject, projectId, userId]);
-
-  useEffect(() => {
-    if (!isQuickstartProject || !userId || !viewId) return;
-    setQuickstartProgress(
-      updateQuickstartProgress(userId, projectId, {
-        visitedViewId: viewId,
-      }),
-    );
-  }, [isQuickstartProject, projectId, userId, viewId]);
-
-  useEffect(() => {
-    if (!isQuickstartProject || !userId || !viewId) return;
-    const updateProgress = (
-      update: Parameters<typeof updateQuickstartProgress>[2],
-    ) => {
-      setQuickstartProgress(
-        updateQuickstartProgress(userId, projectId, update),
-      );
-    };
-    const unsubscribeNode = subscribeDiagramEvent(
-      "diagram-model-node-created",
-      (detail) => {
-        if (detail.viewId === viewId) updateProgress({ createdNode: true });
-      },
-    );
-    const unsubscribeEdge = subscribeDiagramEvent(
-      "diagram-model-edge-created",
-      (detail) => {
-        if (detail.viewId === viewId) updateProgress({ createdEdge: true });
-      },
-    );
-    const unsubscribeSave = subscribeDiagramEvent(
-      "diagram-save-request",
-      (detail) => {
-        if (detail.viewId === viewId) updateProgress({ saved: true });
-      },
-    );
-    return () => {
-      unsubscribeNode();
-      unsubscribeEdge();
-      unsubscribeSave();
-    };
-  }, [isQuickstartProject, projectId, userId, viewId]);
-
-  useEffect(() => {
-    if (
-      typeof window === "undefined" ||
-      !isQuickstartProject ||
-      !userId ||
-      !project?.id
-    ) {
-      return;
-    }
-    const seenKey = `symlit_quickstart_seen:${userId}:${project.id}`;
-    if (window.localStorage.getItem(seenKey) !== "true") {
-      setQuickstartOpen(true);
-      window.localStorage.setItem(seenKey, "true");
-    }
-  }, [isQuickstartProject, project?.id, userId]);
 
   useEffect(() => {
     if (!project?.projectType) return;
@@ -246,6 +183,7 @@ export default function ProjectView() {
           description: "This referenced metamodel is unavailable.",
           projectType: "metamodel",
           referencedMetamodels: [],
+          templateId: null,
           metamodelSetup: null,
           createdAt: null,
         }),
@@ -284,22 +222,6 @@ export default function ProjectView() {
               : null
           }
         />
-        {isQuickstartProject && (
-          <QuickstartGuide
-            open={quickstartOpen}
-            onOpenChange={setQuickstartOpen}
-            views={views || []}
-            currentViewId={viewId}
-            progress={quickstartProgress}
-            onNavigateToView={(nextViewId) =>
-              setLocation(`/project/${projectId}/view/${nextViewId}`)
-            }
-            onOpenOverview={() => setLocation(`/project/${projectId}`)}
-            onCreateBlankProject={() =>
-              setLocation("/projects?startTemplate=blank")
-            }
-          />
-        )}
 
         <SidebarInset className="flex flex-col flex-1 overflow-hidden">
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 bg-card sticky top-0 z-10">
@@ -325,18 +247,6 @@ export default function ProjectView() {
               </div>
 
               <div className="flex items-center gap-2">
-                {isQuickstartProject && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => setQuickstartOpen(true)}
-                    data-testid="button-open-quickstart"
-                  >
-                    <BookOpen className="h-4 w-4" />
-                    <span className="hidden sm:inline">Quickstart</span>
-                  </Button>
-                )}
 
 
                 {project.projectType === "instance" && (
@@ -399,7 +309,10 @@ export default function ProjectView() {
                 referencedMetamodels={referencedMetamodels}
                 viewMode="build"
                 displayMode={diagramDisplayMode}
-                onDisplayModeChange={setDiagramDisplayMode}
+                onDisplayModeChange={(mode) => {
+                  setDiagramDisplayMode(mode);
+                  if (mode === "table") emitTutorialSignal("table-mode");
+                }}
               />
             ) : (
               <div className="flex-1 overflow-y-auto bg-slate-50/30 p-4 md:p-8">
@@ -507,6 +420,30 @@ export default function ProjectView() {
           open={!!editingView}
           onOpenChange={(open) => !open && setEditingView(null)}
         />
+        {tutorialCoach.active && tutorialCoach.progress && tutorialCoach.scope && (
+          <TutorialCoach
+            progress={tutorialCoach.progress}
+            scope={tutorialCoach.scope}
+            onShowMe={(step) => void tutorialCoach.showMe(step)}
+            onSkip={tutorialCoach.skip}
+            onRestart={tutorialCoach.restart}
+            onCollapsedChange={tutorialCoach.setCollapsed}
+            onStartOwnProject={() => tutorialCoach.navigate("/projects?startTemplate=blank")}
+            onRemoveTutorial={async () => {
+              try {
+                await apiCall(api.tutorial.delete);
+                await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
+                setLocation("/projects");
+              } catch (error) {
+                toast({
+                  title: "Could not remove the tutorial projects",
+                  description: error instanceof Error ? error.message : undefined,
+                  variant: "destructive",
+                });
+              }
+            }}
+          />
+        )}
       </div>
     </SidebarProvider>
   );

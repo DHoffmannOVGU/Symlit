@@ -1,3 +1,4 @@
+import { TutorialCard } from "@/components/tutorial/TutorialCard";
 import { WorkspaceUnavailable } from "@/components/WorkspaceUnavailable";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -272,7 +273,7 @@ function StarterEmptyState({
           completely blank project.
         </p>
       </div>
-      <div className="mx-auto mt-8 grid max-w-5xl gap-3 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto mt-8 grid max-w-5xl gap-3 md:grid-cols-3">
         {PROJECT_TEMPLATES.map((template) => (
           <button
             key={template.id}
@@ -582,6 +583,8 @@ export default function ProjectList() {
             </div>
           </div>
         </section>
+
+        <TutorialCard projects={projects} />
 
         <section aria-label="Workspace summary" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {[
