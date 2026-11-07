@@ -27,10 +27,6 @@ commit that fixed them.
 - **`DiagramCanvas.tsx` is still about 1,400 lines.** The hooks and dialogs are split out; what
   remains is wiring between them and the large `<ReactFlow>` element with its event handlers. Next
   candidates: the node-change/selection handlers and the toolbar/inspector prop assembly.
-- **The edge-drawing browser test is occasionally flaky under load** (`e2e/metamodel-instance.spec.ts`,
-  "selects a metamodel, creates typed instances…"): about 1 in 30 full-suite runs on four parallel
-  workers the drag does not register as a connection; 15/15 when run on its own. Investigate the
-  drag timing or run that spec with fewer workers.
 - **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
 
 ## Done
@@ -78,3 +74,5 @@ commit that fixed them.
 - All React hook dependency warnings are fixed; `npm run lint` reports none.
 - `useDiagramCanvas` computed per-element debug info that was never shown; it now only keeps the owning project per element (used to mark elements from referenced projects).
 - Sidebar components spelled out long inferred types; they are named in `sidebar-parts/types.ts` now (`FlowQuery`, `PaletteItem`, `NodeMeta`, …).
+- Drawing relationships was unreliable, especially with connections in several directions: each side had a source and a target handle stacked on the same spot, hidden until hover and shifted by CSS, so drags started on the wrong handle or dropped on none (4–5 of 8 test connections registered). Elements now have one handle per side (`top`/`right`/`bottom`/`left`) in React Flow's loose connection mode; old handle ids are mapped on load (`normalizeHandleId`). `e2e/edge-handles.spec.ts` draws all directions both ways.
+- New metamodel relationships got React Flow's generated id instead of a UUID.

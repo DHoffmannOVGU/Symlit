@@ -247,10 +247,10 @@ test("selects a metamodel, creates typed instances, relates them, saves, and rel
   );
 
   const sourceHandle = deviceNode.locator(
-    '.react-flow__handle.source[data-handlepos="left"]',
+    '.react-flow__handle[data-handlepos="left"]',
   );
   const targetHandle = sensorNode.locator(
-    '.react-flow__handle.target[data-handlepos="right"]',
+    '.react-flow__handle[data-handlepos="right"]',
   );
   // The canvas may still be animating its viewport after the drops; measure
   // only once both handles have stopped moving.

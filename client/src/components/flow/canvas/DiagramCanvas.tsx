@@ -28,6 +28,7 @@ import {
   type NodeMouseHandler,
   type EdgeMouseHandler,
   ConnectionLineType,
+  ConnectionMode,
   useConnection,
   useReactFlow,
 } from "@xyflow/react";
@@ -1029,6 +1030,8 @@ function FlowInner({
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionLineType={ConnectionLineType.Straight}
+          connectionMode={ConnectionMode.Loose}
+          connectionRadius={30}
           connectionLineComponent={ConnectionPreviewLine}
           minZoom={0.1}
           deleteKeyCode={null}

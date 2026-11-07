@@ -129,7 +129,6 @@ export function computeStraightenedEdge(
 
   const sourceHandle = getHandleIdForSide("source", sourceAnchor.side);
   const targetHandle = getHandleIdForSide("target", targetAnchor.side);
-  if (!sourceHandle || !targetHandle) return null;
 
   return {
     data: {
