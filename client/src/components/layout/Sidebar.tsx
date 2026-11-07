@@ -31,9 +31,8 @@ import {
   getConfiguredMagicNodeTypes,
   type MetamodelSetup,
 } from "@shared/metamodel-setup";
-import { api, buildUrl } from "@shared/routes";
+import { api } from "@shared/routes";
 import { apiCall } from "@/lib/api-client";
-import { apiRequest } from "@/lib/queryClient";
 import {
   dispatchDiagramEvent,
   subscribeDiagramEvent,
@@ -41,13 +40,6 @@ import {
 import { EditViewDialog } from "@/components/layout/EditViewDialog";
 import { useCreateInternalView } from "@/hooks/use-internal-views";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -65,7 +57,6 @@ import {
   SidebarHeader,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarGroupContent,
   SidebarMenu,
   SidebarMenuItem,
@@ -1315,9 +1306,6 @@ export function Sidebar({
                 {BASE_INSTANCE_TYPE_ITEMS.map((item) => {
                   const IconComponent =
                     (Icons as Record<string, any>)[item.iconName] || Icons.Box;
-                  const alreadyInCurrentView = currentViewId
-                    ? currentViewNodeIds.has(item.id)
-                    : false;
                   const dragPayload = currentViewId
                     ? {
                         nodeId: item.id,

@@ -25,6 +25,15 @@ commit that fixed them.
   (`metamodel-reference-resolution.ts`). An export of an instance whose metamodel builds on
   another metamodel is therefore incomplete.
 
+### Client
+- **Seven React hook dependency warnings** (`npm run lint`), in `DiagramCanvas.tsx`, `useDiagramCanvas.ts`,
+  `useEdgeCreation.ts` and others. Some are missing dependencies (possible stale values), others
+  unnecessary ones. Each needs a look with the canvas tests running, not a blanket fix.
+- **Toolbar ignores `onAddNode` and `onAutoLayout`.** `DiagramToolbar` receives both handlers,
+  but has no button for them, so auto layout of the whole diagram is not reachable from the toolbar.
+  Decide whether to bring the buttons back or remove the props and the callers' wiring.
+- **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
+
 ## Done
 - Element ids were `node_${Date.now()}`, and template ids were fixed strings: creating a template
   twice failed with a 500, and two elements created in the same millisecond collided.
@@ -45,3 +54,4 @@ commit that fixed them.
   missing projects or another user's metamodel. New references are now checked.
 - `PATCH /api/projects/:id` accepted `userId`, so an update could change a project's owner.
 - `tsconfig.json` had no `target`, so type checking assumed ES3.
+- No linter: ESLint (TypeScript and React hook rules) now runs in CI. 78 unused imports, variables and props were removed.

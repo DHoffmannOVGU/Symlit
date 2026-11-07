@@ -72,14 +72,12 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
       ? [flowTick]
       : [];
   const isFlowActive = Boolean(nodeData.flowActive);
-  const hasInternalView = Boolean(nodeData.hasInternalView);
   const alwaysShowAccent = Boolean(nodeData.alwaysShowAccent);
   const ruleEmphasis = nodeData.ruleEmphasis || "none";
   const ruleStateLabel = nodeData.ruleStateLabel?.trim();
   const ruleStatusItems = nodeData.ruleStatusItems || [];
   const modelRuleTags = nodeData.modelRuleTags || [];
   const isGroupContainer = Boolean(nodeData.isGroupContainer);
-  const externalEdges = nodeData.externalEdges || [];
   const shouldShowRuleAccent =
     ruleEmphasis !== "none" && Boolean(nodeData.ruleAccentColor);
   const idleAccentBorderColor = shouldShowRuleAccent

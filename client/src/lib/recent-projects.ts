@@ -22,7 +22,7 @@ export function getRecentProjects(userId?: number): RecentProject[] {
 
     // Migrate the original id-only format while preserving its order.
     return parsed
-      .map((entry, index): RecentProject | null => {
+      .map((entry): RecentProject | null => {
         if (Number.isInteger(entry) && entry > 0) {
           return { projectId: entry, openedAt: 0 };
         }

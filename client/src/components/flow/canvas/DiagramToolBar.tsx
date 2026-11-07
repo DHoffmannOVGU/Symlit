@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   LayoutGrid,
-  ArrowDownUp,
   ArrowLeftRight,
   Undo2,
   Redo2,
@@ -27,7 +26,6 @@ import {
   StepForward,
   RotateCcw,
   Layers,
-  Target,
   SlidersHorizontal,
   CircleHelp,
   Network,
@@ -137,7 +135,6 @@ function ToolbarButton({
 
 export function DiagramToolbar(props: Props) {
   const {
-    projectType,
     displayMode = "graph",
     onDisplayModeChange,
     canUndo,
@@ -157,12 +154,10 @@ export function DiagramToolbar(props: Props) {
     showNodeDescriptions = true,
     onUndo,
     onRedo,
-    onAddNode,
     onToggleSnap,
     onToggleAlwaysShowAccent,
     onToggleBackgroundDots,
     onToggleNodeDescriptions,
-    onAutoLayout,
     onLayoutSelectedVertical,
     onLayoutSelectedHorizontal,
     onCenterSelectedVertical,

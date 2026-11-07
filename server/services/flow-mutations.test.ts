@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import test from "node:test";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
-import { useTestDatabase } from "../testing/test-db";
+import { withTestDatabase } from "../testing/test-db";
 import { edges, nodeViews, nodes, projects, users, views } from "@shared/schema";
 import {
   assignFreshStarterIds,
@@ -15,7 +15,7 @@ import {
   validateStarterTemplate,
 } from "./flow-mutations";
 
-useTestDatabase();
+withTestDatabase();
 
 test("associates starter nodes, node views, and edges with the created view", () => {
   const records = buildStarterViewRecords(501, 601, {

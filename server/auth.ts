@@ -4,6 +4,8 @@ import type { WorkspaceRole } from "@shared/authorization";
 import type { Project, User } from "@shared/schema";
 
 declare global {
+  // Express request augmentation must use the global namespace.
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       workspaceUser?: User;

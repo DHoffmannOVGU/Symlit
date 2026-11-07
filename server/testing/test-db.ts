@@ -38,7 +38,7 @@ export async function createTestDatabase(): Promise<DatabaseHandle> {
 }
 
 /** Registers a fresh test database for the current test file. */
-export function useTestDatabase() {
+export function withTestDatabase() {
   let handle: DatabaseHandle | undefined;
   before(async () => {
     handle = await createTestDatabase();

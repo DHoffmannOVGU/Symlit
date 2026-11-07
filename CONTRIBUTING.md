@@ -13,6 +13,7 @@ Delete `./data` to start over with an empty workspace.
 
 ```bash
 npm run check      # types
+npm run lint       # ESLint
 npm test           # unit, database and API tests (in-memory PGlite)
 npm run test:e2e   # browser tests; run `npx playwright install chromium` once first
 ```
@@ -33,7 +34,7 @@ npm run test:postgres
   `migrations/`. Never edit a migration that has already been merged.
 - **Business logic** goes into `server/services/*`, not `server/storage.ts` or route handlers.
 - **Tests:** new behaviour comes with tests at the lowest level that can show it works. Use
-  `useTestDatabase()` from `server/testing/test-db.ts` for anything that touches the database.
+  `withTestDatabase()` from `server/testing/test-db.ts` for anything that touches the database.
   Do not skip or weaken a failing test to get CI green; fix the cause.
 - **Browser tests** that mock `/api/**` must call `mockLocalSession(page)` after registering their
   routes (see `e2e/support/local-session.ts`).

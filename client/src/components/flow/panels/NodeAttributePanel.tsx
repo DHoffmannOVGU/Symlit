@@ -5,49 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Plus,
-  Trash2,
-  Save,
-  X,
-  BadgeCheck,
-  Info,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
-import {
-  attributeTypes,
-  nodeColors,
-  sanitizeAttributeOptions,
-} from "./node-attribute/style-presets";
+import { Plus, Trash2, Save, X } from "lucide-react";
+import { nodeColors, sanitizeAttributeOptions } from "./node-attribute/style-presets";
 import { Node } from "@xyflow/react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { PARTDEF_DEFAULT_ACCENT_COLOR } from "../nodes/PartDefNode";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   evaluateDerivedAttribute,
-  extractFormulaReferences,
   formatDerivedValue,
   getDisplayFormula,
   getStoredFormulaFromDisplay,
   remapStoredFormulaReferences,
 } from "../utils/attribute-formula";
-import {
-  buildParentMap,
-  buildParentMapFromNodes,
-  getTypeAncestors,
-  mergeParentMaps,
-} from "@shared/metamodel-inheritance";
 
 import type {
   CustomEdgeData,
@@ -106,9 +75,6 @@ export function NodeAttributePanel({
   onDelete,
   availablePartDefs = [],
   availablePartDefNodes = [],
-  availablePartDefEdges = [],
-  allNodes = [],
-  allEdges = [],
   parentNodes = [],
 }: NodeAttributePanelProps) {
   const [label, setLabel] = useState("");
@@ -227,20 +193,6 @@ export function NodeAttributePanel({
 
   const isPartNode = node?.type === "part";
   const canInheritStyle = isPartNode && Boolean(nodeTypeId);
-  const selectedTypeDefinition = useMemo(
-    () =>
-      nodeTypeId
-        ? availablePartDefNodes.find((candidate) => candidate.id === nodeTypeId) ?? null
-        : null,
-    [availablePartDefNodes, nodeTypeId],
-  );
-  const selectedTypeDefinitionData =
-    (selectedTypeDefinition?.data as unknown as NodeData | undefined) ?? undefined;
-  const concernTypeSourceId =
-    selectedTypeDefinition?.id ||
-    (node && ["partdef", "actiondef", "concerndef", "agentdef", "requirementdef", "eventdef", "capabilitydef"].includes(node.type || "")
-      ? node.id
-      : null);
   // Node-level rules are intentionally retired. Consistency rules now belong
   // to the view and are edited in the Model Rules workspace.
 

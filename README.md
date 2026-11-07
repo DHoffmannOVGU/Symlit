@@ -86,6 +86,7 @@ Database migrations run automatically on startup. To run them on their own, use 
 | --- | --- |
 | `npm run dev` | Dev server with hot reload (API and client on one port) |
 | `npm run check` | TypeScript type check |
+| `npm run lint` | ESLint |
 | `npm test` | Unit, database and API tests against an in-memory PGlite |
 | `npm run test:postgres` | The same tests against a real PostgreSQL (`TEST_DATABASE_URL`, default: the Compose database) |
 | `npm run test:e2e` | Playwright browser tests (run `npx playwright install chromium` once first) |

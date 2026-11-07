@@ -54,7 +54,6 @@ export function CanvasInspectorPanels({
   availablePartDefNodes,
   availablePartDefEdges,
   parentNodes,
-  referencedMetamodels,
   selectedNodeDebug,
   allowedEdgeTypes,
   onCloseNodePanel,

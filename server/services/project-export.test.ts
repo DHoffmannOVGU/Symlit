@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { storage } from "../storage";
-import { useTestDatabase } from "../testing/test-db";
+import { withTestDatabase } from "../testing/test-db";
 import { buildProjectExport, csvCell, toCsv } from "./project-export";
 
-useTestDatabase();
+withTestDatabase();
 
 const defaults = {
   format: "json" as const,

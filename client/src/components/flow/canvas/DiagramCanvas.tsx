@@ -37,11 +37,7 @@ import ExternalStubNode from "../nodes/ExternalStubNode";
 import { ModelRulesPanel } from "../panels/ModelRulesPanel";
 import { MetamodelAiAssistant } from "../panels/MetamodelAiAssistant";
 import { AI_ASSISTANT_ENABLED } from "@/lib/feature-flags";
-import type {
-  DiagramEdge,
-  DiagramNode as Node,
-  NodeData,
-} from "../types";
+import type { DiagramNode as Node, NodeData } from "../types";
 import { CanvasTableMode } from "./CanvasTableMode";
 import {
   ConnectionPreviewLine,
@@ -66,23 +62,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 
 import { DiagramToolbar } from "./DiagramToolBar";
 import { useDiagramCanvas } from "../hooks/useDiagramCanvas";
@@ -100,7 +81,7 @@ import {
   getTypeAncestors,
   mergeParentMaps,
 } from "@shared/metamodel-inheritance";
-import { evaluateModelRuleResults, evaluateModelRules, supportsModelRules } from "../rules/model-rules";
+import { evaluateModelRuleResults, supportsModelRules } from "../rules/model-rules";
 import { getViewportForBottomPanel } from "../utils/rules-panel-viewport";
 import {
   buildMetamodelProposalElements,
@@ -115,7 +96,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiCall } from "@/lib/api-client";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 import {
   dispatchDiagramEvent,
   subscribeDiagramEvent,
@@ -127,7 +107,6 @@ import {
 } from "@/hooks/use-internal-views";
 import { useNode, useFlow } from "@/hooks/use-flow";
 import { useView } from "@/hooks/use-views";
-import * as Icons from "lucide-react";
 import {
   METAMODEL_NODE_DRAG_MIME,
   type SidebarCreateMetamodelNodeDragPayload,
@@ -229,7 +208,6 @@ function FlowInner({
     setNodes,
     setEdges,
 
-    onNodesChange,
     onEdgesChange,
 
     undo,
@@ -244,7 +222,6 @@ function FlowInner({
     handleLayoutSelected,
     handleCenterSelected,
     handleSave,
-    handleSaveWithData,
     handleSaveAsync,
     handleSaveRecovered,
 
@@ -336,7 +313,6 @@ function FlowInner({
     edges: typeof edges;
   } | null>(null);
   const {
-    dragPreview,
     dragPreviewNode,
     handleCanvasDragOver,
     clearDragPreview,

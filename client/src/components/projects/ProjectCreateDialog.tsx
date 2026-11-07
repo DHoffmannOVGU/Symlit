@@ -15,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Box, Layers } from "lucide-react";
 import type { ProjectType } from "@shared/schema";
 import {
-  getMetamodelPurposeRecommendation,
   magicNodeTypeCatalog,
   magicRelationTypeCatalog,
   metamodelPurposeCatalog,

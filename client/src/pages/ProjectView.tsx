@@ -36,13 +36,6 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { format } from "date-fns";
 import type { Project, ProjectType, View } from "@shared/schema";
 import type { MetamodelSetup } from "@shared/metamodel-setup";
@@ -82,8 +75,8 @@ export default function ProjectView() {
   const { toast } = useToast();
 
   // Routes: /project/:id or /project/:id/view/:viewId
-  const [matchProject, paramsProject] = useRoute("/project/:id");
-  const [matchView, paramsView] = useRoute("/project/:id/view/:viewId");
+  const [, paramsProject] = useRoute("/project/:id");
+  const [, paramsView] = useRoute("/project/:id/view/:viewId");
 
   const projectId = Number(paramsProject?.id || paramsView?.id);
   const viewId = paramsView?.viewId ? Number(paramsView.viewId) : undefined;

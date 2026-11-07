@@ -120,7 +120,7 @@ SQL migration to `migrations/`. Commit both. CI fails if the schema and migratio
 | Kind | Location | Database |
 | --- | --- | --- |
 | Unit | `**/*.test.ts` next to the code (`node:test`) | – |
-| Database and services | `server/services/*.test.ts` (uses `useTestDatabase()`) | fresh in-memory PGlite per file, or a throwaway database on `TEST_DATABASE_URL` |
+| Database and services | `server/services/*.test.ts` (uses `withTestDatabase()`) | fresh in-memory PGlite per file, or a throwaway database on `TEST_DATABASE_URL` |
 | API | `server/app.test.ts` (real app on a random port) | same as above |
 | Browser | `e2e/*.spec.ts` (Playwright) | real server with an in-memory database. Some specs mock the API to cover edge cases |
 

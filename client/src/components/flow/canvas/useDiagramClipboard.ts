@@ -85,7 +85,7 @@ export function useDiagramClipboard({
         newNodeId(),
       ]),
     );
-    const nextNodes = copiedNodes.map((node, index) => {
+    const nextNodes = copiedNodes.map((node) => {
       const sourceData = node.data ?? {};
       const baseLabel =
         typeof sourceData.label === "string" ? sourceData.label : "Untitled";

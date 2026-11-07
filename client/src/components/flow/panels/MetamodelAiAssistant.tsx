@@ -6,7 +6,6 @@ import type {
 import {
   getConfiguredMagicNodeTypes,
   getConfiguredMagicRelationTypes,
-  type MagicRelationType,
   type MetamodelSetup,
 } from "@shared/metamodel-setup";
 import type {

@@ -515,7 +515,7 @@ export async function insertPatternIntoView(
 
     if (edgesRows.length > 0) {
       await tx.insert(edges).values(
-        edgesRows.map((edge, index) => {
+        edgesRows.map((edge) => {
           const source = idMap.get(edge.source) ?? edge.source;
           const target = idMap.get(edge.target) ?? edge.target;
           return {
