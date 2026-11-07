@@ -61,6 +61,25 @@ const responseSchema = {
   required: ["summary", "nodes", "edges"],
 };
 
+export const DEFAULT_GEMINI_MODELS = [
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+];
+
+/**
+ * Models are tried in order until one is available for the key.
+ * GEMINI_MODEL may hold one model or a comma-separated fallback list.
+ */
+export function geminiModels(value = process.env.GEMINI_MODEL): string[] {
+  const configured = (value ?? "")
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
+  return configured.length ? configured : DEFAULT_GEMINI_MODELS;
+}
+
 export async function proposeMetamodel(input: AiMetamodelRequest): Promise<AiMetamodelProposal> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new GeminiMetamodelError("AI modeling is not configured. Set GEMINI_API_KEY on the server.", 503);
@@ -70,9 +89,7 @@ export async function proposeMetamodel(input: AiMetamodelRequest): Promise<AiMet
   const allowedRelationTypes = input.allowedRelationTypes?.length
     ? input.allowedRelationTypes
     : [...magicRelationTypeEnum];
-  const models = process.env.GEMINI_MODEL
-    ? [process.env.GEMINI_MODEL]
-    : ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"];
+  const models = geminiModels();
   const history = input.messages.map((message) => `${message.role.toUpperCase()}: ${message.content}`).join("\n");
   const prompt = [
     "You are a systems metamodeling assistant. Return a proposal containing additions only; never delete or silently modify existing elements.",
@@ -102,7 +119,8 @@ export async function proposeMetamodel(input: AiMetamodelRequest): Promise<AiMet
         }),
         signal: controller.signal,
       });
-      if (response.status !== 404 || process.env.GEMINI_MODEL) break;
+      // 404 means this model is not available for the key: try the next one.
+      if (response.status !== 404) break;
     }
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") throw new GeminiMetamodelError("Gemini timed out while creating the proposal.", 504);
@@ -114,7 +132,7 @@ export async function proposeMetamodel(input: AiMetamodelRequest): Promise<AiMet
     if (!response) throw new GeminiMetamodelError("Gemini returned no response.");
     if (response.status === 429) throw new GeminiMetamodelError("Gemini quota is currently exhausted. Try again shortly.", 429);
     if (response.status === 401 || response.status === 403) throw new GeminiMetamodelError("Gemini rejected the configured API key.", 503);
-    if (response.status === 404 && !process.env.GEMINI_MODEL) throw new GeminiMetamodelError("No compatible Gemini Flash model is available for this API key.");
+    if (response.status === 404) throw new GeminiMetamodelError(`None of the Gemini models (${models.join(", ")}) is available for this API key. Set GEMINI_MODEL to a model your key can use.`);
     throw new GeminiMetamodelError(`Gemini could not create a proposal (${response.status}).`);
   }
   const payload = await response.json() as any;

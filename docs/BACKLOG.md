@@ -30,3 +30,4 @@ commit that fixed them.
 - The project list lived at `/api/users/:userId/projects` although the server knows the user;
   it is `GET /api/projects` now, and project creation no longer requires a `userId`.
 - Unknown API routes answered `{error}` while everything else used `{message}`; all errors use `{message}` now.
+- Gemini model names were hard-coded; `GEMINI_MODEL` now accepts a comma-separated fallback list.

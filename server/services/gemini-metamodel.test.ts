@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { GeminiMetamodelError, proposeMetamodel } from "./gemini-metamodel";
+import { DEFAULT_GEMINI_MODELS, GeminiMetamodelError, geminiModels, proposeMetamodel } from "./gemini-metamodel";
 
 const input = {
   prompt: "Add a sensor",
@@ -122,4 +122,11 @@ test("reports the provider path for malformed structured output", async () => {
     if (previousKey) process.env.GEMINI_API_KEY = previousKey;
     else delete process.env.GEMINI_API_KEY;
   }
+});
+
+test("GEMINI_MODEL accepts a single model or a comma-separated fallback list", () => {
+  assert.deepEqual(geminiModels(undefined), DEFAULT_GEMINI_MODELS);
+  assert.deepEqual(geminiModels(" "), DEFAULT_GEMINI_MODELS);
+  assert.deepEqual(geminiModels("my-model"), ["my-model"]);
+  assert.deepEqual(geminiModels("a, b ,,c"), ["a", "b", "c"]);
 });

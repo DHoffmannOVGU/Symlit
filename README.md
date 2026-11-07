@@ -76,7 +76,7 @@ Everything is optional. Set variables in the environment or in a `.env` file
 | `SYMLIT_SEED_DEMO` | `true` | Create a demo project when the workspace is empty. |
 | `SYMLIT_INTERNAL_VIEWS` | `false` | Experimental internal views (diagram inside an element). |
 | `GEMINI_API_KEY` | – | Enables the AI metamodel assistant. |
-| `GEMINI_MODEL` | auto | Overrides the Gemini model. |
+| `GEMINI_MODEL` | built-in list | Gemini model, or a comma-separated fallback list. |
 
 Database migrations run automatically on startup. To run them on their own, use `npm run db:migrate`.
 
