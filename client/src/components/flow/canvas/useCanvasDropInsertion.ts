@@ -190,6 +190,7 @@ export function useCanvasDropInsertion({
       }
     },
     [
+      clearDragPreview,
       createNodeFromTypeAtPosition,
       handleAddNode,
       insertNodeIntoView,

@@ -21,12 +21,6 @@ commit that fixed them.
   parses stored relationships on load; tightening it needs a check of what older diagrams contain.
 
 ### Client
-- **Auto layout spreads small diagrams very wide.** The tree layout (`entitree-flex`) places
-  siblings far apart, so after Auto Layout a five-element diagram is zoomed out with tiny cards.
-- **The export dialog stays open after downloading.** It could close itself after a successful export.
-- **Six React hook dependency warnings** (`npm run lint`), in `DiagramCanvas.tsx`, `useDiagramCanvas.ts`,
-  `useEdgeCreation.ts` and others. Some are missing dependencies (possible stale values), others
-  unnecessary ones. Each needs a look with the canvas tests running, not a blanket fix.
 - **The diagram editor chunk is still 1.1 MB.** Pages are lazy-loaded now, but React Flow, the
   panels and layout engines (`dagre`, `entitree-flex`) load as one chunk. The panels and layout
   code could be split further once `DiagramCanvas.tsx` is decomposed.
@@ -38,8 +32,10 @@ commit that fixed them.
   candidates: the node-change/selection handlers and the toolbar/inspector prop assembly.
 - **Some extracted props carry long inferred types** (palette items, query result maps in
   `sidebar-parts/`). Naming them (e.g. `ReferencedPaletteItem`) would make the components easier to read.
-- **One unexplained browser-test failure in about 120 runs** (a `toHaveCount` assertion, most
-  likely in the edge-drawing spec) while splitting the canvas. It did not reproduce in repeated runs.
+- **The edge-drawing browser test is occasionally flaky under load** (`e2e/metamodel-instance.spec.ts`,
+  "selects a metamodel, creates typed instances…"): about 1 in 30 full-suite runs on four parallel
+  workers the drag does not register as a connection; 15/15 when run on its own. Investigate the
+  drag timing or run that spec with fewer workers.
 - **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
 
 ## Done
@@ -82,3 +78,6 @@ commit that fixed them.
 - Every diagram containing a relationship counted as changed right after opening (the saved baseline ignored load-time defaults), which triggered needless "unsaved changes" prompts. Fixed.
 - Switching directly between an instance model and a metamodel left the sidebar blank (the tab state was reused with values the other project type does not have). Fixed.
 - The old single-project quickstart was replaced by the guided tutorial.
+- Auto layout multiplied all coordinates by 6 and assumed 200x100 cards, so diagrams spread out far; it now uses dagre with the real element sizes, keeps side-connected elements in one row, and stays where the diagram was. `entitree-flex` was removed.
+- The export dialog now closes after a successful download (and stays open on errors).
+- All React hook dependency warnings are fixed; `npm run lint` reports none.

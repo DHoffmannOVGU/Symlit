@@ -122,7 +122,7 @@ export function DiagramRecoveryDialog({
     () => (draft ? getValidationMessage(draft) : null),
     [draft],
   );
-  const initialIssues = flow?.issues ?? [];
+  const initialIssues = useMemo(() => flow?.issues ?? [], [flow?.issues]);
   const issueKeys = useMemo(
     () => new Set(initialIssues.map((issue) => issueKey(issue.type, issue.id))),
     [initialIssues],

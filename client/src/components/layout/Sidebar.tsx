@@ -601,7 +601,11 @@ export function Sidebar({
         referencedMetamodelCount={referencedProjects.length}
         views={views}
         isExporting={isExporting}
-        onExport={(options) => void exportProject(options)}
+        onExport={async (options) => {
+          // Close once the download has started; keep it open on errors so
+          // the user can adjust and retry.
+          if (await exportProject(options)) setExportDialogOpen(false);
+        }}
       />
 
       <EditViewDialog

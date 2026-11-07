@@ -143,7 +143,6 @@ export function useCanvasDisplayGraph({
     alwaysShowAccent,
     showNodeDescriptions,
     draggingNodeId,
-    projectType,
   ]);
 
   const modelRuleResults = useMemo(

@@ -2,6 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import { TUTORIAL_STEPS } from "../shared/tutorial";
 
 // Full-stack: the real server creates the tutorial projects.
+// The tutorial is per workspace (one database), so this test must not run
+// concurrently with itself; avoid `--repeat-each` for this file.
 
 const stepState = (page: Page, id: string) =>
   page.getByTestId(`tutorial-step-${id}`).getAttribute("data-state");

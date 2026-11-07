@@ -7,7 +7,7 @@ import type { ProjectExportInput } from "@shared/routes";
 
 interface UseProjectExportResult {
   isExporting: boolean;
-  exportProject: (options: ProjectExportInput) => Promise<void>;
+  exportProject: (options: ProjectExportInput) => Promise<boolean>;
 }
 
 /**
@@ -19,7 +19,8 @@ export function useProjectExport(projectId: number): UseProjectExportResult {
   const { toast } = useToast();
   const [isExporting, setExporting] = useState(false);
 
-  const exportProject = useCallback(async (options: ProjectExportInput) => {
+  /** Downloads the export. Resolves to true when the download was started. */
+  const exportProject = useCallback(async (options: ProjectExportInput): Promise<boolean> => {
     try {
       setExporting(true);
       const url = buildUrl(api.projects.export.path, { id: projectId });
@@ -43,6 +44,7 @@ export function useProjectExport(projectId: number): UseProjectExportResult {
         description: "Your download should start shortly.",
         duration: 2500,
       });
+      return true;
     } catch (err) {
       const message =
         err instanceof Error && err.message
@@ -54,6 +56,7 @@ export function useProjectExport(projectId: number): UseProjectExportResult {
         description: message,
         duration: 2500,
       });
+      return false;
     } finally {
       setExporting(false);
     }

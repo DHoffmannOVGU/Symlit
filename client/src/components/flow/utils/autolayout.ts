@@ -1,105 +1,102 @@
-// src/diagram/layout/autoLayout.ts
-import type { Node, Edge } from "@xyflow/react";
-import { layoutFromMap } from "entitree-flex";
+import dagre from "@dagrejs/dagre";
+import type { Edge, Node } from "@xyflow/react";
 
+/** Fallback size for elements React Flow has not measured yet. */
 export const NODE_WIDTH = 200;
 export const NODE_HEIGHT = 100;
 
+/** Gap between elements in a row, and between rows. */
+export const LAYOUT_GAP_X = 80;
+export const LAYOUT_GAP_Y = 100;
+
 type Id = string;
 
-export function getLayoutedElementsEntitree<
-  TNode extends Node,
-  TEdge extends Edge,
->(nodes: TNode[], edges: TEdge[]) {
-  const { roots, children } = buildHierarchy(nodes, edges);
-  const nodeIds = new Set(nodes.map((n) => n.id));
-  const horizontalGroups = getHorizontalGroups(nodeIds, edges);
-
-  const VROOT = "__VROOT__";
-
-  const treeMap: Record<string, { id: string; children: string[] }> = {};
-  for (const n of nodes) {
-    treeMap[n.id] = { id: n.id, children: children.get(n.id) ?? [] };
-  }
-  treeMap[VROOT] = { id: VROOT, children: roots };
-
-  const laidOutResult = layoutFromMap(VROOT, treeMap, {
-    orientation: "vertical",
-    nodeWidth: NODE_WIDTH,
-    nodeHeight: NODE_HEIGHT,
-  });
-
-  const laidOut = (laidOutResult as any).nodes as {
-    id: string;
-    x: number;
-    y: number;
-  }[];
-  const layoutMap = new Map(laidOut.map((n) => [n.id, n]));
-
-  // GUARANTEED spacing effect:
-  const SCALE_X = 6;
-  const SCALE_Y = 6;
-
-  const positioned = new Map<string, { x: number; y: number }>();
-  for (const n of nodes) {
-    const p = layoutMap.get(n.id);
-    if (!p) continue;
-    positioned.set(n.id, {
-      x: p.x * SCALE_X - NODE_WIDTH / 2,
-      y: p.y * SCALE_Y - NODE_HEIGHT / 2,
-    });
-  }
-
-  for (const group of horizontalGroups) {
-    if (group.length < 2) continue;
-    const groupPositions = group
-      .map((id) => positioned.get(id))
-      .filter((pos): pos is { x: number; y: number } => !!pos);
-    if (groupPositions.length < 2) continue;
-    const avgY =
-      groupPositions.reduce((sum, pos) => sum + pos.y, 0) /
-      groupPositions.length;
-    for (const id of group) {
-      const existing = positioned.get(id);
-      if (existing) {
-        positioned.set(id, { ...existing, y: avgY });
-      }
-    }
-  }
-
-  const newNodes = nodes.map((n) => {
-    const position = positioned.get(n.id);
-    if (!position) return n;
-    return {
-      ...n,
-      position,
-    };
-  });
-
-  return { nodes: newNodes, edges };
+/** Rendered size of an element: measured by React Flow, else explicit, else a default. */
+export function nodeSize(node: Node): { width: number; height: number } {
+  const style = (node.style ?? {}) as { width?: unknown; height?: unknown };
+  const width =
+    node.measured?.width ?? node.width ?? (typeof style.width === "number" ? style.width : undefined);
+  const height =
+    node.measured?.height ?? node.height ?? (typeof style.height === "number" ? style.height : undefined);
+  return { width: width ?? NODE_WIDTH, height: height ?? NODE_HEIGHT };
 }
 
-function buildHierarchy(nodes: Node[], edges: Edge[]) {
-  const nodeIds = new Set(nodes.map((n) => n.id));
+/**
+ * Lays out a whole diagram.
+ *
+ * Relationships drawn between the sides of two elements (left/right
+ * handles) keep those elements in one row; all other relationships form a
+ * top-to-bottom hierarchy. Rows are laid out with dagre using the elements'
+ * real sizes, and members of a row keep their current left-to-right order.
+ */
+export function getAutoLayout<TNode extends Node, TEdge extends Edge>(
+  nodes: TNode[],
+  edges: TEdge[],
+) {
+  if (nodes.length === 0) return { nodes, edges };
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const relevant = edges.filter(
+    (edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target) && edge.source !== edge.target,
+  );
 
-  const vEdges = edges
-    .filter(isVerticalEdge)
-    .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target));
+  // Rows: elements joined by side-to-side relationships.
+  const rows = getHorizontalGroups(nodeIds, relevant).map((members) =>
+    members
+      .map((id) => byId.get(id)!)
+      .sort((a, b) => a.position.x - b.position.x || a.position.y - b.position.y),
+  );
+  const rowOf = new Map<Id, number>();
+  rows.forEach((row, index) => row.forEach((node) => rowOf.set(node.id, index)));
+  const rowSize = rows.map((row) => ({
+    width:
+      row.reduce((sum, node) => sum + nodeSize(node).width, 0) + LAYOUT_GAP_X * (row.length - 1),
+    height: Math.max(...row.map((node) => nodeSize(node).height)),
+  }));
 
-  const parent = new Map<Id, Id>();
-  const children = new Map<Id, Id[]>();
-
-  for (const e of vEdges) {
-    if (!parent.has(e.target)) parent.set(e.target, e.source);
+  const graph = new dagre.graphlib.Graph({ multigraph: false });
+  graph.setDefaultEdgeLabel(() => ({}));
+  graph.setGraph({ rankdir: "TB", nodesep: LAYOUT_GAP_X, ranksep: LAYOUT_GAP_Y, marginx: 0, marginy: 0 });
+  rows.forEach((_, index) => graph.setNode(String(index), rowSize[index]));
+  for (const edge of relevant) {
+    if (isHorizontalEdge(edge)) continue;
+    const from = rowOf.get(edge.source)!;
+    const to = rowOf.get(edge.target)!;
+    if (from !== to) graph.setEdge(String(from), String(to));
   }
+  dagre.layout(graph);
 
-  for (const n of nodes) children.set(n.id, []);
-  for (const [child, p] of Array.from(parent.entries())) {
-    children.get(p)!.push(child);
-  }
+  // Keep the diagram where it was: align the new layout's top-left corner
+  // with the old one so the view does not jump far away.
+  const originX = Math.min(...nodes.map((node) => node.position.x));
+  const originY = Math.min(...nodes.map((node) => node.position.y));
 
-  const roots = nodes.map((n) => n.id).filter((id) => !parent.has(id));
-  return { roots, parent, children, vEdges };
+  const positions = new Map<Id, { x: number; y: number }>();
+  rows.forEach((row, index) => {
+    const center = graph.node(String(index)) as { x: number; y: number };
+    const { width, height } = rowSize[index];
+    let x = center.x - width / 2;
+    for (const node of row) {
+      const size = nodeSize(node);
+      positions.set(node.id, { x, y: center.y - height / 2 + (height - size.height) / 2 });
+      x += size.width + LAYOUT_GAP_X;
+    }
+  });
+  const minX = Math.min(...Array.from(positions.values()).map((p) => p.x));
+  const minY = Math.min(...Array.from(positions.values()).map((p) => p.y));
+
+  const laidOut = nodes.map((node) => {
+    const position = positions.get(node.id);
+    if (!position) return node;
+    return {
+      ...node,
+      position: {
+        x: Math.round(position.x - minX + originX),
+        y: Math.round(position.y - minY + originY),
+      },
+    };
+  });
+  return { nodes: laidOut, edges };
 }
 
 function getHorizontalGroups(nodeIds: Set<Id>, edges: Edge[]) {
@@ -111,45 +108,33 @@ function getHorizontalGroups(nodeIds: Set<Id>, edges: Edge[]) {
     parent.set(id, root);
     return root;
   };
-  const union = (a: Id, b: Id) => {
-    const ra = find(a);
-    const rb = find(b);
-    if (ra !== rb) parent.set(ra, rb);
-  };
-
   for (const id of Array.from(nodeIds)) parent.set(id, id);
-
-  edges
-    .filter(isHorizontalEdge)
-    .filter((e) => nodeIds.has(e.source) && nodeIds.has(e.target))
-    .forEach((e) => union(e.source, e.target));
-
+  edges.filter(isHorizontalEdge).forEach((edge) => {
+    const a = find(edge.source);
+    const b = find(edge.target);
+    if (a !== b) parent.set(a, b);
+  });
   const groups = new Map<Id, Id[]>();
   for (const id of Array.from(nodeIds)) {
     const root = find(id);
-    const group = groups.get(root) ?? [];
-    group.push(id);
-    groups.set(root, group);
+    groups.set(root, [...(groups.get(root) ?? []), id]);
   }
-
   return Array.from(groups.values());
 }
 
-function isHorizontalEdge(e: Edge) {
-  const sh = e.sourceHandle ?? "";
-  const th = e.targetHandle ?? "";
-  const sH = sh.includes("left") || sh.includes("right");
-  const tH = th.includes("left") || th.includes("right");
-  const data = e.data as
+/** A relationship drawn between the left/right sides of two elements. */
+export function isHorizontalEdge(edge: Edge) {
+  const sourceHandle = edge.sourceHandle ?? "";
+  const targetHandle = edge.targetHandle ?? "";
+  const data = edge.data as
     | { sourceAnchor?: { side?: string }; targetAnchor?: { side?: string } }
     | undefined;
-  const sSide = data?.sourceAnchor?.side;
-  const tSide = data?.targetAnchor?.side;
-  const sAnchor = sSide === "left" || sSide === "right";
-  const tAnchor = tSide === "left" || tSide === "right";
-  return (sH || sAnchor) && (tH || tAnchor);
-}
-
-function isVerticalEdge(e: Edge) {
-  return !isHorizontalEdge(e);
+  const isSide = (handle: string, anchorSide?: string) =>
+    handle.includes("left") ||
+    handle.includes("right") ||
+    anchorSide === "left" ||
+    anchorSide === "right";
+  return (
+    isSide(sourceHandle, data?.sourceAnchor?.side) && isSide(targetHandle, data?.targetAnchor?.side)
+  );
 }

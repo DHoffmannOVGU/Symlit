@@ -27,7 +27,7 @@ export interface ExportProjectDialogProps {
   referencedMetamodelCount: number;
   views: Array<{ id: number | string; name: string }>;
   isExporting: boolean;
-  onExport: (options: ProjectExportInput) => void;
+  onExport: (options: ProjectExportInput) => void | Promise<void>;
 }
 
 export function ExportProjectDialog({
