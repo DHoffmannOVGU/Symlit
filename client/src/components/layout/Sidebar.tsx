@@ -1,3 +1,6 @@
+import { SidebarViewNodeList, type SidebarViewNodeListArgs } from "./sidebar-parts/SidebarViewNodeList";
+import { ReferencedNodePalette } from "./sidebar-parts/ReferencedNodePalette";
+import { MetamodelCreatePalette } from "./sidebar-parts/MetamodelCreatePalette";
 import {
   useEffect,
   useMemo,
@@ -9,19 +12,7 @@ import { Link, useLocation } from "wouter";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import {
-  LayoutGrid,
-  Layers,
-  Plus,
-  Box,
-  Home,
-  Settings2,
-  ChevronRight,
-  ArrowRight,
-  Check,
-  GripVertical,
-  AlertTriangle,
-} from "lucide-react";
+import { LayoutGrid, Plus, Home } from "lucide-react";
 import * as Icons from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -39,18 +30,9 @@ import {
 } from "@/lib/diagram-events";
 import { EditViewDialog } from "@/components/layout/EditViewDialog";
 import { useCreateInternalView } from "@/hooks/use-internal-views";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sidebar as ShadcnSidebar,
   SidebarContent,
@@ -61,14 +43,9 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
   useSidebar,
 } from "@/components/ui/sidebar";
 import {
-  BASE_INSTANCE_TYPE_ITEMS,
   BASE_METAMODEL_ID,
   METAMODEL_NODE_DRAG_MIME,
   METAMODEL_NODE_TYPE_ITEMS,
@@ -82,7 +59,7 @@ import { useProjectExport } from "./sidebar/useProjectExport";
 import { ExportProjectDialog } from "./sidebar-parts/ExportProjectDialog";
 import { SidebarViewList } from "./sidebar-parts/SidebarViewList";
 import { SidebarPatternPalette } from "./sidebar-parts/SidebarPatternPalette";
-import { AI_ASSISTANT_ENABLED, INTERNAL_VIEWS_ENABLED } from "@/lib/feature-flags";
+import { AI_ASSISTANT_ENABLED } from "@/lib/feature-flags";
 import { supportsModelRules } from "@/components/flow/rules/model-rules";
 
 interface SidebarProps {
@@ -733,929 +710,71 @@ export function Sidebar({
     });
   };
 
-  const renderViewNodeList = ({
-    view,
-    nodes,
-    flowState,
-    isCurrentView,
-    isReadOnly,
-    sourceLabel,
-    insertMode,
-    showReadOnlyBadge = true,
-  }: {
-    view: View;
-    nodes: FlowNode[];
-    flowState?: { isLoading?: boolean; isError?: boolean };
-    isCurrentView: boolean;
-    isReadOnly: boolean;
-    sourceLabel?: string;
-    insertMode?: SidebarNodeInsertMode;
-    showReadOnlyBadge?: boolean;
-  }) => (
-    <Collapsible
-      key={`${isReadOnly ? "referenced" : "local"}-${view.id}`}
-      open={expandedViews.has(view.id)}
-      onOpenChange={(open) => toggleExpanded(view.id, open)}
-      onDragOver={(event) => {
-        if (isReadOnly || draggedViewId === null || draggedViewId === view.id) {
-          return;
-        }
-        event.preventDefault();
-        event.dataTransfer.dropEffect = "move";
-        const bounds = event.currentTarget.getBoundingClientRect();
-        setViewDropTarget({
-          id: view.id,
-          position:
-            event.clientY < bounds.top + bounds.height / 2 ? "before" : "after",
-        });
-      }}
-      onDrop={(event) => {
-        if (isReadOnly) return;
-        event.preventDefault();
-        finishViewReorder(
-          view.id,
-          viewDropTarget?.id === view.id ? viewDropTarget.position : "before",
-        );
-      }}
-    >
-      <SidebarMenuItem
-        className={cn(
-          "group/item rounded-md transition-colors",
-          viewDropTarget?.id === view.id &&
-            (viewDropTarget.position === "before"
-              ? "border-t-2 border-primary"
-              : "border-b-2 border-primary"),
-        )}
-      >
-        <SidebarMenuButton
-          asChild={!isReadOnly}
-          isActive={isCurrentView}
-          tooltip={view.name}
-          className={cn(
-            "transition-all duration-200 pr-14",
-            isCurrentView
-              ? "bg-primary text-white hover:bg-primary/90"
-              : "text-white/70 hover:bg-white/5 hover:text-white hover:pl-3",
-            isReadOnly && "cursor-default hover:pl-2",
-          )}
-        >
-          {isReadOnly ? (
-            <div className="flex items-center gap-3">
-              <Box className="w-4 h-4 shrink-0 text-white/40" />
-              <span className="truncate font-medium">{view.name}</span>
-              {showReadOnlyBadge && (
-                <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-white/45">
-                  Read only
-                </span>
-              )}
-            </div>
-          ) : (
-            <Link
-              href={`/project/${projectId}/view/${view.id}`}
-              onClick={(event) =>
-                handleLinkClick(event, `/project/${projectId}/view/${view.id}`)
-              }
-              className="flex items-center gap-3"
-            >
-              <span
-                draggable
-                className="cursor-grab text-white/35 opacity-0 transition-opacity hover:text-white/70 group-hover/item:opacity-100 active:cursor-grabbing"
-                title="Drag to reorder view"
-                aria-label={`Reorder ${view.name}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                }}
-                onDragStart={(event) => {
-                  event.stopPropagation();
-                  event.dataTransfer.effectAllowed = "move";
-                  event.dataTransfer.setData("text/plain", String(view.id));
-                  setDraggedViewId(view.id);
-                  setViewDropTarget(null);
-                }}
-                onDragEnd={() => {
-                  setDraggedViewId(null);
-                  setViewDropTarget(null);
-                }}
-              >
-                <GripVertical className="h-4 w-4" />
-              </span>
-              <Box
-                className={cn(
-                  "w-4 h-4 shrink-0",
-                  isCurrentView ? "text-white" : "text-white/40",
-                )}
-              />
-              <span className="truncate font-medium">{view.name}</span>
-            </Link>
-          )}
-        </SidebarMenuButton>
-        <SidebarMenuAction
-          onClick={() => toggleExpanded(view.id)}
-          className={cn(
-            "right-7 opacity-100 hover:bg-white/10 text-white/60 hover:text-white",
-            expandedViews.has(view.id) && "text-white",
-          )}
-          title={expandedViews.has(view.id) ? "Hide nodes" : "Show nodes"}
-        >
-          <ChevronRight
-            className={cn(
-              "w-4 h-4 transition-transform",
-              expandedViews.has(view.id) && "rotate-90",
-            )}
-          />
-        </SidebarMenuAction>
-        {!isReadOnly && (
-          <SidebarMenuAction
-            onClick={() => setEditingView(view)}
-            className="opacity-0 group-hover/item:opacity-100 transition-opacity hover:bg-white/10 text-white/60 hover:text-white"
-            title="Configure view"
-            data-testid={`button-configure-view-${view.id}`}
-          >
-            <Settings2 className="w-4 h-4" />
-          </SidebarMenuAction>
-        )}
-        <CollapsibleContent>
-          <SidebarMenuSub className="mt-1 gap-2">
-            {sourceLabel && (
-              <SidebarMenuSubItem>
-                <SidebarMenuSubButton
-                  asChild
-                  size="sm"
-                  className="text-white/40"
-                >
-                  <span>{sourceLabel}</span>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            )}
-            {flowState?.isLoading && (
-              <SidebarMenuSubItem>
-                <SidebarMenuSubButton
-                  asChild
-                  size="sm"
-                  className="text-white/50"
-                >
-                  <span>Loading nodes...</span>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            )}
-            {flowState?.isError && (
-              <SidebarMenuSubItem>
-                <SidebarMenuSubButton
-                  asChild
-                  size="sm"
-                  className="text-red-300"
-                >
-                  <span>Failed to load nodes</span>
-                </SidebarMenuSubButton>
-              </SidebarMenuSubItem>
-            )}
-            {!flowState?.isLoading &&
-              !flowState?.isError &&
-              nodes.length === 0 && (
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton
-                    asChild
-                    size="sm"
-                    className="text-white/40"
-                  >
-                    <span>No nodes yet</span>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              )}
-            {nodes.map((node) => {
-              const meta = getNodeMeta(node);
-              const IconComponent = (Icons as any)[meta.iconName] || Icons.Box;
-              const iconBg = meta.color
-                ? `${meta.color}25`
-                : "rgba(255,255,255,0.08)";
-              const iconColor = meta.color || "rgba(255,255,255,0.6)";
-              const alreadyInCurrentView =
-                !isCurrentView && currentViewId
-                  ? currentViewNodeIds.has(node.id)
-                  : false;
-              const isSelected = selectedNodeByViewId.get(view.id) === node.id;
-              const isReferencedSelection =
-                !isSelected &&
-                !isCurrentView &&
-                !!currentSelectedNodeId &&
-                currentSelectedNodeId === node.id;
-              const dragPayload =
-                !isCurrentView && currentViewId && insertMode
-                  ? {
-                      nodeId: node.id,
-                      typeId:
-                        insertMode === "create-instance-node"
-                          ? getCanonicalTypeId(node)
-                          : undefined,
-                      viewId: currentViewId,
-                      mode: insertMode,
-                      typeLabel: meta.label,
-                      icon: meta.iconName,
-                      color: meta.color,
-                    }
-                  : null;
-              return (
-                <SidebarMenuSubItem key={node.id}>
-                  <SidebarMenuSubButton
-                    asChild
-                    size="sm"
-                    className={cn(
-                      "text-white/70",
-                      isSelected &&
-                        "bg-white/10 text-white border border-white/20",
-                      isReferencedSelection &&
-                        "border border-dashed border-white/20 bg-white/[0.04] text-white/80",
-                    )}
-                  >
-                    <div
-                      className={cn(
-                        "flex items-center gap-2 min-w-0 group/node",
-                        dragPayload && "cursor-grab active:cursor-grabbing",
-                      )}
-                      draggable={Boolean(dragPayload)}
-                      onDragStart={(event) =>
-                        dragPayload
-                          ? handleMetamodelNodeDragStart(event, dragPayload)
-                          : undefined
-                      }
-                    >
-                      <span
-                        className="h-5 w-5 rounded flex items-center justify-center shrink-0"
-                        style={{ backgroundColor: iconBg, color: iconColor }}
-                      >
-                        <IconComponent className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="flex-1 min-w-0">
-                        <span className="block truncate text-[13px] leading-tight">
-                          {meta.label}
-                        </span>
-                        {meta.typeLabel && (
-                          <span className="block text-[10px] uppercase tracking-wide text-white/40 truncate">
-                            {meta.typeLabel}
-                          </span>
-                        )}
-                      </span>
-                      {!isCurrentView && currentViewId && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            "h-6 w-6 opacity-0 group-hover/node:opacity-100 transition-opacity",
-                            alreadyInCurrentView
-                              ? "text-white/20 cursor-not-allowed"
-                              : "text-white/50 hover:text-white hover:bg-white/10",
-                          )}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            if (alreadyInCurrentView) return;
-                            void handleInsertNode(node.id, {
-                              mode: insertMode,
-                              typeId:
-                                insertMode === "create-instance-node"
-                                  ? getCanonicalTypeId(node)
-                                  : undefined,
-                              typeLabel: meta.label,
-                              icon: meta.iconName,
-                              color: meta.color,
-                            });
-                          }}
-                          title={
-                            alreadyInCurrentView
-                              ? "Already in current view"
-                              : "Insert into current view"
-                          }
-                          data-testid={`button-insert-node-${node.id}`}
-                          disabled={alreadyInCurrentView}
-                        >
-                          {alreadyInCurrentView ? (
-                            <Check className="h-3.5 w-3.5" />
-                          ) : (
-                            <ArrowRight className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      )}
-                      {INTERNAL_VIEWS_ENABLED && !isReadOnly && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 opacity-0 group-hover/node:opacity-100 transition-opacity text-white/50 hover:text-white hover:bg-white/10"
-                          onClick={(event) =>
-                            handleOpenInternalView(event, node.id)
-                          }
-                          title="Open internal view"
-                          data-testid={`button-open-internal-view-${node.id}`}
-                        >
-                          <Layers className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              );
-            })}
-          </SidebarMenuSub>
-        </CollapsibleContent>
-      </SidebarMenuItem>
-    </Collapsible>
+  const renderViewNodeList = (args: SidebarViewNodeListArgs) => (
+    <SidebarViewNodeList
+      key={`${args.isReadOnly ? "referenced" : "local"}-${args.view.id}`}
+      expandedViews={expandedViews}
+      toggleExpanded={toggleExpanded}
+      draggedViewId={draggedViewId}
+      setViewDropTarget={setViewDropTarget}
+      finishViewReorder={finishViewReorder}
+      viewDropTarget={viewDropTarget}
+      projectId={projectId}
+      handleLinkClick={handleLinkClick}
+      setDraggedViewId={setDraggedViewId}
+      setEditingView={setEditingView}
+      getNodeMeta={getNodeMeta}
+      currentViewId={currentViewId}
+      currentViewNodeIds={currentViewNodeIds}
+      selectedNodeByViewId={selectedNodeByViewId}
+      currentSelectedNodeId={currentSelectedNodeId}
+      getCanonicalTypeId={getCanonicalTypeId}
+      handleMetamodelNodeDragStart={handleMetamodelNodeDragStart}
+      handleInsertNode={handleInsertNode}
+      handleOpenInternalView={handleOpenInternalView}
+      {...args}
+    />
   );
 
-  const renderReferencedNodePalette = () => {
-    if (referencedProjects.length === 0) return null;
+  const renderReferencedNodePalette = () => (
+    <ReferencedNodePalette
+      referencedProjects={referencedProjects}
+      selectedReferencedProjectId={selectedReferencedProjectId}
+      unavailableMetamodelIds={unavailableMetamodelIds}
+      getReferencedFlowQueriesForSelection={getReferencedFlowQueriesForSelection}
+      selectedReferencedViewId={selectedReferencedViewId}
+      setSelectedReferencedProjectId={setSelectedReferencedProjectId}
+      setSelectedReferencedViewId={setSelectedReferencedViewId}
+      filteredReferencedViews={filteredReferencedViews}
+      onRemoveReferencedMetamodel={onRemoveReferencedMetamodel}
+      retryReferencedFlows={retryReferencedFlows}
+      referencedPaletteItems={referencedPaletteItems}
+      getCanonicalTypeId={getCanonicalTypeId}
+      currentViewId={currentViewId}
+      currentViewNodeIds={currentViewNodeIds}
+      handleMetamodelNodeDragStart={handleMetamodelNodeDragStart}
+    />
+  );
 
-    const selectedProject =
-      selectedReferencedProjectId === BASE_METAMODEL_ID
-        ? null
-        : referencedProjects.find(
-            (project) => String(project.id) === selectedReferencedProjectId,
-          ) ?? null;
-    const selectedProjectIsUnavailable =
-      selectedProject !== null &&
-      unavailableMetamodelIds.includes(selectedProject.id);
-
-    const selectedReferencedFlowQueries =
-      getReferencedFlowQueriesForSelection(
-        selectedReferencedProjectId,
-        selectedReferencedViewId,
-      );
-    const paletteLoading =
-      selectedReferencedProjectId !== BASE_METAMODEL_ID &&
-      selectedReferencedFlowQueries.some((query) => query.isFetching);
-    const paletteError =
-      selectedReferencedProjectId !== BASE_METAMODEL_ID &&
-      selectedReferencedFlowQueries.some((query) => query.isError);
-
-    return (
-      <SidebarGroup>
-        <SidebarGroupContent>
-          <div className="space-y-3 px-1">
-            <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-              <div className="grid gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
-                    Metamodel
-                  </Label>
-                  <Select
-                    value={selectedReferencedProjectId}
-                    onValueChange={setSelectedReferencedProjectId}
-                  >
-                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
-                      <SelectValue placeholder="Select metamodel" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {referencedProjects.length === 0 && (
-                        <SelectItem value={BASE_METAMODEL_ID}>
-                          Base Metamodel
-                        </SelectItem>
-                      )}
-                      {referencedProjects.map((project) => (
-                        <SelectItem
-                          key={project.id}
-                          value={String(project.id)}
-                        >
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
-                    Diagram
-                  </Label>
-                  <Select
-                    value={selectedReferencedViewId}
-                    onValueChange={setSelectedReferencedViewId}
-                    disabled={selectedReferencedProjectId === BASE_METAMODEL_ID}
-                  >
-                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
-                      <SelectValue placeholder="Select diagram" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All diagrams</SelectItem>
-                      {filteredReferencedViews.map((view) => (
-                        <SelectItem key={view.id} value={String(view.id)}>
-                          {view.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              {selectedProject?.description && (
-                <p className="mt-3 text-xs text-white/50">
-                  {selectedProject.description}
-                </p>
-              )}
-              {selectedProjectIsUnavailable && (
-                <div
-                  className="mt-3 rounded-md border border-amber-400/30 bg-amber-500/10 p-2.5 text-xs text-amber-100"
-                  role="alert"
-                >
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium">Metamodel unavailable</p>
-                      <p className="mt-1 text-amber-100/70">
-                        This reference cannot be loaded. Remove it to restore the
-                        default instance modeling state.
-                      </p>
-                      {onRemoveReferencedMetamodel && selectedProject && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="mt-2 border-amber-300/40 bg-transparent text-amber-100 hover:bg-amber-300/10 hover:text-white"
-                          onClick={() =>
-                            onRemoveReferencedMetamodel(selectedProject.id)
-                          }
-                          data-testid={`button-remove-unavailable-reference-${selectedProject.id}`}
-                        >
-                          Remove reference
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {selectedReferencedProjectId === BASE_METAMODEL_ID && (
-                <p className="mt-3 text-xs text-white/50">
-                  Standard fallback types for instance modeling without a referenced metamodel.
-                </p>
-              )}
-            </div>
-
-            {paletteLoading && (
-              <div className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/55">
-                Loading referenced classes...
-              </div>
-            )}
-
-            {paletteError && (
-              <div className="rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-                Failed to load referenced classes.
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="mt-1 h-auto px-0 text-xs text-red-100 underline hover:bg-transparent hover:text-white"
-                  onClick={() =>
-                    retryReferencedFlows(
-                      selectedReferencedProjectId,
-                      selectedReferencedViewId,
-                    )
-                  }
-                  data-testid="button-retry-referenced-classes"
-                >
-                  Try again
-                </Button>
-              </div>
-            )}
-
-            {!paletteLoading &&
-              !paletteError &&
-              selectedReferencedProjectId !== BASE_METAMODEL_ID && (
-                <div className="space-y-2">
-                  {referencedPaletteItems.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-white/45">
-                      No classes found for this filter.
-                    </div>
-                  ) : (
-                    referencedPaletteItems.map(
-                      ({ node, meta, view, duplicateCount }) => {
-                        const IconComponent =
-                          (Icons as Record<string, any>)[meta.iconName] ||
-                          Icons.Box;
-                        const typeId = getCanonicalTypeId(node);
-                        const alreadyInCurrentView = currentViewId
-                          ? currentViewNodeIds.has(node.id)
-                          : false;
-                        const dragPayload = currentViewId
-                          ? {
-                              nodeId: node.id,
-                              typeId,
-                              viewId: currentViewId,
-                              mode: "create-instance-node" as const,
-                              typeLabel: meta.label,
-                              icon: meta.iconName,
-                              color: meta.color,
-                            }
-                          : null;
-
-                        return (
-                          <div
-                            key={typeId}
-                            aria-disabled={!currentViewId || alreadyInCurrentView}
-                            draggable={Boolean(dragPayload && !alreadyInCurrentView)}
-                            onDragStart={(event) =>
-                              dragPayload && !alreadyInCurrentView
-                                ? handleMetamodelNodeDragStart(event, dragPayload)
-                                : undefined
-                            }
-                            className={cn(
-                              "w-full rounded-lg border p-3 text-left transition-colors",
-                              alreadyInCurrentView
-                                ? "cursor-not-allowed border-white/10 bg-white/[0.04] opacity-60"
-                                : currentViewId
-                                  ? "cursor-grab border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 active:cursor-grabbing"
-                                  : "cursor-not-allowed border-white/10 bg-white/[0.04] opacity-50",
-                            )}
-                            data-testid={`button-insert-referenced-class-${typeId}`}
-                          >
-                            <div className="flex items-start gap-3">
-                              <span
-                                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md"
-                                style={{
-                                  backgroundColor: `${meta.color}25`,
-                                  color: meta.color,
-                                }}
-                              >
-                                <IconComponent className="h-4 w-4" />
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block text-sm font-medium text-white">
-                                  {meta.label}
-                                </span>
-                                <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-white/50">
-                                  {meta.typeLabel && <span>{meta.typeLabel}</span>}
-                                  <span>{view.name}</span>
-                                  {duplicateCount > 1 && (
-                                    <span>{duplicateCount} diagrams</span>
-                                  )}
-                                </span>
-                              </span>
-                              {alreadyInCurrentView ? (
-                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-white/5 text-white/45">
-                                  <Check className="h-3.5 w-3.5" />
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-                        );
-                      },
-                    )
-                  )}
-                </div>
-              )}
-
-            {selectedReferencedProjectId === BASE_METAMODEL_ID && (
-              <div className="space-y-2">
-                {BASE_INSTANCE_TYPE_ITEMS.map((item) => {
-                  const IconComponent =
-                    (Icons as Record<string, any>)[item.iconName] || Icons.Box;
-                  const dragPayload = currentViewId
-                    ? {
-                        nodeId: item.id,
-                        typeId: item.id,
-                        viewId: currentViewId,
-                        mode: "create-instance-node" as const,
-                        typeLabel: item.label,
-                        icon: item.iconName,
-                        color: item.color,
-                      }
-                    : null;
-
-                  return (
-                    <div
-                      key={item.id}
-                      aria-disabled={!currentViewId}
-                      draggable={Boolean(dragPayload)}
-                      onDragStart={(event) =>
-                        dragPayload
-                          ? handleMetamodelNodeDragStart(event, dragPayload)
-                          : undefined
-                      }
-                      className={cn(
-                        "w-full rounded-lg border p-3 text-left transition-colors",
-                        currentViewId
-                          ? "cursor-grab border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 active:cursor-grabbing"
-                          : "cursor-not-allowed border-white/10 bg-white/[0.04] opacity-50",
-                      )}
-                      data-testid={`button-insert-base-class-${item.id}`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span
-                          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md"
-                          style={{
-                            backgroundColor: `${item.color}25`,
-                            color: item.color,
-                          }}
-                        >
-                          <IconComponent className="h-4 w-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block text-sm font-medium text-white">
-                            {item.label}
-                          </span>
-                          <span className="mt-1 block text-[11px] text-white/50">
-                            {item.description}
-                          </span>
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {!currentViewId && (
-              <div className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-white/45">
-                Select a diagram view to drop referenced classes into it.
-              </div>
-            )}
-          </div>
-        </SidebarGroupContent>
-      </SidebarGroup>
-    );
-  };
-
-  const renderMetamodelCreatePalette = () => {
-    const selectedProject =
-      selectedMetamodelCreateProjectId === BASE_METAMODEL_ID
-        ? null
-        : referencedProjects.find(
-            (project) => String(project.id) === selectedMetamodelCreateProjectId,
-          ) ?? null;
-
-    const selectedMetamodelCreateFlowQueries =
-      getReferencedFlowQueriesForSelection(
-        selectedMetamodelCreateProjectId,
-        selectedMetamodelCreateViewId,
-      );
-    const paletteLoading =
-      selectedMetamodelCreateProjectId !== BASE_METAMODEL_ID &&
-      selectedMetamodelCreateFlowQueries.some((query) => query.isFetching);
-    const paletteError =
-      selectedMetamodelCreateProjectId !== BASE_METAMODEL_ID &&
-      selectedMetamodelCreateFlowQueries.some((query) => query.isError);
-
-    const showAllMetamodelCreateViewsOption =
-      filteredMetamodelCreateViews.length > 1;
-
-    return (
-      <div className="space-y-3 px-1">
-        {hasReferencedMetamodels ? (
-          <div className="rounded-lg border border-white/10 bg-white/5 p-3">
-            <div className="grid gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
-                  Parent Metamodel
-                </Label>
-                <Select
-                  value={selectedMetamodelCreateProjectId}
-                  onValueChange={setSelectedMetamodelCreateProjectId}
-                >
-                  <SelectTrigger className="border-white/10 bg-white/5 text-white">
-                    <SelectValue placeholder="Select metamodel" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={BASE_METAMODEL_ID}>
-                      Common Model
-                    </SelectItem>
-                    {referencedProjects.map((project) => (
-                      <SelectItem key={project.id} value={String(project.id)}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {selectedMetamodelCreateProjectId !== BASE_METAMODEL_ID &&
-              filteredMetamodelCreateViews.length > 1 ? (
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
-                    Diagram
-                  </Label>
-                  <Select
-                    value={selectedMetamodelCreateViewId}
-                    onValueChange={setSelectedMetamodelCreateViewId}
-                  >
-                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
-                      <SelectValue placeholder="Select diagram" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {showAllMetamodelCreateViewsOption ? (
-                        <SelectItem value="all">All diagrams</SelectItem>
-                      ) : null}
-                      {filteredMetamodelCreateViews.map((view) => (
-                        <SelectItem key={view.id} value={String(view.id)}>
-                          {view.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
-            </div>
-            {selectedProject?.description && (
-              <p className="mt-3 text-xs text-white/50">
-                {selectedProject.description}
-              </p>
-            )}
-            {selectedMetamodelCreateProjectId === BASE_METAMODEL_ID ? (
-              <p className="mt-3 text-xs text-white/50">
-                Create one of the {visibleMetamodelNodeTypes.length} enabled
-                magic node types.
-              </p>
-            ) : (
-              <p className="mt-3 text-xs text-white/50">
-                Create a child class that inherits from a referenced metamodel type.
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
-            These are the 7 standard node types that can be used in the metamodel.
-          </div>
-        )}
-
-        {selectedMetamodelCreateProjectId === BASE_METAMODEL_ID ? (
-          <>
-             {visibleMetamodelNodeTypes.map((item) => {
-              const IconComponent =
-                (Icons as Record<string, any>)[item.iconName] || Icons.Box;
-              const disabled = !currentViewId;
-              return (
-                <button
-                  key={item.type}
-                  type="button"
-                  onClick={() =>
-                    handleCreateMetamodelNode({
-                      nodeType: item.type,
-                      typeLabel: item.label,
-                      icon: item.iconName,
-                      color: item.color,
-                    })
-                  }
-                  disabled={disabled}
-                  draggable={!disabled}
-                  onDragStart={(event) =>
-                    handleMetamodelNodeTypeDragStart(event, {
-                      viewId: currentViewId!,
-                      nodeType: item.type,
-                      typeLabel: item.label,
-                      icon: item.iconName,
-                      color: item.color,
-                    })
-                  }
-                  className={cn(
-                    "w-full rounded-lg border border-white/10 bg-white/5 p-3 text-left transition-colors",
-                    disabled
-                      ? "cursor-not-allowed opacity-50"
-                      : "cursor-grab hover:bg-white/10 hover:border-white/20 active:cursor-grabbing",
-                  )}
-                  data-testid={`button-create-sidebar-${item.type}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
-                      style={{
-                        backgroundColor: `${item.color}25`,
-                        color: item.color,
-                      }}
-                    >
-                      <IconComponent className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-white">
-                        {item.label}
-                      </span>
-                      <span className="block text-xs text-white/55">
-                        {item.description}
-                      </span>
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </>
-        ) : (
-          <>
-            {paletteLoading && (
-              <div className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/55">
-                Loading referenced classes...
-              </div>
-            )}
-
-            {paletteError && (
-              <div className="rounded-md border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-                Failed to load referenced classes.
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="mt-1 h-auto px-0 text-xs text-red-100 underline hover:bg-transparent hover:text-white"
-                  onClick={() =>
-                    retryReferencedFlows(
-                      selectedMetamodelCreateProjectId,
-                      selectedMetamodelCreateViewId,
-                    )
-                  }
-                  data-testid="button-retry-referenced-classes"
-                >
-                  Try again
-                </Button>
-              </div>
-            )}
-
-            {!paletteLoading && !paletteError && (
-              <div className="space-y-2">
-                {metamodelCreatePaletteItems.length === 0 ? (
-                  <div className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-white/45">
-                    No classes found for this filter.
-                  </div>
-                ) : (
-                  metamodelCreatePaletteItems.map(
-                    ({ node, meta, view, duplicateCount }) => {
-                      const IconComponent =
-                        (Icons as Record<string, any>)[meta.iconName] || Icons.Box;
-                      const typeId = getCanonicalTypeId(node);
-                      const nodeType = (node.type || "partdef") as SidebarCreateMetamodelNodeDetail["nodeType"];
-                      const disabled = !currentViewId;
-                      const dragPayload = currentViewId
-                        ? {
-                            viewId: currentViewId,
-                            nodeType,
-                            parentTypeId: typeId,
-                            typeLabel: meta.label,
-                            icon: meta.iconName,
-                            color: meta.color,
-                          }
-                        : null;
-
-                      return (
-                        <button
-                          key={`metamodel-create-${typeId}`}
-                          type="button"
-                          onClick={() =>
-                            handleCreateMetamodelNode({
-                              nodeType,
-                              parentTypeId: typeId,
-                              typeLabel: meta.label,
-                              icon: meta.iconName,
-                              color: meta.color,
-                            })
-                          }
-                          disabled={disabled}
-                          draggable={Boolean(dragPayload)}
-                          onDragStart={(event) =>
-                            dragPayload
-                              ? handleMetamodelNodeTypeDragStart(event, dragPayload)
-                              : undefined
-                          }
-                          className={cn(
-                            "w-full rounded-lg border p-3 text-left transition-colors",
-                            disabled
-                              ? "cursor-not-allowed border-white/10 bg-white/[0.04] opacity-50"
-                              : "cursor-grab border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10 active:cursor-grabbing",
-                          )}
-                          data-testid={`button-create-child-class-${typeId}`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <span
-                              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md"
-                              style={{
-                                backgroundColor: `${meta.color}25`,
-                                color: meta.color,
-                              }}
-                            >
-                              <IconComponent className="h-4 w-4" />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-sm font-medium text-white">
-                                {meta.label}
-                              </span>
-                              <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-white/50">
-                                {meta.typeLabel && <span>{meta.typeLabel}</span>}
-                                <span>{view.name}</span>
-                                {duplicateCount > 1 && <span>{duplicateCount} diagrams</span>}
-                              </span>
-                              <span className="mt-1 block text-[11px] text-white/40">
-                                New child class
-                              </span>
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    },
-                  )
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {!currentViewId && (
-          <div className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-white/45">
-            Select a diagram view to create node types.
-          </div>
-        )}
-      </div>
-    );
-  };
+  const renderMetamodelCreatePalette = () => (
+    <MetamodelCreatePalette
+      selectedMetamodelCreateProjectId={selectedMetamodelCreateProjectId}
+      referencedProjects={referencedProjects}
+      getReferencedFlowQueriesForSelection={getReferencedFlowQueriesForSelection}
+      selectedMetamodelCreateViewId={selectedMetamodelCreateViewId}
+      filteredMetamodelCreateViews={filteredMetamodelCreateViews}
+      hasReferencedMetamodels={hasReferencedMetamodels}
+      setSelectedMetamodelCreateProjectId={setSelectedMetamodelCreateProjectId}
+      setSelectedMetamodelCreateViewId={setSelectedMetamodelCreateViewId}
+      visibleMetamodelNodeTypes={visibleMetamodelNodeTypes}
+      currentViewId={currentViewId}
+      handleCreateMetamodelNode={handleCreateMetamodelNode}
+      handleMetamodelNodeTypeDragStart={handleMetamodelNodeTypeDragStart}
+      retryReferencedFlows={retryReferencedFlows}
+      metamodelCreatePaletteItems={metamodelCreatePaletteItems}
+      getCanonicalTypeId={getCanonicalTypeId}
+    />
+  );
 
   return (
     <>
