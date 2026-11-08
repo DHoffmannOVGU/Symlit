@@ -13,7 +13,6 @@ import { useCanvasDisplayGraph } from "./useCanvasDisplayGraph";
 import { usePatternCreation } from "./usePatternCreation";
 import { useElementSelection } from "../state/useElementSelection";
 import { useCanvasElementActions } from "./useCanvasElementActions";
-// DiagramCanvas.tsx
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ReactFlow,
@@ -21,8 +20,6 @@ import {
   Background,
   BackgroundVariant,
   ReactFlowProvider,
-  applyNodeChanges,
-  type NodeChange,
   type NodeMouseHandler,
   type EdgeMouseHandler,
   ConnectionLineType,
@@ -31,14 +28,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import PartNode from "../nodes/PartNode";
-import PartDefNode from "../nodes/PartDefNode";
-import ActionDefNode from "../nodes/ActionDefNode";
-import ConcernDefNode from "../nodes/ConcernDefNode";
-import AgentDefNode from "../nodes/AgentDefNode";
-import RequirementDefNode from "../nodes/RequirementDefNode";
-import EventDefNode from "../nodes/EventDefNode";
-import CapabilityDefNode from "../nodes/CapabilityDefNode";
+import { nodeTypes } from "../nodes/nodeTypes";
 import { ModelRulesPanel } from "../panels/ModelRulesPanel";
 import { MetamodelAiAssistant } from "../panels/MetamodelAiAssistant";
 import { ConnectedCanvasTableMode } from "./CanvasTableMode";
@@ -49,7 +39,6 @@ import { ConnectionPreviewLine, edgeTypes } from "../edges/CustomEdges";
 import { useEdgeCreation } from "../hooks/useEdgeCreation";
 import { EdgeRelationConfirmationProvider } from "../edges/EdgeRelationConfirmation";
 
-
 import { CanvasToolbar } from "./CanvasToolbar";
 import { useDiagramCanvas } from "../hooks/useDiagramCanvas";
 import { DiagramStoreProvider, useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
@@ -58,10 +47,8 @@ import { useDiagramScreenshot } from "../hooks/useDiagramScreenshot";
 import { useDiagramValidation } from "../hooks/useDiagramValidation";
 import { useFlowPlayback } from "../hooks/useFlowPlayback";
 import { ScreenshotDialog } from "../dialogs/ScreenshotDialog";
-import { DeleteConfirmDialog } from "../dialogs/DeleteConfirmDialog";
-import {
-  subscribeDiagramEvent,
-} from "@/lib/diagram-events";
+import { CanvasDeleteDialog } from "./CanvasDeleteDialog";
+import { subscribeDiagramEvent } from "@/lib/diagram-events";
 import { useDiagramHelpContent } from "./useDiagramHelpContent";
 import { useDiagramCanvasPreferences } from "./useDiagramCanvasPreferences";
 import { useDiagramLeaveConfirmation } from "./useDiagramLeaveConfirmation";
@@ -74,17 +61,6 @@ import { useCanvasKeyboardShortcuts } from "./useCanvasKeyboardShortcuts";
 import { useCanvasNodeSnapping } from "./useCanvasNodeSnapping";
 import type { ProjectType } from "@shared/schema";
 import type { MetamodelSetup } from "@shared/metamodel-setup";
-
-const nodeTypes = {
-  part: PartNode,
-  partdef: PartDefNode,
-  actiondef: ActionDefNode,
-  concerndef: ConcernDefNode,
-  agentdef: AgentDefNode,
-  requirementdef: RequirementDefNode,
-  eventdef: EventDefNode,
-  capabilitydef: CapabilityDefNode,
-};
 
 export interface DiagramCanvasProps {
   viewId: number;
@@ -116,15 +92,8 @@ function FlowInner({
     isLoading,
     isError,
     reload: reloadDiagram,
-
     nodes,
     edges,
-    setNodes,
-
-    onEdgesChange,
-
-
-
     handleAddNode,
     handleAutoLayout,
     handleLayoutSelected,
@@ -132,12 +101,9 @@ function FlowInner({
     handleSave,
     handleSaveAsync,
     handleSaveRecovered,
-
     isSaving,
     isDirty,
   } = useDiagramCanvas(viewId, projectType, suspendFlowLoad);
-
-
 
   const {
     screenshot,
@@ -151,10 +117,7 @@ function FlowInner({
   const isConnectionValid = useConnection((connection) =>
     connection.inProgress ? connection.isValid : null,
   );
-  // Selection + panels
-  const pendingDelete = useDiagramStore((state) => state.pendingDelete);
-  const cancelDelete = useDiagramStore((state) => state.cancelDelete);
-  const deleteDialogOpen = pendingDelete !== null;
+  const deleteDialogOpen = useDiagramStore((state) => state.pendingDelete !== null);
   const [isCanvasReady, setIsCanvasReady] = useState(false);
   // Decided when the canvas mounts and then kept: changing React Flow's
   // `fitView` prop later would trigger another fit.
@@ -190,7 +153,6 @@ function FlowInner({
   } = useDiagramModel();
   const isTableMode = displayMode === "table";
   const helpContent = useDiagramHelpContent(projectType, isFlowMode);
-
 
   const {
     openNodePanel,
@@ -246,15 +208,7 @@ function FlowInner({
     isFlowRunning,
   } = playback;
 
-  const {
-    applyIssueHighlights,
-    handleValidate,
-    highlightIssues,
-    setHighlightIssues,
-    validationIssues,
-    validationOpen,
-    setValidationOpen,
-  } = useDiagramValidation({
+  const validation = useDiagramValidation({
     modelRules: activeModelRules,
     inheritedModelRuleIds,
   });
@@ -277,7 +231,6 @@ function FlowInner({
     allowedEdgeTypes: configuredRelationTypes,
   });
 
-
   const {
     displayNodes,
     displayEdges,
@@ -293,25 +246,10 @@ function FlowInner({
     dragPreviewNode,
   });
 
-
   const { selectedNodes, selectedNodeIds } = useSelectedNodes();
   const canSavePattern = selectedNodes.length >= 2;
 
-
-
-
-  const {
-    openPatternDialog,
-    patternDialogOpen,
-    setPatternDialogOpen,
-    patternName,
-    setPatternName,
-    patternDescription,
-    setPatternDescription,
-    patternSnapshot,
-    setPatternSnapshot,
-    handleCreatePattern,
-  } = usePatternCreation({
+  const patternCreation = usePatternCreation({
     selectedNodes,
     canSavePattern,
     selectedNodeIds,
@@ -323,13 +261,7 @@ function FlowInner({
     setIsCanvasReady(false);
   }, [viewId]);
 
-  const {
-    leaveDialogOpen,
-    isLeaving,
-    handleCancelLeave,
-    handleLeaveWithoutSaving,
-    handleSaveAndLeave,
-  } = useDiagramLeaveConfirmation({
+  const leaveConfirmation = useDiagramLeaveConfirmation({
     viewId,
     isDirty,
     isSaving,
@@ -346,12 +278,8 @@ function FlowInner({
     return () => window.clearTimeout(timer);
   }, [diagramStore, isLoading, viewId]);
 
-  const onCanvasNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      setNodes((current) => applyNodeChanges(changes, current));
-    },
-    [setNodes],
-  );
+  const onNodesChange = useDiagramStore((state) => state.onNodesChange);
+  const onEdgesChange = useDiagramStore((state) => state.onEdgesChange);
 
   const onNodeDoubleClick: NodeMouseHandler = useCallback(
     (_event, node) => openNodePanel(node.id),
@@ -387,7 +315,6 @@ function FlowInner({
     handleReverseEdgeDirection,
   });
 
-  const handleConfirmDelete = useDiagramStore((state) => state.confirmDelete);
 
   useCanvasKeyboardShortcuts({
     deleteDialogOpen,
@@ -440,7 +367,7 @@ function FlowInner({
         <ReactFlow
           nodes={displayNodes}
           edges={displayEdges}
-          onNodesChange={onCanvasNodesChange}
+          onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeDragStart={handleNodeDragStart}
           onNodeDrag={handleNodeDrag}
@@ -485,12 +412,12 @@ function FlowInner({
             playback={playback}
             selectedNodeIds={selectedNodeIds}
             canSavePattern={canSavePattern}
-            onSavePattern={openPatternDialog}
+            onSavePattern={patternCreation.openPatternDialog}
             onAutoLayout={handleAutoLayout}
             onLayoutSelected={handleLayoutSelected}
             onCenterSelected={handleCenterSelected}
             onScreenshot={takeScreenshot}
-            onValidate={handleValidate}
+            onValidate={validation.handleValidate}
           />
         </ReactFlow>
         </EdgeRelationConfirmationProvider>
@@ -513,17 +440,7 @@ function FlowInner({
           />
         )}
 
-      <SavePatternDialog
-        patternDialogOpen={patternDialogOpen}
-        setPatternDialogOpen={setPatternDialogOpen}
-        patternName={patternName}
-        setPatternName={setPatternName}
-        patternDescription={patternDescription}
-        setPatternDescription={setPatternDescription}
-        patternSnapshot={patternSnapshot}
-        setPatternSnapshot={setPatternSnapshot}
-        handleCreatePattern={handleCreatePattern}
-      />
+      <SavePatternDialog {...patternCreation} />
 
       <DiagramHelpDialog
         helpDialogOpen={helpDialogOpen}
@@ -578,33 +495,11 @@ function FlowInner({
         onDownload={downloadImage}
       />
 
-      <ValidationResultsDialog
-        validationOpen={validationOpen}
-        setValidationOpen={setValidationOpen}
-        validationIssues={validationIssues}
-        projectType={projectType}
-        highlightIssues={highlightIssues}
-        setHighlightIssues={setHighlightIssues}
-        applyIssueHighlights={applyIssueHighlights}
-      />
+      <ValidationResultsDialog {...validation} projectType={projectType} />
 
-      <UnsavedChangesDialog
-        leaveDialogOpen={leaveDialogOpen}
-        isLeaving={isLeaving}
-        handleCancelLeave={handleCancelLeave}
-        isSaving={isSaving}
-        handleLeaveWithoutSaving={handleLeaveWithoutSaving}
-        handleSaveAndLeave={handleSaveAndLeave}
-      />
+      <UnsavedChangesDialog {...leaveConfirmation} isSaving={isSaving} />
 
-      <DeleteConfirmDialog
-        open={deleteDialogOpen}
-        label={pendingDelete?.label}
-        onOpenChange={(open) => {
-          if (!open) cancelDelete();
-        }}
-        onConfirm={handleConfirmDelete}
-      />
+      <CanvasDeleteDialog />
     </div>
   );
 }

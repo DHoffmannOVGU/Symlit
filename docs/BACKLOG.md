@@ -32,9 +32,11 @@ commit that fixed them.
 - **The diagram editor chunk is still 1.1 MB.** Pages are lazy-loaded now, but React Flow, the
   panels and layout engines (`dagre`, `entitree-flex`) load as one chunk. The panels and layout
   code could be split further once `DiagramCanvas.tsx` is decomposed.
-- **`DiagramCanvas.tsx` is still about 1,400 lines.** The hooks and dialogs are split out; what
-  remains is wiring between them and the large `<ReactFlow>` element with its event handlers. Next
-  candidates: the node-change/selection handlers and the toolbar/inspector prop assembly.
+- **`useDiagramCanvas` and `useEdgeCreation` are still large (~590 and ~540 lines).** Loading,
+  saving and layout could be separate hooks, and the "drag onto empty canvas" placeholder flow could
+  become store actions.
+- **`MetamodelAiAssistant` and `ModelRulesPanel` still receive `nodes`/`edges` as props**; they
+  could read the diagram store like the inspector does.
 - **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
 
 ## Done
@@ -84,3 +86,8 @@ commit that fixed them.
 - Sidebar components spelled out long inferred types; they are named in `sidebar-parts/types.ts` now (`FlowQuery`, `PaletteItem`, `NodeMeta`, …).
 - Drawing relationships was unreliable, especially with connections in several directions: each side had a source and a target handle stacked on the same spot, hidden until hover and shifted by CSS, so drags started on the wrong handle or dropped on none (4–5 of 8 test connections registered). Elements now have one handle per side (`top`/`right`/`bottom`/`left`) in React Flow's loose connection mode; old handle ids are mapped on load (`normalizeHandleId`). `e2e/edge-handles.spec.ts` draws all directions both ways.
 - New metamodel relationships got React Flow's generated id instead of a UUID.
+- `DiagramCanvas.tsx` was ~1,300 lines of wiring (about 290 values passed by hand between 20 hooks). Editor state moved into a per-diagram Zustand store and a model context; hooks and connected components read them directly. It is ~500 lines now.
+- Undo history was shared across diagrams: undo right after switching diagrams could bring back the previous diagram's elements. History now resets when a diagram loads.
+- On an empty diagram, React Flow's fit-to-view zoomed onto the first element dropped in, so a second element dropped quickly could land off-screen. The canvas now only fits on mount when the diagram already has elements.
+- Undo after creating an element from the "drag a relationship onto empty canvas" menu brought back the temporary placeholder element.
+- The tutorial browser test failed locally in the full suite (CI's retries hid it): skipping a step that navigates briefly hid the skip button and ended the loop early.

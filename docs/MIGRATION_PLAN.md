@@ -68,6 +68,8 @@ Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc
   data clean-up goes at the top of the generated migration (see 0002, 0003).
 - New tutorial steps: `shared/tutorial.ts` + `emitTutorialSignal()` where the action happens.
 - `e2e/tutorial.spec.ts` must not run concurrently with itself (one tutorial per workspace).
+- Diagram editor state lives in the per-diagram store (`useDiagramStore`) and model context
+  (`useDiagramModel`); don't thread it through `DiagramCanvas` props.
 
 The rest of this document is the original analysis and plan. Hosted-edition sections are kept for
 when that work resumes.
