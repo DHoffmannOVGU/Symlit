@@ -1,6 +1,6 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 
-type DiagramCanvasPreferences = {
+export type DiagramCanvasPreferences = {
   snapNodesEnabled: boolean;
   setSnapEnabled: Dispatch<SetStateAction<boolean>>;
   showBackgroundDots: boolean;

@@ -1,16 +1,12 @@
-import type { ProjectType } from "@shared/schema";
-import type { ModelRule } from "@shared/schema";
-import type { DiagramEdge } from "../types";
+import { useDiagramModel } from "../state/DiagramModelProvider";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useMemo } from "react";
 import type { DiagramNode as Node, NodeData } from "../types";
 import { type CustomEdgeData } from "../edges/CustomEdges";
 import { evaluateModelRuleResults, supportsModelRules } from "../rules/model-rules";
 
 export interface UseCanvasDisplayGraphParams {
-  isFlowMode: boolean;
-  nodes: Node[];
   connectingFromNodeId: string | null;
-  isExternalNode: (nodeId: string) => boolean;
   draggingNodeId: string | null;
   alwaysShowAccent: boolean;
   showNodeDescriptions: boolean;
@@ -18,18 +14,11 @@ export interface UseCanvasDisplayGraphParams {
   flowSchedule: Map<string, number[]> | null;
   isFlowRunning: boolean;
   flowCompleted: boolean;
-  projectType: ProjectType;
-  activeModelRules: ModelRule[];
-  edges: DiagramEdge[];
-  inheritedModelRuleIds: Set<string>;
   dragPreviewNode: Node | null;
 }
 
 export function useCanvasDisplayGraph({
-  isFlowMode,
-  nodes,
   connectingFromNodeId,
-  isExternalNode,
   draggingNodeId,
   alwaysShowAccent,
   showNodeDescriptions,
@@ -37,12 +26,11 @@ export function useCanvasDisplayGraph({
   flowSchedule,
   isFlowRunning,
   flowCompleted,
-  projectType,
-  activeModelRules,
-  edges,
-  inheritedModelRuleIds,
   dragPreviewNode,
 }: UseCanvasDisplayGraphParams) {
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
+  const { isFlowMode, isExternalNode, projectType, activeModelRules, inheritedModelRuleIds } = useDiagramModel();
   const baseDisplayNodes = useMemo(() => {
     const stripFlowTags = !isFlowMode;
     const selectedNodeCount = nodes.filter((node) => node.selected).length;

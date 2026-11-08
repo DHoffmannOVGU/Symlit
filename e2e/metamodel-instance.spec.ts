@@ -19,6 +19,19 @@ async function settledBoundingBox(locator: Locator) {
   return previous;
 }
 
+/** Waits until the React Flow viewport transform stays the same for a few frames. */
+async function waitForStableViewport(page: Page) {
+  const viewport = page.locator(".react-flow__viewport");
+  let previous = "";
+  let stableFor = 0;
+  for (let attempt = 0; attempt < 40 && stableFor < 3; attempt += 1) {
+    const current = (await viewport.getAttribute("style")) ?? "";
+    stableFor = current === previous ? stableFor + 1 : 0;
+    previous = current;
+    await page.waitForTimeout(150);
+  }
+}
+
 const metamodelProject = {
   id: 2,
   userId: 1,
@@ -252,8 +265,10 @@ test("selects a metamodel, creates typed instances, relates them, saves, and rel
   const targetHandle = sensorNode.locator(
     '.react-flow__handle[data-handlepos="right"]',
   );
-  // The canvas may still be animating its viewport after the drops; measure
-  // only once both handles have stopped moving.
+  // The canvas fits its view once the first dropped elements are measured,
+  // which can happen after the drops; wait until the viewport is stable, then
+  // measure only once both handles have stopped moving.
+  await waitForStableViewport(page);
   const sourceBox = await settledBoundingBox(sourceHandle);
   const targetBox = await settledBoundingBox(targetHandle);
   expect(sourceBox).not.toBeNull();

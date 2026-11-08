@@ -1,23 +1,19 @@
+import { useReactFlow } from "@xyflow/react";
+import { useDiagramModel } from "../state/DiagramModelProvider";
 import { emitTutorialSignal } from "@/lib/tutorial-signals";
-import type { ProjectType } from "@shared/schema";
-import type { ReactFlowInstance, SetViewport } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supportsModelRules } from "../rules/model-rules";
 import { getViewportForBottomPanel } from "../utils/rules-panel-viewport";
 
 export interface UseCanvasSidePanelsParams {
-  projectType: ProjectType;
   canvasShellRef: React.MutableRefObject<HTMLDivElement | null>;
-  getViewport: ReactFlowInstance["getViewport"];
-  setViewport: SetViewport;
 }
 
 export function useCanvasSidePanels({
-  projectType,
   canvasShellRef,
-  getViewport,
-  setViewport,
 }: UseCanvasSidePanelsParams) {
+  const { projectType } = useDiagramModel();
+  const { getViewport, setViewport } = useReactFlow();
   const [modelRulesOpen, setModelRulesOpen] = useState(false);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
   const [modelRulesPanelHeight, setModelRulesPanelHeight] = useState(560);

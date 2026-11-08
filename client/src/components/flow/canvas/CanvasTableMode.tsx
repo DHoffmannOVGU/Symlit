@@ -1,3 +1,7 @@
+import { useDiagramStore } from "../state/DiagramStoreProvider";
+import { useDiagramModel } from "../state/DiagramModelProvider";
+import { useElementSelection } from "../state/useElementSelection";
+import { useCanvasTableRows } from "./useCanvasTableRows";
 import {
   Card,
   CardContent,
@@ -481,5 +485,45 @@ export function CanvasTableMode({
         </Card>
       </div>
     </div>
+  );
+}
+
+/** Table mode wired to the open diagram: rows, filters and selection come from the diagram store. */
+export function ConnectedCanvasTableMode(
+  props: Pick<
+    CanvasTableModeProps,
+    | "displayMode"
+    | "onDisplayModeChange"
+    | "instanceNodeTypeOptions"
+    | "metamodelNodeTypeOptions"
+    | "onInlineNodeFieldChange"
+    | "onInlineEdgeFieldChange"
+  >,
+) {
+  const { projectType } = useDiagramModel();
+  const nodeTableFilter = useDiagramStore((state) => state.nodeTableFilter);
+  const edgeTableFilter = useDiagramStore((state) => state.edgeTableFilter);
+  const setNodeTableFilter = useDiagramStore((state) => state.setNodeTableFilter);
+  const setEdgeTableFilter = useDiagramStore((state) => state.setEdgeTableFilter);
+  const selectedNodeId = useDiagramStore((state) => state.selectedNodeId);
+  const selectedEdgeId = useDiagramStore((state) => state.selectedEdgeId);
+  const { selectNode, selectEdge, openNodePanel, openEdgePanel } = useElementSelection();
+  const rows = useCanvasTableRows({ nodeTableFilter, edgeTableFilter });
+  return (
+    <CanvasTableMode
+      {...props}
+      {...rows}
+      projectType={projectType}
+      nodeTableFilter={nodeTableFilter}
+      onNodeTableFilterChange={setNodeTableFilter}
+      edgeTableFilter={edgeTableFilter}
+      onEdgeTableFilterChange={setEdgeTableFilter}
+      selectedNodeId={selectedNodeId}
+      selectedEdgeId={selectedEdgeId}
+      onSelectNode={selectNode}
+      onSelectEdge={selectEdge}
+      onOpenNodePanel={openNodePanel}
+      onOpenEdgePanel={openEdgePanel}
+    />
   );
 }

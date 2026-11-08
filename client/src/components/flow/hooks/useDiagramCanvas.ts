@@ -1,11 +1,8 @@
 import { normalizeHandleId } from "../utils/edge-utils";
 import { newNodeId } from "@/lib/ids";
-// src/diagram/hooks/useDiagramCanvas.ts
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addEdge,
-  useEdgesState,
-  useNodesState,
   useReactFlow,
   type Connection,
 } from "@xyflow/react";
@@ -15,7 +12,7 @@ import type { ProjectType } from "@shared/schema";
 import { isMagicRelationType } from "@shared/metamodel-setup";
 import { flowSyncInputSchema } from "@shared/routes";
 import type { DiagramEdge, DiagramNode } from "../types";
-import { useUndoRedo } from "@/hooks/use-undo-redo";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import {
   getAutoLayout,
   NODE_WIDTH,
@@ -120,16 +117,19 @@ export function useDiagramCanvas(
   const { screenToFlowPosition, fitView } = useReactFlow();
   const lastFittedViewId = useRef<number | null>(null);
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<DiagramNode>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramEdge>([]);
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
+  const setNodes = useDiagramStore((state) => state.setNodes);
+  const setEdges = useDiagramStore((state) => state.setEdges);
+  const onNodesChange = useDiagramStore((state) => state.onNodesChange);
+  const onEdgesChange = useDiagramStore((state) => state.onEdgesChange);
+  const undo = useDiagramStore((state) => state.undo);
+  const redo = useDiagramStore((state) => state.redo);
+  const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
+  const resetHistory = useDiagramStore((state) => state.resetHistory);
+  const canUndo = useDiagramStore((state) => state.past.length > 0);
+  const canRedo = useDiagramStore((state) => state.future.length > 0);
   const [lastSavedSignature, setLastSavedSignature] = useState<string>("");
-
-  const { undo, redo, takeSnapshot, canUndo, canRedo } = useUndoRedo(
-    nodes,
-    edges,
-    setNodes,
-    setEdges,
-  );
 
   // load flow
   useEffect(() => {
@@ -177,6 +177,8 @@ export function useDiagramCanvas(
 
     setNodes(mappedNodes);
     setEdges(mappedEdges);
+    // Undo must not cross into another diagram (or the state before a reload).
+    resetHistory();
     // Compare later edits against what was loaded into the canvas, not the raw
     // server records: loading adds defaults (e.g. relationship markers and line
     // styles), which would otherwise make every diagram with relationships look
@@ -188,7 +190,7 @@ export function useDiagramCanvas(
         projectType,
       ),
     );
-  }, [flowData, projectType, setNodes, setEdges, suspendLoad]);
+  }, [flowData, projectType, setNodes, setEdges, resetHistory, suspendLoad]);
 
   useEffect(() => {
     if (!flowData) return;

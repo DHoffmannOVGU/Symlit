@@ -42,9 +42,14 @@ test("the guided tutorial starts from the project list and follows the learner",
   await page.getByTestId("button-tutorial-expand").click();
 
   // Skip the rest to reach the end, then clean up.
+  // Some steps navigate when skipped, so the skip button can briefly
+  // disappear; keep skipping until the finished card shows.
   const skip = page.getByTestId("button-tutorial-skip");
-  while (await skip.isVisible().catch(() => false)) await skip.click();
-  await expect(page.getByTestId("tutorial-finished")).toBeVisible();
+  const finished = page.getByTestId("tutorial-finished");
+  await expect(async () => {
+    if (!(await finished.isVisible())) await skip.click({ timeout: 2_000 });
+    await expect(finished).toBeVisible({ timeout: 500 });
+  }).toPass({ timeout: 30_000 });
   await page.getByTestId("tutorial-finished").getByTestId("button-tutorial-remove").click();
   await expect(page).toHaveURL(/\/projects$/);
   await expect(page.getByTestId("button-tutorial-start")).toBeVisible();

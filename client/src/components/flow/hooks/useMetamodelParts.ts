@@ -395,13 +395,24 @@ export function useMetamodelParts({
     return Array.from(deduped.values());
   }, [availablePartDefNodes]);
 
-  return {
-    availablePartDefs,
-    availablePartDefNodes,
-    availablePartDefEdges,
-    partDefStyleById,
-    partTypeOptions,
-    referencedModelRules,
-    referencedRelationTypes,
-  };
+  return useMemo(
+    () => ({
+      availablePartDefs,
+      availablePartDefNodes,
+      availablePartDefEdges,
+      partDefStyleById,
+      partTypeOptions,
+      referencedModelRules,
+      referencedRelationTypes,
+    }),
+    [
+      availablePartDefs,
+      availablePartDefNodes,
+      availablePartDefEdges,
+      partDefStyleById,
+      partTypeOptions,
+      referencedModelRules,
+      referencedRelationTypes,
+    ],
+  );
 }

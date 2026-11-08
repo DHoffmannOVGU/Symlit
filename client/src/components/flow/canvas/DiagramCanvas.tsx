@@ -1,4 +1,3 @@
-import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { DiagramLoadError } from "./DiagramLoadError";
 import { SavePatternDialog } from "./SavePatternDialog";
 import { DiagramHelpDialog } from "./DiagramHelpDialog";
@@ -12,72 +11,44 @@ import { useCanvasActionRequests } from "./useCanvasActionRequests";
 import { useCanvasSidePanels } from "./useCanvasSidePanels";
 import { useCanvasDisplayGraph } from "./useCanvasDisplayGraph";
 import { usePatternCreation } from "./usePatternCreation";
-import { useCanvasTableSelection } from "./useCanvasTableSelection";
+import { useElementSelection } from "../state/useElementSelection";
 import { useCanvasElementActions } from "./useCanvasElementActions";
-import { useCanvasTableRows } from "./useCanvasTableRows";
-// DiagramCanvas.tsx
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ReactFlow,
   Controls,
   Background,
   BackgroundVariant,
   ReactFlowProvider,
-  applyNodeChanges,
-  type NodeChange,
   type NodeMouseHandler,
   type EdgeMouseHandler,
   ConnectionLineType,
   ConnectionMode,
   useConnection,
-  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
-import PartNode from "../nodes/PartNode";
-import PartDefNode from "../nodes/PartDefNode";
-import ActionDefNode from "../nodes/ActionDefNode";
-import ConcernDefNode from "../nodes/ConcernDefNode";
-import AgentDefNode from "../nodes/AgentDefNode";
-import RequirementDefNode from "../nodes/RequirementDefNode";
-import EventDefNode from "../nodes/EventDefNode";
-import CapabilityDefNode from "../nodes/CapabilityDefNode";
+import { nodeTypes } from "../nodes/nodeTypes";
 import { ModelRulesPanel } from "../panels/ModelRulesPanel";
 import { MetamodelAiAssistant } from "../panels/MetamodelAiAssistant";
-import type { NodeData } from "../types";
-import { CanvasTableMode } from "./CanvasTableMode";
-import { ConnectionPreviewLine, edgeTypes, type CustomEdgeData } from "../edges/CustomEdges";
-import { useMetamodelParts } from "../hooks/useMetamodelParts";
+import { ConnectedCanvasTableMode } from "./CanvasTableMode";
+import { CanvasEdgeCreateMenu } from "./CanvasEdgeCreateMenu";
+import { useInheritedTypeStyles } from "./useInheritedTypeStyles";
+import { useSelectedNodes } from "./useSelectedNodes";
+import { ConnectionPreviewLine, edgeTypes } from "../edges/CustomEdges";
 import { useEdgeCreation } from "../hooks/useEdgeCreation";
 import { EdgeRelationConfirmationProvider } from "../edges/EdgeRelationConfirmation";
 
-
-import { DiagramToolbar } from "./DiagramToolBar";
+import { CanvasToolbar } from "./CanvasToolbar";
 import { useDiagramCanvas } from "../hooks/useDiagramCanvas";
+import { DiagramStoreProvider, useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
+import { DiagramModelProvider, useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramScreenshot } from "../hooks/useDiagramScreenshot";
 import { useDiagramValidation } from "../hooks/useDiagramValidation";
 import { useFlowPlayback } from "../hooks/useFlowPlayback";
-import { EdgeCreateMenu } from "../menus/EdgeCreateMenu";
 import { ScreenshotDialog } from "../dialogs/ScreenshotDialog";
-import { DeleteConfirmDialog } from "../dialogs/DeleteConfirmDialog";
-import {
-  buildParentMap,
-  buildParentMapFromNodes,
-  getTypeAncestors,
-  mergeParentMaps,
-} from "@shared/metamodel-inheritance";
-import { api } from "@shared/routes";
-import type { FlowRecoveryResponse } from "@shared/routes";
-import type { FlowEdgeInput, SyncFlowNodeInput } from "@shared/flow-inputs";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiCall } from "@/lib/api-client";
-import { useToast } from "@/hooks/use-toast";
-import {
-  dispatchDiagramEvent,
-  subscribeDiagramEvent,
-} from "@/lib/diagram-events";
-import { computeStraightenedEdge } from "./straightenEdge";
-import { useView } from "@/hooks/use-views";
+import { CanvasDeleteDialog } from "./CanvasDeleteDialog";
+import { subscribeDiagramEvent } from "@/lib/diagram-events";
 import { useDiagramHelpContent } from "./useDiagramHelpContent";
 import { useDiagramCanvasPreferences } from "./useDiagramCanvasPreferences";
 import { useDiagramLeaveConfirmation } from "./useDiagramLeaveConfirmation";
@@ -89,24 +60,7 @@ import { useCanvasDragPreview } from "./useCanvasDragPreview";
 import { useCanvasKeyboardShortcuts } from "./useCanvasKeyboardShortcuts";
 import { useCanvasNodeSnapping } from "./useCanvasNodeSnapping";
 import type { ProjectType } from "@shared/schema";
-import {
-  getConfiguredMagicNodeTypes,
-  getConfiguredMagicRelationTypes,
-  magicNodeTypeCatalog,
-  type MagicRelationType,
-  type MetamodelSetup,
-} from "@shared/metamodel-setup";
-
-const nodeTypes = {
-  part: PartNode,
-  partdef: PartDefNode,
-  actiondef: ActionDefNode,
-  concerndef: ConcernDefNode,
-  agentdef: AgentDefNode,
-  requirementdef: RequirementDefNode,
-  eventdef: EventDefNode,
-  capabilitydef: CapabilityDefNode,
-};
+import type { MetamodelSetup } from "@shared/metamodel-setup";
 
 export interface DiagramCanvasProps {
   viewId: number;
@@ -128,42 +82,18 @@ function FlowInner({
   viewId,
   projectId,
   projectType,
-  metamodelSetup,
-  referencedMetamodelIds = [],
-  referencedMetamodels = [],
-  viewMode = "build",
   displayMode = "graph",
   onDisplayModeChange,
 }: DiagramCanvasProps) {
   const [suspendFlowLoad, setSuspendFlowLoad] = useState(false);
   const canvasShellRef = useRef<HTMLDivElement | null>(null);
-  const viewQuery = useView(viewId);
-  const [recoveryOpen, setRecoveryOpen] = useState(false);
-  const recoveryQuery = useQuery<FlowRecoveryResponse>({
-    queryKey: [api.flow.recovery.path, viewId],
-    queryFn: () => apiCall(api.flow.recovery, { params: { viewId } }),
-    enabled: false,
-  });
 
   const {
     isLoading,
     isError,
     reload: reloadDiagram,
-
     nodes,
     edges,
-    setNodes,
-    setEdges,
-
-    onEdgesChange,
-
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-
-    takeSnapshot,
-
     handleAddNode,
     handleAutoLayout,
     handleLayoutSelected,
@@ -171,35 +101,9 @@ function FlowInner({
     handleSave,
     handleSaveAsync,
     handleSaveRecovered,
-
     isSaving,
-    projectIdById,
     isDirty,
   } = useDiagramCanvas(viewId, projectType, suspendFlowLoad);
-
-  const { screenToFlowPosition, getViewport, setViewport, fitView } = useReactFlow();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  const openRecovery = useCallback(() => {
-    setSuspendFlowLoad(true);
-    setRecoveryOpen(true);
-    void recoveryQuery.refetch();
-  }, [recoveryQuery]);
-
-  const handleRecoverySave = useCallback(
-    async (
-      repairedNodes: SyncFlowNodeInput[],
-      repairedEdges: FlowEdgeInput[],
-    ) => {
-      await handleSaveRecovered(repairedNodes, repairedEdges);
-      const result = await reloadDiagram();
-      if (result.error) throw result.error;
-      setRecoveryOpen(false);
-      setSuspendFlowLoad(false);
-    },
-    [handleSaveRecovered, reloadDiagram],
-  );
 
   const {
     screenshot,
@@ -213,36 +117,21 @@ function FlowInner({
   const isConnectionValid = useConnection((connection) =>
     connection.inProgress ? connection.isValid : null,
   );
-  // Selection + panels
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
-  const [isNodePanelOpen, setIsNodePanelOpen] = useState(false);
-  const [isEdgePanelOpen, setIsEdgePanelOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [pendingDelete, setPendingDelete] = useState<{
-    nodeIds: string[];
-    edgeIds: string[];
-    label?: string;
-  } | null>(null);
+  const deleteDialogOpen = useDiagramStore((state) => state.pendingDelete !== null);
   const [isCanvasReady, setIsCanvasReady] = useState(false);
-  const {
-    snapNodesEnabled,
-    setSnapEnabled,
-    showBackgroundDots,
-    setShowBackgroundDots,
-    alwaysShowAccent,
-    setAlwaysShowAccent,
-    showNodeDescriptions,
-    setShowNodeDescriptions,
-  } = useDiagramCanvasPreferences();
-  const [helpDialogOpen, setHelpDialogOpen] = useState(false);
-  const [nodeTableFilter, setNodeTableFilter] = useState("");
-  const [edgeTableFilter, setEdgeTableFilter] = useState("");
+  // Decided when the canvas mounts and then kept: changing React Flow's
+  // `fitView` prop later would trigger another fit.
+  const [fitViewOnMount, setFitViewOnMount] = useState(false);
+  const diagramStore = useDiagramStoreApi();
+  const preferences = useDiagramCanvasPreferences();
+  const { snapNodesEnabled, showBackgroundDots, alwaysShowAccent, showNodeDescriptions } = preferences;
+  const helpDialogOpen = useDiagramStore((state) => state.helpDialogOpen);
+  const setHelpDialogOpen = useDiagramStore((state) => state.setHelpDialogOpen);
   const {
     dragPreviewNode,
     handleCanvasDragOver,
     clearDragPreview,
-  } = useCanvasDragPreview({ viewId, screenToFlowPosition });
+  } = useCanvasDragPreview();
   const {
     draggingNodeId,
     alignmentGuides,
@@ -250,131 +139,30 @@ function FlowInner({
     handleNodeDragStart,
     handleNodeDragStop,
   } = useCanvasNodeSnapping({
-    nodes,
-    edges,
     snapNodesEnabled,
-    setNodes,
-    takeSnapshot,
   });
 
-  const isFlowMode = viewMode === "flow" && projectType === "instance";
+  const {
+    isFlowMode,
+    activeModelRules,
+    inheritedModelRuleIds,
+    configuredRelationTypes,
+    localModelRules,
+    referencedModelRules,
+    metamodelSetup,
+  } = useDiagramModel();
   const isTableMode = displayMode === "table";
-  const metamodelDefaultType =
-    projectType === "metamodel"
-      ? (() => {
-          const defaultType = magicNodeTypeCatalog.find(
-            (item) =>
-              item.id === getConfiguredMagicNodeTypes(metamodelSetup)[0],
-          );
-          return defaultType
-            ? {
-                id: defaultType.id,
-                label: defaultType.label,
-                icon: defaultType.iconName,
-              }
-            : undefined;
-        })()
-      : undefined;
   const helpContent = useDiagramHelpContent(projectType, isFlowMode);
 
-  const externalNodeIds = useMemo(
-    () =>
-      new Set(
-        nodes
-          .filter((node) => {
-            const owner = projectIdById.get(node.id);
-            return owner !== undefined && owner !== projectId;
-          })
-          .map((node) => node.id),
-      ),
-    [projectIdById, nodes, projectId],
-  );
-  const isExternalNode = useCallback(
-    (nodeId: string) => externalNodeIds.has(nodeId),
-    [externalNodeIds],
-  );
+  const {
+    openNodePanel,
+    openEdgePanel,
+  } = useElementSelection();
 
-  const handleOpenNodePanelForNode = useCallback(
-    (nodeId: string) => {
-      setSelectedNodeId(nodeId);
-      setSelectedEdgeId(null);
-      setIsEdgePanelOpen(false);
-      setNodes((current) =>
-        current.map((node) => ({
-          ...node,
-          selected: node.id === nodeId,
-        })),
-      );
-      setEdges((current) =>
-        current.map((edge) => ({
-          ...edge,
-          selected: false,
-        })),
-      );
-      if (isExternalNode(nodeId)) {
-        toast({
-          title: "Referenced node",
-          description: "Referenced metamodel nodes are read-only.",
-        });
-        return;
-      }
-      setIsNodePanelOpen(true);
-    },
-    [isExternalNode, setEdges, setNodes, toast],
-  );
-
-  useEffect(() => {
-    dispatchDiagramEvent("selected-node-changed", {
-      nodeId: selectedNodeId,
-      viewId,
-    });
-  }, [selectedNodeId, viewId]);
   const {
     insertNodeIntoView,
-  } = useCanvasInsertion({
-    nodes,
-    screenToFlowPosition,
-    viewId,
-    setNodes,
-    setSelectedEdgeId,
-    setSelectedNodeId,
-    toast,
-    queryClient,
-  });
+  } = useCanvasInsertion();
 
-  const {
-    availablePartDefs,
-    availablePartDefNodes,
-    availablePartDefEdges,
-    partDefStyleById,
-    partTypeOptions,
-    referencedModelRules,
-    referencedRelationTypes,
-  } = useMetamodelParts({
-    nodes,
-    edges,
-    projectType,
-    referencedMetamodelIds,
-    referencedMetamodels,
-    selectedNodeId,
-  });
-
-  const localModelRules = useMemo(
-    () => viewQuery.data?.modelRules ?? [],
-    [viewQuery.data?.modelRules],
-  );
-  const activeModelRules = useMemo(
-    () => projectType === "metamodel"
-      ? localModelRules
-      : projectType === "instance"
-        ? [...referencedModelRules, ...localModelRules]
-        : [],
-    [localModelRules, projectType, referencedModelRules],
-  );
-  const inheritedModelRuleIds = useMemo(
-    () => new Set(referencedModelRules.map((rule) => rule.id)),
-    [referencedModelRules],
-  );
   const {
     toggleModelRules,
     toggleAiAssistant,
@@ -385,24 +173,12 @@ function FlowInner({
     closeModelRules,
     setModelRulesPanelHeight,
   } = useCanvasSidePanels({
-    projectType,
     canvasShellRef,
-    getViewport,
-    setViewport,
   });
   const {
     handleApplyAiProposal,
   } = useCanvasAiProposal({
-    viewId,
-    projectType,
     toggleAiAssistant,
-    nodes,
-    edges,
-    toast,
-    takeSnapshot,
-    setNodes,
-    setEdges,
-    fitView,
   });
   useEffect(
     () =>
@@ -415,135 +191,31 @@ function FlowInner({
   const {
     handleCanvasDrop,
   } = useCanvasDropInsertion({
-    availablePartDefNodes,
-    partDefStyleById,
-    screenToFlowPosition,
     handleAddNode,
-    viewId,
-    projectType,
     insertNodeIntoView,
     toggleModelRules,
     clearDragPreview,
   });
-  const typeMetaById = useMemo(
-    () =>
-      new Map(
-        availablePartDefNodes.map((node) => {
-          const data = node.data as unknown as
-            | (NodeData & {
-                _referenceTypeId?: string;
-                _originTypeId?: string;
-                _originProjectId?: number;
-              })
-            | undefined;
-          return [
-            node.id,
-            {
-              referenceTypeId: data?._referenceTypeId || node.id,
-              originTypeId: data?._originTypeId || node.id,
-              originProjectId: data?._originProjectId,
-              label: data?.label || node.id,
-            },
-          ] as const;
-        }),
-      ),
-    [availablePartDefNodes],
-  );
 
-  const parentMap = useMemo(
-    () =>
-      mergeParentMaps(
-        buildParentMap(availablePartDefEdges),
-        buildParentMapFromNodes(
-          availablePartDefNodes.map((node) => ({
-            id: node.id,
-            data: (node.data as unknown as NodeData | undefined)
-              ? { typeId: (node.data as unknown as NodeData).typeId }
-              : undefined,
-          })),
-        ),
-      ),
-    [availablePartDefEdges, availablePartDefNodes],
-  );
-  const relationEdges = useMemo(
-    () =>
-      availablePartDefEdges.filter(
-        (edge) => edge.edgeType !== "generalization",
-      ),
-    [availablePartDefEdges],
-  );
-  const configuredRelationTypes = useMemo<MagicRelationType[] | undefined>(() => {
-    if (projectType === "metamodel") {
-      return getConfiguredMagicRelationTypes(metamodelSetup);
-    }
-    if (projectType === "instance" && referencedMetamodelIds.length > 0) {
-      return referencedRelationTypes;
-    }
-    return undefined;
-  }, [
-    metamodelSetup,
-    projectType,
-    referencedMetamodelIds.length,
-    referencedRelationTypes,
-  ]);
-  const edgeTypeCycle = useMemo(
-    () => configuredRelationTypes ?? getConfiguredMagicRelationTypes(null),
-    [configuredRelationTypes],
-  );
-
+  const playback = useFlowPlayback();
   const {
     flowCompleted,
     flowCurrentTick,
     flowEndLabel,
-    flowEndNodeId,
     flowMaxTick,
     flowSchedule,
     flowStartLabel,
-    flowStartNodeId,
-    handlePlayFlow,
-    handleResetFlow,
-    handleSetFlowEnd,
-    handleSetFlowStart,
-    handleStepBack,
-    handleStepForward,
-    handleStopFlow,
     isFlowRunning,
-  } = useFlowPlayback({
-    isFlowMode,
-    nodes,
-    edges,
-    selectedNodeId,
-    setNodes,
-    toast,
-  });
+  } = playback;
 
-  const {
-    applyIssueHighlights,
-    handleValidate,
-    highlightIssues,
-    setHighlightIssues,
-    validationIssues,
-    validationOpen,
-    setValidationOpen,
-  } = useDiagramValidation({
-    projectType,
-    nodes,
-    edges,
-    availablePartDefNodes,
-    relationEdges,
-    parentMap,
-    setNodes,
-    setEdges,
+  const validation = useDiagramValidation({
     modelRules: activeModelRules,
     inheritedModelRuleIds,
   });
   const {
     handleCanvasEdgeCreated,
     edgeRelationConfirmationValue,
-  } = useEdgeRelationConfirmation({
-    viewId,
-    setEdges,
-  });
+  } = useEdgeRelationConfirmation();
 
   const {
     connectingFromNodeId,
@@ -555,48 +227,15 @@ function FlowInner({
     closeEdgeCreateMenu,
     finalizeEdgeCreateNode,
   } = useEdgeCreation({
-    viewId,
-    projectType,
-    nodes,
-    edges,
-    setNodes,
-    setEdges,
-    takeSnapshot,
-    availablePartDefEdges,
-    typeMetaById,
-    parentMap,
-    screenToFlowPosition,
     onEdgeCreated: handleCanvasEdgeCreated,
     allowedEdgeTypes: configuredRelationTypes,
   });
-
-  const [limitToValidTargets, setLimitToValidTargets] = useState<boolean>(
-    () => {
-      if (typeof window === "undefined") return true;
-      const stored = window.sessionStorage.getItem(
-        "flow.edgeCreateMenu.limitToValidTargets",
-      );
-      if (stored === null) return true;
-      return stored === "true";
-    },
-  );
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.sessionStorage.setItem(
-      "flow.edgeCreateMenu.limitToValidTargets",
-      String(limitToValidTargets),
-    );
-  }, [limitToValidTargets]);
 
   const {
     displayNodes,
     displayEdges,
   } = useCanvasDisplayGraph({
-    isFlowMode,
-    nodes,
     connectingFromNodeId,
-    isExternalNode,
     draggingNodeId,
     alwaysShowAccent,
     showNodeDescriptions,
@@ -604,165 +243,25 @@ function FlowInner({
     flowSchedule,
     isFlowRunning,
     flowCompleted,
-    projectType,
-    activeModelRules,
-    edges,
-    inheritedModelRuleIds,
     dragPreviewNode,
   });
 
-  const edgeCreateSourceTypeId = useMemo(() => {
-    if (!pendingConnectionSource?.nodeId) return null;
-    const sourceNode = nodes.find(
-      (node) => node.id === pendingConnectionSource.nodeId,
-    );
-    return (sourceNode?.data as NodeData | undefined)?.typeId ?? null;
-  }, [nodes, pendingConnectionSource?.nodeId]);
-
-  const validTargetTypeIds = useMemo(() => {
-    if (!edgeCreateSourceTypeId) return null;
-    const sourceAncestors = getTypeAncestors(edgeCreateSourceTypeId, parentMap);
-    const validTargets = new Set<string>();
-
-    partTypeOptions.forEach((option) => {
-      const targetAncestors = getTypeAncestors(option.id, parentMap);
-      const hasRelation = relationEdges.some(
-        (edge) =>
-          sourceAncestors.has(edge.sourceTypeId) &&
-          targetAncestors.has(edge.targetTypeId),
-      );
-      if (hasRelation) {
-        validTargets.add(option.id);
-      }
-    });
-
-    return validTargets;
-  }, [relationEdges, edgeCreateSourceTypeId, parentMap, partTypeOptions]);
-
-  const filteredPartTypeOptions = useMemo(() => {
-    if (!limitToValidTargets || !validTargetTypeIds) return partTypeOptions;
-    return partTypeOptions.filter((option) =>
-      validTargetTypeIds.has(option.id),
-    );
-  }, [limitToValidTargets, partTypeOptions, validTargetTypeIds]);
-
-  const selectedNodes = useMemo(
-    () => nodes.filter((node) => node.selected),
-    [nodes],
-  );
-  const selectedNodeIds = useMemo(
-    () => selectedNodes.map((node) => node.id),
-    [selectedNodes],
-  );
+  const { selectedNodes, selectedNodeIds } = useSelectedNodes();
   const canSavePattern = selectedNodes.length >= 2;
 
-  useEffect(() => {
-    const nextSelectedId =
-      selectedNodes.length > 0 ? selectedNodes[0].id : null;
-    setSelectedNodeId((prev) =>
-      prev === nextSelectedId ? prev : nextSelectedId,
-    );
-  }, [selectedNodes]);
-
-  const selectedNode = selectedNodeId
-    ? nodes.find((n) => n.id === selectedNodeId) || null
-    : null;
-  const selectedEdge = selectedEdgeId
-    ? edges.find((e) => e.id === selectedEdgeId) || null
-    : null;
-
-  const selectedEdgeForToolbar = useMemo(
-    () => edges.find((edge) => edge.selected) || null,
-    [edges],
-  );
-
-  const requestDelete = useCallback(
-    (payload: { nodeIds: string[]; edgeIds: string[]; label?: string }) => {
-      if (deleteDialogOpen) return;
-      setPendingDelete(payload);
-      setDeleteDialogOpen(true);
-    },
-    [deleteDialogOpen],
-  );
-
-  const parentNodesForSelected = useMemo(() => {
-    if (!selectedNodeId) return [];
-    const selected = nodes.find((node) => node.id === selectedNodeId);
-    const typeId = (selected?.data as NodeData | undefined)?.typeId;
-    if (!typeId) return [];
-    const parent =
-      availablePartDefNodes.find((node) => node.id === typeId) ||
-      nodes.find((node) => node.id === typeId);
-    return parent ? [parent] : [];
-  }, [nodes, selectedNodeId, availablePartDefNodes]);
-  const {
-    openPatternDialog,
-    patternDialogOpen,
-    setPatternDialogOpen,
-    patternName,
-    setPatternName,
-    patternDescription,
-    setPatternDescription,
-    patternSnapshot,
-    setPatternSnapshot,
-    handleCreatePattern,
-  } = usePatternCreation({
+  const patternCreation = usePatternCreation({
     selectedNodes,
-    edges,
     canSavePattern,
     selectedNodeIds,
-    projectId,
-    queryClient,
   });
 
-  useEffect(() => {
-    if (projectType !== "instance") return;
-
-    setNodes((current) => {
-      let hasChanges = false;
-      const next = current.map((node) => {
-        if (node.type !== "part") return node;
-        const data = node.data as unknown as NodeData | undefined;
-        if (!data?.typeId) return node;
-        const style = partDefStyleById.get(data.typeId);
-        if (!style) return node;
-        const shouldInherit =
-          data.inheritStyle === true ||
-          (data.inheritStyle !== false && !data.icon && !data.color);
-        if (!shouldInherit) return node;
-        if (
-          data.icon === style.icon &&
-          data.color === style.color &&
-          data.inheritStyle === true
-        ) {
-          return node;
-        }
-        hasChanges = true;
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            icon: style.icon,
-            color: style.color,
-            inheritStyle: true,
-          },
-        };
-      });
-      return hasChanges ? next : current;
-    });
-  }, [partDefStyleById, projectType, setNodes]);
+  useInheritedTypeStyles();
 
   useEffect(() => {
     setIsCanvasReady(false);
   }, [viewId]);
 
-  const {
-    leaveDialogOpen,
-    isLeaving,
-    handleCancelLeave,
-    handleLeaveWithoutSaving,
-    handleSaveAndLeave,
-  } = useDiagramLeaveConfirmation({
+  const leaveConfirmation = useDiagramLeaveConfirmation({
     viewId,
     isDirty,
     isSaving,
@@ -773,81 +272,24 @@ function FlowInner({
   useEffect(() => {
     if (isLoading) return;
     const timer = window.setTimeout(() => {
+      setFitViewOnMount(diagramStore.getState().nodes.length > 0);
       setIsCanvasReady(true);
     }, 120);
     return () => window.clearTimeout(timer);
-  }, [isLoading, viewId]);
+  }, [diagramStore, isLoading, viewId]);
 
-  const onCanvasNodesChange = useCallback(
-    (changes: NodeChange[]) => {
-      setNodes((current) => applyNodeChanges(changes, current));
-    },
-    [setNodes],
-  );
+  const onNodesChange = useDiagramStore((state) => state.onNodesChange);
+  const onEdgesChange = useDiagramStore((state) => state.onEdgesChange);
 
   const onNodeDoubleClick: NodeMouseHandler = useCallback(
-    (_event, node) => {
-      setSelectedNodeId(node.id);
-      if (isExternalNode(node.id)) {
-        toast({
-          title: "Referenced node",
-          description: "Referenced metamodel nodes are read-only.",
-        });
-        return;
-      }
-      setIsNodePanelOpen(true);
-    },
-    [isExternalNode, toast],
+    (_event, node) => openNodePanel(node.id),
+    [openNodePanel],
+  );
+  const onEdgeDoubleClick: EdgeMouseHandler = useCallback(
+    (_event, edge) => openEdgePanel(edge.id),
+    [openEdgePanel],
   );
 
-  const onEdgeDoubleClick: EdgeMouseHandler = useCallback((_event, edge) => {
-    setSelectedEdgeId(edge.id);
-    setIsEdgePanelOpen(true);
-  }, []);
-
-  const handleCloseNodePanel = useCallback(() => {
-    setIsNodePanelOpen(false);
-    setSelectedNodeId(null);
-  }, []);
-
-  const handleCloseEdgePanel = useCallback(() => {
-    setIsEdgePanelOpen(false);
-    setSelectedEdgeId(null);
-  }, []);
-  const {
-    handleOpenEdgePanelFromTable,
-    handleSelectNodeFromTable,
-    handleOpenNodePanelFromTable,
-    handleSelectEdgeFromTable,
-  } = useCanvasTableSelection({
-    setNodes,
-    setEdges,
-    setSelectedNodeId,
-    setSelectedEdgeId,
-    isExternalNode,
-    toast,
-    setIsNodePanelOpen,
-    setIsEdgePanelOpen,
-  });
-
-  const handleStraightenEdge = useCallback(() => {
-    if (!selectedEdgeForToolbar) return;
-    const patch = computeStraightenedEdge(selectedEdgeForToolbar, nodes);
-    if (!patch) return;
-
-    setEdges((current) =>
-      current.map((edge) =>
-        edge.id === selectedEdgeForToolbar.id
-          ? {
-              ...edge,
-              data: patch.data,
-              sourceHandle: patch.sourceHandle,
-              targetHandle: patch.targetHandle,
-            }
-          : edge,
-      ),
-    );
-  }, [nodes, selectedEdgeForToolbar, setEdges]);
   const {
     handleCopyNode,
     handleDeleteNode,
@@ -861,94 +303,22 @@ function FlowInner({
     handleSaveNodeData,
     handleSaveEdgeData,
   } = useCanvasElementActions({
-    isExternalNode,
-    takeSnapshot,
-    nodes,
-    edges,
-    partDefStyleById,
-    setNodes,
-    setEdges,
-    partTypeOptions,
-    projectType,
-    setSelectedNodeId,
     selectedNodes,
-    setSelectedEdgeId,
-    requestDelete,
-    edgeTypeCycle,
   });
   useCanvasActionRequests({
-    handleOpenNodePanelForNode,
+    handleOpenNodePanelForNode: openNodePanel,
     handleCopyNode,
     handleDeleteNode,
-    handleOpenEdgePanelFromTable,
+    handleOpenEdgePanelFromTable: openEdgePanel,
     handleDeleteEdge,
     handleToggleEdgeType,
     handleReverseEdgeDirection,
   });
 
-  const handleConfirmDelete = useCallback(() => {
-    if (!pendingDelete) return;
-    const nodeIdSet = new Set(pendingDelete.nodeIds);
-    const edgeIdSet = new Set(pendingDelete.edgeIds);
-    const hasSelection = nodeIdSet.size > 0 || edgeIdSet.size > 0;
-
-    if (!hasSelection) {
-      setDeleteDialogOpen(false);
-      setPendingDelete(null);
-      return;
-    }
-
-    takeSnapshot(nodes, edges);
-    setNodes((nds) => nds.filter((n) => !nodeIdSet.has(n.id)));
-    setEdges((eds) =>
-      eds.filter(
-        (e) =>
-          !edgeIdSet.has(e.id) &&
-          !nodeIdSet.has(e.source) &&
-          !nodeIdSet.has(e.target),
-      ),
-    );
-
-    if (selectedNodeId && nodeIdSet.has(selectedNodeId)) {
-      setSelectedNodeId(null);
-      setIsNodePanelOpen(false);
-    }
-    if (selectedEdgeId && edgeIdSet.has(selectedEdgeId)) {
-      setSelectedEdgeId(null);
-      setIsEdgePanelOpen(false);
-    }
-
-    setDeleteDialogOpen(false);
-    setPendingDelete(null);
-  }, [
-    pendingDelete,
-    nodes,
-    edges,
-    selectedNodeId,
-    selectedEdgeId,
-    setNodes,
-    setEdges,
-    takeSnapshot,
-  ]);
 
   useCanvasKeyboardShortcuts({
-    nodes,
-    edges,
     deleteDialogOpen,
     onSave: handleSave,
-    requestDelete,
-  });
-  const {
-    nodeTableRows,
-    filteredNodeTableRows,
-    edgeTableRows,
-    filteredEdgeTableRows,
-  } = useCanvasTableRows({
-    nodes,
-    isExternalNode,
-    edges,
-    nodeTableFilter,
-    edgeTableFilter,
   });
 
   if (isLoading) {
@@ -965,14 +335,11 @@ function FlowInner({
   if (isError) {
     return (
       <DiagramLoadError
+        viewId={viewId}
         reloadDiagram={reloadDiagram}
-        openRecovery={openRecovery}
-        recoveryOpen={recoveryOpen}
-        recoveryQuery={recoveryQuery}
         isSaving={isSaving}
-        setRecoveryOpen={setRecoveryOpen}
         setSuspendFlowLoad={setSuspendFlowLoad}
-        handleRecoverySave={handleRecoverySave}
+        saveRecovered={handleSaveRecovered}
       />
     );
   }
@@ -985,27 +352,12 @@ function FlowInner({
         data-testid="diagram-canvas-region"
       >
       {isTableMode ? (
-        <CanvasTableMode
-          projectType={projectType}
-          nodeTableRows={nodeTableRows}
-          filteredNodeTableRows={filteredNodeTableRows}
-          nodeTableFilter={nodeTableFilter}
-          onNodeTableFilterChange={setNodeTableFilter}
-          edgeTableRows={edgeTableRows}
-          filteredEdgeTableRows={filteredEdgeTableRows}
-          edgeTableFilter={edgeTableFilter}
-          onEdgeTableFilterChange={setEdgeTableFilter}
-          selectedNodeId={selectedNodeId}
-          selectedEdgeId={selectedEdgeId}
+        <ConnectedCanvasTableMode
           instanceNodeTypeOptions={instanceNodeTypeOptions}
           metamodelNodeTypeOptions={metamodelNodeTypeOptions}
-          onSelectNode={handleSelectNodeFromTable}
-          onSelectEdge={handleSelectEdgeFromTable}
-          onOpenNodePanel={handleOpenNodePanelFromTable}
-          onOpenEdgePanel={handleOpenEdgePanelFromTable}
           onInlineNodeFieldChange={handleInlineNodeFieldChange}
           onInlineEdgeFieldChange={handleInlineEdgeFieldChange}
-          displayMode={displayMode === "table" ? "table" : "graph"}
+          displayMode="table"
           onDisplayModeChange={(mode) => onDisplayModeChange?.(mode)}
         />
       ) : isCanvasReady ? (
@@ -1015,7 +367,7 @@ function FlowInner({
         <ReactFlow
           nodes={displayNodes}
           edges={displayEdges}
-          onNodesChange={onCanvasNodesChange}
+          onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeDragStart={handleNodeDragStart}
           onNodeDrag={handleNodeDrag}
@@ -1035,7 +387,10 @@ function FlowInner({
           connectionLineComponent={ConnectionPreviewLine}
           minZoom={0.1}
           deleteKeyCode={null}
-          fitView
+          // Fit once when the canvas mounts with elements. On an empty diagram
+          // React Flow would otherwise zoom onto the first element dropped in,
+          // pushing the next one off-screen.
+          fitView={fitViewOnMount}
           className={`bg-slate-50 dark:bg-slate-950${isConnecting ? " flow-connecting" : ""}${isConnectionValid === true ? " flow-connecting-valid" : ""}${isConnectionValid === false ? " flow-connecting-invalid" : ""}`}
         >
           <AggregationMarkerDefs />
@@ -1050,80 +405,19 @@ function FlowInner({
           <CanvasAlignmentGuides guides={alignmentGuides} />
           <Controls className="bg-white dark:bg-slate-900 border-border shadow-lg" />
 
-          <DiagramToolbar
-            projectType={projectType}
+          <CanvasToolbar
             displayMode={displayMode}
             onDisplayModeChange={(mode) => onDisplayModeChange?.(mode)}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            canStraightenEdge={Boolean(
-              !isFlowMode &&
-                selectedEdgeForToolbar &&
-                (selectedEdgeForToolbar.data as CustomEdgeData | undefined)
-                  ?.pathType === "straight",
-            )}
-            canLayoutSelection={selectedNodeIds.length > 0}
-            canAutoLayout={nodes.length > 0}
+            preferences={preferences}
+            playback={playback}
+            selectedNodeIds={selectedNodeIds}
             canSavePattern={canSavePattern}
-            onSavePattern={openPatternDialog}
-            onUndo={undo}
-            onRedo={redo}
-            snapNodesEnabled={snapNodesEnabled}
-            alwaysShowAccent={alwaysShowAccent}
-            showBackgroundDots={showBackgroundDots}
-            showNodeDescriptions={showNodeDescriptions}
-            isFlowMode={isFlowMode}
-            isFlowRunning={isFlowRunning}
-            canSetFlowStart={Boolean(selectedNodeId)}
-            canSetFlowEnd={Boolean(selectedNodeId)}
-            canPlayFlow={Boolean(flowStartNodeId && flowEndNodeId)}
-            canStepBack={Boolean(!isFlowRunning && flowCurrentTick > 1)}
-            canStepForward={Boolean(
-              !isFlowRunning &&
-                flowStartNodeId &&
-                flowEndNodeId &&
-                (flowMaxTick === null || flowCurrentTick < flowMaxTick),
-            )}
-            onSetFlowStart={handleSetFlowStart}
-            onSetFlowEnd={handleSetFlowEnd}
-            onPlayFlow={handlePlayFlow}
-            onStopFlow={handleStopFlow}
-            onStepBack={handleStepBack}
-            onStepForward={handleStepForward}
-            onResetFlow={handleResetFlow}
-            onAutoLayout={() => {
-              handleAutoLayout();
-              emitTutorialSignal("auto-layout");
-            }}
-            onLayoutSelectedVertical={() =>
-              handleLayoutSelected("TB", selectedNodeIds)
-            }
-            onLayoutSelectedHorizontal={() =>
-              handleLayoutSelected("LR", selectedNodeIds)
-            }
-            onCenterSelectedVertical={() =>
-              handleCenterSelected("x", selectedNodeIds)
-            }
-            onCenterSelectedHorizontal={() =>
-              handleCenterSelected("y", selectedNodeIds)
-            }
+            onSavePattern={patternCreation.openPatternDialog}
+            onAutoLayout={handleAutoLayout}
+            onLayoutSelected={handleLayoutSelected}
+            onCenterSelected={handleCenterSelected}
             onScreenshot={takeScreenshot}
-            onValidate={() => {
-              handleValidate();
-              emitTutorialSignal("validation-run");
-            }}
-            onStraightenEdge={handleStraightenEdge}
-            onToggleSnap={() => setSnapEnabled((current) => !current)}
-            onToggleAlwaysShowAccent={() =>
-              setAlwaysShowAccent((current) => !current)
-            }
-            onToggleBackgroundDots={() =>
-              setShowBackgroundDots((current) => !current)
-            }
-            onToggleNodeDescriptions={() =>
-              setShowNodeDescriptions((current) => !current)
-            }
-            onOpenHelp={() => setHelpDialogOpen(true)}
+            onValidate={validation.handleValidate}
           />
         </ReactFlow>
         </EdgeRelationConfirmationProvider>
@@ -1146,17 +440,7 @@ function FlowInner({
           />
         )}
 
-      <SavePatternDialog
-        patternDialogOpen={patternDialogOpen}
-        setPatternDialogOpen={setPatternDialogOpen}
-        patternName={patternName}
-        setPatternName={setPatternName}
-        patternDescription={patternDescription}
-        setPatternDescription={setPatternDescription}
-        patternSnapshot={patternSnapshot}
-        setPatternSnapshot={setPatternSnapshot}
-        handleCreatePattern={handleCreatePattern}
-      />
+      <SavePatternDialog {...patternCreation} />
 
       <DiagramHelpDialog
         helpDialogOpen={helpDialogOpen}
@@ -1164,54 +448,14 @@ function FlowInner({
         helpContent={helpContent}
       />
 
-      <EdgeCreateMenu
-        open={!!edgeCreateMenu}
-        position={
-          edgeCreateMenu
-            ? { x: edgeCreateMenu.x, y: edgeCreateMenu.y }
-            : undefined
-        }
-        projectType={projectType}
-        partTypeOptions={filteredPartTypeOptions}
-        metamodelDefaultType={metamodelDefaultType}
-        limitToValidTargets={limitToValidTargets}
-        onLimitToValidTargetsChange={setLimitToValidTargets}
-        onSelectDefault={() =>
-          finalizeEdgeCreateNode(
-            metamodelDefaultType
-              ? {
-                  typeLabel: metamodelDefaultType.label,
-                  icon: metamodelDefaultType.icon,
-                }
-              : undefined,
-          )
-        }
-        onSelectType={(option) =>
-          finalizeEdgeCreateNode({
-            typeId: option.id,
-            typeLabel: option.label,
-            icon: option.icon,
-            color: option.color,
-          })
-        }
+      <CanvasEdgeCreateMenu
+        menu={edgeCreateMenu}
+        sourceNodeId={pendingConnectionSource?.nodeId ?? null}
+        onCreate={finalizeEdgeCreateNode}
         onCancel={closeEdgeCreateMenu}
       />
 
       <CanvasInspectorPanels
-        node={selectedNode}
-        edge={selectedEdge}
-        nodes={nodes}
-        edges={edges}
-        nodePanelOpen={isNodePanelOpen}
-        edgePanelOpen={isEdgePanelOpen}
-        availablePartDefs={availablePartDefs}
-        availablePartDefNodes={availablePartDefNodes}
-        availablePartDefEdges={availablePartDefEdges}
-        parentNodes={parentNodesForSelected}
-        referencedMetamodels={referencedMetamodels}
-        allowedEdgeTypes={configuredRelationTypes}
-        onCloseNodePanel={handleCloseNodePanel}
-        onCloseEdgePanel={handleCloseEdgePanel}
         onSaveNode={handleSaveNodeData}
         onDeleteNode={handleDeleteNode}
         onSaveEdge={handleSaveEdgeData}
@@ -1251,36 +495,11 @@ function FlowInner({
         onDownload={downloadImage}
       />
 
-      <ValidationResultsDialog
-        validationOpen={validationOpen}
-        setValidationOpen={setValidationOpen}
-        validationIssues={validationIssues}
-        projectType={projectType}
-        highlightIssues={highlightIssues}
-        setHighlightIssues={setHighlightIssues}
-        applyIssueHighlights={applyIssueHighlights}
-      />
+      <ValidationResultsDialog {...validation} projectType={projectType} />
 
-      <UnsavedChangesDialog
-        leaveDialogOpen={leaveDialogOpen}
-        isLeaving={isLeaving}
-        handleCancelLeave={handleCancelLeave}
-        isSaving={isSaving}
-        handleLeaveWithoutSaving={handleLeaveWithoutSaving}
-        handleSaveAndLeave={handleSaveAndLeave}
-      />
+      <UnsavedChangesDialog {...leaveConfirmation} isSaving={isSaving} />
 
-      <DeleteConfirmDialog
-        open={deleteDialogOpen}
-        label={pendingDelete?.label}
-        onOpenChange={(open) => {
-          setDeleteDialogOpen(open);
-          if (!open) {
-            setPendingDelete(null);
-          }
-        }}
-        onConfirm={handleConfirmDelete}
-      />
+      <CanvasDeleteDialog />
     </div>
   );
 }
@@ -1288,7 +507,11 @@ function FlowInner({
 export function DiagramCanvas(props: DiagramCanvasProps) {
   return (
     <ReactFlowProvider>
-      <FlowInner {...props} />
+      <DiagramStoreProvider>
+        <DiagramModelProvider {...props}>
+          <FlowInner {...props} />
+        </DiagramModelProvider>
+      </DiagramStoreProvider>
     </ReactFlowProvider>
   );
 }

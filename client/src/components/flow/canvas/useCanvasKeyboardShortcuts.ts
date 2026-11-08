@@ -1,19 +1,9 @@
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useEffect } from "react";
-import type {
-  DiagramEdge,
-  DiagramNode as Node,
-} from "../types";
 
 interface UseCanvasKeyboardShortcutsArgs {
-  nodes: Node[];
-  edges: DiagramEdge[];
   deleteDialogOpen: boolean;
   onSave: () => void;
-  requestDelete: (payload: {
-    nodeIds: string[];
-    edgeIds: string[];
-    label?: string;
-  }) => void;
 }
 
 const isEditableTarget = (target: EventTarget | null): boolean => {
@@ -31,12 +21,12 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
  * The Ctrl/Cmd+C/V clipboard shortcuts live in `useDiagramClipboard`.
  */
 export function useCanvasKeyboardShortcuts({
-  nodes,
-  edges,
   deleteDialogOpen,
   onSave,
-  requestDelete,
 }: UseCanvasKeyboardShortcutsArgs) {
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
+  const requestDelete = useDiagramStore((state) => state.requestDelete);
   useEffect(() => {
     const handleSaveShortcut = (event: KeyboardEvent) => {
       if (

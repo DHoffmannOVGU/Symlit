@@ -1,34 +1,22 @@
+import { useToast } from "@/hooks/use-toast";
+import { useDiagramModel } from "../state/DiagramModelProvider";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
-import type { Edge, Node } from "@xyflow/react";
 
 import type { CustomEdgeData } from "../edges/CustomEdges";
 import type { NodeData } from "../types";
 import { inferFlowTypeFromNodes } from "../utils/flow-type";
 
-interface ToastFn {
-  (props: { title?: string; description?: string }): void;
-}
-
-interface UseFlowPlaybackParams {
-  isFlowMode: boolean;
-  nodes: Node[];
-  edges: Edge[];
-  selectedNodeId: string | null;
-  setNodes: Dispatch<SetStateAction<Node[]>>;
-  toast: ToastFn;
-}
 
 const FLOW_MAX_TICKS_PER_NODE = 5;
 
-export function useFlowPlayback({
-  isFlowMode,
-  nodes,
-  edges,
-  selectedNodeId,
-  setNodes,
-  toast,
-}: UseFlowPlaybackParams) {
+export function useFlowPlayback() {
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
+  const selectedNodeId = useDiagramStore((state) => state.selectedNodeId);
+  const setNodes = useDiagramStore((state) => state.setNodes);
+  const { isFlowMode } = useDiagramModel();
+  const { toast } = useToast();
   const [isFlowRunning, setIsFlowRunning] = useState(false);
   const [flowCompleted, setFlowCompleted] = useState(false);
   const [flowSchedule, setFlowSchedule] = useState<Map<string, number[]> | null>(

@@ -95,14 +95,25 @@ presets, the renderers/editors, and this document together.
 - `client/src/pages`: `ProjectList` (`/projects`) and `ProjectView` (`/project/:id`, `/project/:id/view/:viewId`).
 - `client/src/hooks`: React Query hooks per resource (`use-projects`, `use-views`, `use-flow`, …) and `use-auth`.
 - `client/src/components/flow`: the diagram editor (the largest and fastest-moving area).
-  - `canvas/DiagramCanvas.tsx` composes the canvas. Its logic lives in hooks next to it, one per
-    concern: `useCanvasDisplayGraph` (what React Flow renders), `useCanvasElementActions` (edit,
-    copy, delete, re-type, reverse), `useCanvasInsertion` and `useCanvasDropInsertion` (sidebar
-    inserts and drops), `usePatternCreation`, `useCanvasSidePanels` (model rules / AI panels),
-    `useCanvasAiProposal`, `useEdgeRelationConfirmation`, `useCanvasActionRequests` (actions
-    requested from the sidebar), `useCanvasTableRows` and `useCanvasTableSelection` (table mode).
-    Dialogs are separate components (`SavePatternDialog`, `DiagramHelpDialog`,
-    `ValidationResultsDialog`, `UnsavedChangesDialog`, `DiagramLoadError`).
+  - **State.** Each open diagram has one Zustand store (`state/diagramStore.ts`, provided by
+    `DiagramStoreProvider`): nodes, edges, undo history, selection, open panels, the pending
+    delete, help dialog and table filters, plus actions such as `selectNode`, `openNodePanel` and
+    `confirmDelete`. Read it with `useDiagramStore(selector)`. Read-only model information (project
+    and view, metamodel types, inheritance, allowed relationships, model rules, which elements come
+    from referenced projects) is computed once by `DiagramModelProvider` and read with
+    `useDiagramModel()`. New editor state belongs in the store, not in `DiagramCanvas` props
+    (see `docs/decisions/diagram-editor-state-and-libraries.md`).
+  - `canvas/DiagramCanvas.tsx` (~500 lines) sets up the providers and lays out the canvas. Hooks next
+    to it each handle one concern and read the store/model themselves: `useDiagramCanvas` (load,
+    save, layout), `useCanvasDisplayGraph` (what React Flow renders), `useCanvasElementActions`
+    (edit, copy, delete, re-type, reverse), `useEdgeCreation`, `useCanvasInsertion` and
+    `useCanvasDropInsertion` (sidebar inserts and drops), `usePatternCreation`,
+    `useCanvasSidePanels` (model rules / AI panels), `useCanvasAiProposal`,
+    `useEdgeRelationConfirmation`, `useCanvasActionRequests` (actions requested from the sidebar),
+    `useSelectedNodes`, `useInheritedTypeStyles`. Connected components own their wiring:
+    `CanvasToolbar`, `CanvasInspectorPanels`, `ConnectedCanvasTableMode`, `CanvasEdgeCreateMenu`,
+    `CanvasDeleteDialog`, `DiagramLoadError` (incl. repair). Other dialogs are separate components
+    (`SavePatternDialog`, `DiagramHelpDialog`, `ValidationResultsDialog`, `UnsavedChangesDialog`).
   - `nodes/*` and `edges/*` are the renderers.
   - `panels/*` are the attribute editors.
   - `hooks/*` hold canvas state, edge creation, validation, playback and screenshots.
