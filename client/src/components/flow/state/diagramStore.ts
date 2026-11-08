@@ -71,6 +71,10 @@ export interface DiagramState {
   helpDialogOpen: boolean;
   setHelpDialogOpen: (updater: Updater<boolean>) => void;
 
+  /** Signature of the diagram as last loaded or saved (see diagram-serialization.ts); "" before loading. */
+  savedSignature: string;
+  setSavedSignature: (signature: string) => void;
+
   nodeTableFilter: string;
   edgeTableFilter: string;
   setNodeTableFilter: (value: string) => void;
@@ -195,6 +199,9 @@ export function createDiagramStore() {
 
     helpDialogOpen: false,
     setHelpDialogOpen: (updater) => set((state) => ({ helpDialogOpen: resolve(updater, state.helpDialogOpen) })),
+
+    savedSignature: "",
+    setSavedSignature: (signature) => set({ savedSignature: signature }),
 
     nodeTableFilter: "",
     edgeTableFilter: "",
