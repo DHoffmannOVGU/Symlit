@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Edge, Node } from "@xyflow/react";
-import { getAutoLayout, LAYOUT_GAP_X, LAYOUT_GAP_Y } from "./autolayout";
+import { attachToFacingSides, getAutoLayout, LAYOUT_GAP_X, LAYOUT_GAP_Y } from "./autolayout";
 
 const node = (id: string, x = 100, y = 100, width = 300, height = 200): Node => ({
   id,
@@ -74,4 +74,22 @@ test("uses the real element size, and handles empty diagrams and cycles", () => 
   assert.deepEqual(getAutoLayout([], []).nodes, []);
   const cyclic = getAutoLayout([node("x"), node("y")], [down("x", "y"), down("y", "x")]).nodes;
   assert.equal(overlaps(cyclic), false);
+});
+
+test("relationships are re-attached to the sides that face each other, keeping their direction", () => {
+  const nodes = [node("a", 0, 0), node("right", 600, 0), node("below", 0, 500), node("left", -600, 50)];
+  const edges: Edge[] = [
+    { id: "1", source: "a", target: "right", sourceHandle: "bottom", targetHandle: "top" },
+    { id: "2", source: "below", target: "a", sourceHandle: "left", targetHandle: "right",
+      data: { label: "x", sourceAnchor: { side: "left", offset: 0.2 }, targetAnchor: { side: "right", offset: 0.8 } } },
+    { id: "3", source: "a", target: "left", sourceHandle: "left", targetHandle: "right" },
+  ];
+  const result = attachToFacingSides(nodes, edges);
+  assert.deepEqual(result.map((e) => [e.source, e.sourceHandle, e.target, e.targetHandle]), [
+    ["a", "right", "right", "left"],
+    ["below", "top", "a", "bottom"],
+    ["a", "left", "left", "right"],
+  ]);
+  assert.deepEqual(result[1].data, { label: "x" }, "anchor offsets for the old sides are dropped");
+  assert.equal(result[2], edges[2], "relationships already facing are left as they are");
 });

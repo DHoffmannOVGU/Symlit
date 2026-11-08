@@ -133,7 +133,7 @@ presets, the renderers/editors, and this document together.
   `sidebar/useSidebarFlowData` loads local and referenced diagrams, `sidebar/useViewOrdering`
   handles drag-to-reorder, and `sidebar-parts/` holds the header, tabs, footer, view element lists
   and the two palettes.
-- `client/src/components/flow/utils/autolayout.ts`: whole-diagram Auto Layout (dagre; side-connected elements share a row, other relationships form a hierarchy).
+- `client/src/components/flow/utils/autolayout.ts`: whole-diagram Auto Layout (dagre; side-connected elements share a row, other relationships form a hierarchy; afterwards relationships are re-attached to the sides that face each other).
 - `client/src/lib/diagram-events.ts`: in-app event bus (context-owned `EventTarget`) between the sidebar, toolbar and canvas.
 - `client/src/components/ui`: shadcn/ui primitives.
 
