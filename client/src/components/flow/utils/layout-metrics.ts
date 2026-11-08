@@ -1,5 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
-import { nodeSize } from "./autolayout";
+import { nodeSize } from "./node-size";
 import { normalizeHandleId, type HandleSide } from "./edge-utils";
 
 /** Where a handle sits on an element. */

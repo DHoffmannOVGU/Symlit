@@ -1,12 +1,6 @@
 import { z } from 'zod';
-import {
-  insertProjectSchema,
-  insertViewSchema,
-  projects,
-  views,
-  nodes,
-  users,
-} from './schema';
+import { insertProjectSchema, insertViewSchema } from './contracts';
+import type { projects, views, nodes, users } from './schema';
 import { aiMetamodelProposalSchema, aiMetamodelRequestSchema } from './ai-metamodel';
 
 const nonBlankString = z.string().refine((value) => value.trim().length > 0, {

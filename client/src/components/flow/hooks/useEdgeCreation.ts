@@ -12,7 +12,7 @@ import type {
   DiagramNode as Node,
   NodeData,
 } from "../types";
-import { NODE_HEIGHT, NODE_WIDTH } from "../utils/autolayout";
+import { NODE_HEIGHT, NODE_WIDTH } from "../utils/node-size";
 import {
   EDGE_CREATE_MARKER_DELAY_MS,
   EDGE_CREATE_MARKER_MOVE_THRESHOLD_PX,

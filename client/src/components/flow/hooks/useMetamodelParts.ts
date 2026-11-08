@@ -10,7 +10,7 @@ import { EVENTDEF_DEFAULT_ACCENT_COLOR } from "../nodes/EventDefNode";
 import { CAPABILITYDEF_DEFAULT_ACCENT_COLOR } from "../nodes/CapabilityDefNode";
 import type { NodeData } from "../types";
 import type { CustomEdgeData } from "../edges/CustomEdges";
-import { modelRuleSchema, type ModelRule, type ProjectType } from "@shared/schema";
+import { modelRuleSchema, type ModelRule, type ProjectType } from "@shared/contracts";
 import {
   getConfiguredMagicRelationTypes,
   isMagicRelationType,

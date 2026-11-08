@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 // Full-stack checks of canvas interactions that run through the diagram store:
-// creating an element by dragging a relationship onto empty canvas, undo,
+// creating an element by dragging a relationship onto empty canvas, Auto Layout, undo,
 // the element panel, and table mode.
 
 test("drag a relationship onto empty canvas, create the element, undo, and edit in the panel", async ({ page, request }) => {
@@ -45,7 +45,16 @@ test("drag a relationship onto empty canvas, create the element, undo, and edit 
   await expect(page.locator(".react-flow__node")).toHaveCount(2);
   await expect(page.locator(".react-flow__edge")).toHaveCount(1);
 
-  // Undo removes the new element and its relationship together.
+  // Auto Layout (its engine loads on first use) moves the elements; undo restores them.
+  const positions = () =>
+    page.locator(".react-flow__node").evaluateAll((els) => els.map((el) => (el as HTMLElement).style.transform).join("|"));
+  const beforeLayout = await positions();
+  await page.getByTitle("Auto Layout").click();
+  await expect.poll(positions).not.toBe(beforeLayout);
+  await page.getByTitle("Undo").click();
+  await expect.poll(positions).toBe(beforeLayout);
+
+  // Undo again removes the new element and its relationship together.
   await page.getByTitle("Undo").click();
   await expect(page.locator(".react-flow__node")).toHaveCount(1);
   await expect(page.locator(".react-flow__edge")).toHaveCount(0);

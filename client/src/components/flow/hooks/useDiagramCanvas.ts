@@ -12,13 +12,8 @@ import type { ProjectType } from "@shared/schema";
 import { isMagicRelationType } from "@shared/metamodel-setup";
 import { flowSyncInputSchema } from "@shared/routes";
 import type { DiagramEdge, DiagramNode } from "../types";
-import { useDiagramStore } from "../state/DiagramStoreProvider";
-import {
-  getAutoLayout,
-  NODE_WIDTH,
-  NODE_HEIGHT,
-} from "../utils/autolayout";
-import { layoutSelectedNodesWithDagre } from "../utils/dagre-layout";
+import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
+import { NODE_HEIGHT, NODE_WIDTH } from "../utils/node-size";
 import type { InsertFlowEdge, InsertFlowNode } from "@/hooks/use-flow";
 import { getEdgeMarkers, type CustomEdgeData } from "../edges/CustomEdges";
 
@@ -117,6 +112,7 @@ export function useDiagramCanvas(
   const { screenToFlowPosition, fitView } = useReactFlow();
   const lastFittedViewId = useRef<number | null>(null);
 
+  const diagramStore = useDiagramStoreApi();
   const nodes = useDiagramStore((state) => state.nodes);
   const edges = useDiagramStore((state) => state.edges);
   const setNodes = useDiagramStore((state) => state.setNodes);
@@ -328,33 +324,30 @@ export function useDiagramCanvas(
     ],
   );
 
-  const handleAutoLayout = useCallback(() => {
-    if (nodes.length === 0) return;
-    takeSnapshot(nodes, edges);
-    const { nodes: layoutedNodes, edges: layoutedEdges } =
-      getAutoLayout(nodes, edges);
+  const handleAutoLayout = useCallback(async () => {
+    if (diagramStore.getState().nodes.length === 0) return;
+    // The layout engine (dagre) loads on first use.
+    const { getAutoLayout } = await import("../utils/autolayout");
+    const { nodes: current, edges: currentEdges } = diagramStore.getState();
+    takeSnapshot(current, currentEdges);
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getAutoLayout(current, currentEdges);
     setNodes(layoutedNodes);
     setEdges(layoutedEdges);
     // Fit after the new positions have rendered.
     requestAnimationFrame(() => {
       fitView({ duration: 800 });
     });
-  }, [nodes, edges, setNodes, setEdges, takeSnapshot, fitView]);
+  }, [diagramStore, setNodes, setEdges, takeSnapshot, fitView]);
 
   const handleLayoutSelected = useCallback(
-    (direction: "TB" | "LR", selectedNodeIds: string[]) => {
+    async (direction: "TB" | "LR", selectedNodeIds: string[]) => {
       if (selectedNodeIds.length === 0) return;
-      setNodes((currentNodes) => {
-        takeSnapshot(currentNodes, edges);
-        return layoutSelectedNodesWithDagre(
-          currentNodes,
-          edges,
-          selectedNodeIds,
-          direction,
-        );
-      });
+      const { layoutSelectedNodesWithDagre } = await import("../utils/dagre-layout");
+      const { nodes: currentNodes, edges: currentEdges } = diagramStore.getState();
+      takeSnapshot(currentNodes, currentEdges);
+      setNodes(layoutSelectedNodesWithDagre(currentNodes, currentEdges, selectedNodeIds, direction));
     },
-    [edges, setNodes, takeSnapshot],
+    [diagramStore, setNodes, takeSnapshot],
   );
 
   const handleCenterSelected = useCallback(

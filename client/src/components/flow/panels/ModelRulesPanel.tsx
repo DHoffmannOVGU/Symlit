@@ -1,6 +1,7 @@
+import { useDiagramStore } from "../state/DiagramStoreProvider";
+import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Edge, Node } from "@xyflow/react";
-import { modelRuleSchema, type ModelRule, type ModelRuleCondition, type ProjectType } from "@shared/schema";
+import { modelRuleSchema, type ModelRule, type ModelRuleCondition } from "@shared/contracts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,16 +25,11 @@ import {
 type Props = {
   open: boolean;
   onClose: () => void;
-  viewId: number;
-  projectId: number;
-  initialRules: ModelRule[];
-  inheritedRules?: ModelRule[];
-  projectType: ProjectType;
   height: number;
   onHeightChange: (height: number) => void;
-  nodes: Node[];
-  edges: Edge[];
 };
+
+const NO_RULES: ModelRule[] = [];
 
 type TargetOptions = ReturnType<typeof getModelRuleTargetOptions>;
 type Comparison = Extract<ModelRuleCondition, { kind: "comparison" }>;
@@ -151,7 +147,11 @@ function ConditionEditor({ condition, onChange, onDelete, targetOptions, attribu
   );
 }
 
-export function ModelRulesPanel({ open, onClose, viewId, projectId, initialRules, inheritedRules = [], projectType, height: panelHeight, onHeightChange, nodes, edges }: Props) {
+export function ModelRulesPanel({ open, onClose, height: panelHeight, onHeightChange }: Props) {
+  const { viewId, projectId, projectType, localModelRules: initialRules, referencedModelRules } = useDiagramModel();
+  const inheritedRules = projectType === "instance" ? referencedModelRules : NO_RULES;
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
   const [rules, setRules] = useState<ModelRule[]>(initialRules);
   const isInstanceEditor = projectType === "instance";
   const resizeStart = useRef<{ y: number; height: number } | null>(null);

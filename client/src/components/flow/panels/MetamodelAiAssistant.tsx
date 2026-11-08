@@ -1,3 +1,5 @@
+import { useDiagramStore } from "../state/DiagramStoreProvider";
+import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useMemo, useState } from "react";
 import type {
   AiMetamodelNodeKind,
@@ -6,11 +8,9 @@ import type {
 import {
   getConfiguredMagicNodeTypes,
   getConfiguredMagicRelationTypes,
-  type MetamodelSetup,
 } from "@shared/metamodel-setup";
 import type {
   CustomEdgeData,
-  DiagramEdge,
   DiagramNode,
   NodeData,
 } from "../types";
@@ -59,11 +59,6 @@ type ChatMessage = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  projectId: number;
-  viewId: number;
-  nodes: DiagramNode[];
-  edges: DiagramEdge[];
-  metamodelSetup?: MetamodelSetup | null;
   onApply: (proposal: AiMetamodelProposal) => void;
 };
 
@@ -156,13 +151,11 @@ function WarningList({ warnings }: { warnings: string[] }) {
 export function MetamodelAiAssistant({
   open,
   onClose,
-  projectId,
-  viewId,
-  nodes,
-  edges,
-  metamodelSetup,
   onApply,
 }: Props) {
+  const { projectId, viewId, metamodelSetup } = useDiagramModel();
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
