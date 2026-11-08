@@ -402,30 +402,6 @@ describe("element identity and lifecycle", () => {
 
     assert.ok(await storage.getNodeById(typeNode.id), "metamodel element survives");
   });
-
-  test("a pattern can be inserted twice into the same diagram", async () => {
-    const project = await createProject();
-    const view = await createView(project.id);
-    const flow = sampleFlow(`pat${project.id}`);
-    const created = await request("POST", `/api/projects/${project.id}/patterns`, {
-      name: "Pair",
-      nodes: flow.nodes.map(({ id, type, position, data }) => ({ nodeId: id, type, position, data })),
-      edges: flow.edges.map(({ source, target }) => ({ source, target })),
-    });
-    assert.ok(created.status < 300, created.text);
-    const [pattern] = (await request("GET", `/api/projects/${project.id}/patterns`)).json;
-
-    for (const x of [0, 400]) {
-      const res = await request("POST", `/api/views/${view.id}/patterns/${pattern.id}/insert`, {
-        position: { x, y: 0 },
-      });
-      assert.ok(res.status < 300, res.text);
-    }
-    const result = (await request("GET", `/api/views/${view.id}/flow`)).json;
-    assert.equal(result.nodes.length, 4);
-    assert.equal(result.edges.length, 2);
-    assert.equal(new Set(result.nodes.map((n: { id: string }) => n.id)).size, 4);
-  });
 });
 
 describe("project integrity", () => {
@@ -611,29 +587,6 @@ describe("relationship data", () => {
     assert.equal(edge.edgeType, "composition");
     assert.deepEqual([edge.sourceHandle, edge.targetHandle], ["top", "top"]);
     assert.deepEqual(edge.data, { label: "has", custom: { x: 1 }, edgeType: "composition" });
-  });
-
-  test("patterns keep their relationship types when saved and inserted", async () => {
-    const project = await createProject();
-    const view = await createView(project.id);
-    const flow = sampleFlow(`pk${project.id}`);
-    const created = await request("POST", `/api/projects/${project.id}/patterns`, {
-      name: "Assembly",
-      nodes: flow.nodes.map(({ id, type, position, data }) => ({ nodeId: id, type, position, data })),
-      edges: [{ source: flow.nodes[0].id, target: flow.nodes[1].id, edgeType: "composition", sourceHandle: "right", targetHandle: "left", data: { label: "contains" } }],
-    });
-    assert.ok(created.status < 300, created.text);
-    const [pattern] = (await request("GET", `/api/projects/${project.id}/patterns`)).json;
-    const stored = (await request("GET", `/api/views/${pattern.id}/flow`)).json.edges[0];
-    assert.equal(stored.edgeType, "composition");
-
-    const inserted = await request("POST", `/api/views/${view.id}/patterns/${pattern.id}/insert`, { position: { x: 0, y: 0 } });
-    assert.ok(inserted.status < 300, inserted.text);
-    const [edge] = (await request("GET", `/api/views/${view.id}/flow`)).json.edges;
-    assert.equal(edge.edgeType, "composition");
-    assert.equal(edge.data.edgeType, "composition");
-    assert.equal(edge.data.label, "contains");
-    assert.deepEqual([edge.sourceHandle, edge.targetHandle], ["right", "left"]);
   });
 });
 

@@ -237,6 +237,9 @@ export type AppConfig = z.infer<typeof appConfigSchema>;
 // ============================================
 // API CONTRACT
 // ============================================
+/** A pattern as listed for a project: its own, or one of a referenced metamodel. */
+export type PatternListing = typeof views.$inferSelect & { projectName: string; ownedByProject: boolean };
+
 export const api = {
   ai: {
     proposeMetamodel: {
@@ -436,7 +439,9 @@ export const api = {
       method: 'GET' as const,
       path: '/api/projects/:projectId/patterns',
       responses: {
-        200: z.array(z.custom<typeof views.$inferSelect>()),
+        // The project's own patterns, then those of every metamodel it
+        // references (directly or through other metamodels).
+        200: z.array(z.custom<PatternListing>()),
       },
     },
     create: {
@@ -450,7 +455,8 @@ export const api = {
           type: z.string().min(1),
           position: z.object({ x: z.number(), y: z.number() }),
           data: flowNodeDataSchema,
-        })),
+          parentId: z.string().min(1).nullable().optional(),
+        })).min(1, "A pattern needs at least one element"),
         edges: z.array(z.object({
           source: z.string().min(1),
           target: z.string().min(1),
@@ -506,14 +512,19 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
-    insertPattern: {
+    /**
+     * A fresh copy of a pattern for this diagram, centred on `position`. Not
+     * saved: the editor adds it to the open diagram and saves it with the
+     * diagram. Copies carry `data.pattern` (where they came from).
+     */
+    instantiatePattern: {
       method: 'POST' as const,
-      path: '/api/views/:viewId/patterns/:patternId/insert',
+      path: '/api/views/:viewId/patterns/:patternId/instantiate',
       input: z.object({
         position: flowPositionSchema,
       }),
       responses: {
-        200: z.object({ success: z.boolean() }),
+        200: flowResponseSchema,
         400: errorSchemas.validation,
         404: errorSchemas.notFound,
       },

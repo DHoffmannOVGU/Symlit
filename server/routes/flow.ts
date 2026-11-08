@@ -79,22 +79,5 @@ export function registerFlowRoutes(app: Express) {
     }
   });
 
-  app.post(api.flow.insertPattern.path, async (req, res) => {
-    try {
-      const viewId = Number(req.params.viewId);
-      const patternId = Number(req.params.patternId);
-      const input = api.flow.insertPattern.input.parse(req.body);
-      await storage.insertPatternIntoView(viewId, patternId, input.position);
-      res.json({ success: true });
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else if (err instanceof Error && err.message.includes("not found")) {
-        res.status(404).json({ message: err.message });
-      } else {
-        throw err;
-      }
-    }
-  });
 
 }

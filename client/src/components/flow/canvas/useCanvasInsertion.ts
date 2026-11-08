@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { useReactFlow } from "@xyflow/react";
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
@@ -7,27 +6,27 @@ import { api, buildUrl } from "@shared/routes";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { subscribeDiagramEvent } from "@/lib/diagram-events";
+import { toCanvasGraph } from "../hooks/diagram-serialization";
 
 
 export function useCanvasInsertion() {
   const nodes = useDiagramStore((state) => state.nodes);
   const setNodes = useDiagramStore((state) => state.setNodes);
+  const setEdges = useDiagramStore((state) => state.setEdges);
+  const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
   const setSelectedEdgeId = useDiagramStore((state) => state.setSelectedEdgeId);
   const setSelectedNodeId = useDiagramStore((state) => state.setSelectedNodeId);
   const { viewId } = useDiagramModel();
   const { screenToFlowPosition } = useReactFlow();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const pendingSelectionRef = useRef<{
     beforeIds: Set<string>;
-    mode: "single" | "pattern";
     targetNodeId?: string;
   } | null>(null);
   const insertNodeIntoView = useCallback(
     async (nodeId: string, position?: { x: number; y: number }) => {
       pendingSelectionRef.current = {
         beforeIds: new Set(nodes.map((node) => node.id)),
-        mode: "single",
         targetNodeId: nodeId,
       };
       try {
@@ -82,38 +81,38 @@ export function useCanvasInsertion() {
     [nodes, screenToFlowPosition, viewId, setNodes, setSelectedEdgeId, setSelectedNodeId, toast],
   );
 
+  /**
+   * Adds a fresh copy of a pattern to the open diagram as one undo step. The
+   * server builds the copy but does not save it, so unsaved edits stay.
+   */
   const insertPatternIntoView = useCallback(
     async (patternId: number) => {
-      pendingSelectionRef.current = {
-        beforeIds: new Set(nodes.map((node) => node.id)),
-        mode: "pattern",
-      };
       try {
         const center = screenToFlowPosition({
           x: window.innerWidth / 2,
           y: window.innerHeight / 2,
         });
-        const url = buildUrl(api.flow.insertPattern.path, {
-          viewId,
-          patternId,
-        });
-        await apiRequest(api.flow.insertPattern.method, url, {
-          position: center,
-        });
-        await queryClient.invalidateQueries({
-          queryKey: [api.flow.get.path, viewId],
-        });
+        const url = buildUrl(api.flow.instantiatePattern.path, { viewId, patternId });
+        const res = await apiRequest(api.flow.instantiatePattern.method, url, { position: center });
+        const copy = toCanvasGraph(api.flow.instantiatePattern.responses[200].parse(await res.json()));
+        takeSnapshot();
+        setNodes((current) => [
+          ...current.map((node) => ({ ...node, selected: false })),
+          ...copy.nodes.map((node) => ({ ...node, selected: true })),
+        ]);
+        setEdges((current) => [...current, ...copy.edges]);
+        setSelectedEdgeId(null);
+        setSelectedNodeId(copy.nodes.length === 1 ? copy.nodes[0].id : null);
       } catch (error) {
-        pendingSelectionRef.current = null;
         console.error("Failed to insert pattern into view:", error);
         toast({
           variant: "destructive",
-          title: "Error",
-          description: "Failed to insert pattern. Please try again.",
+          title: "Could not insert pattern",
+          description: error instanceof Error ? error.message : "Please try again.",
         });
       }
     },
-    [nodes, queryClient, screenToFlowPosition, toast, viewId],
+    [screenToFlowPosition, setEdges, setNodes, setSelectedEdgeId, setSelectedNodeId, takeSnapshot, toast, viewId],
   );
 
   useEffect(() => {
@@ -125,33 +124,19 @@ export function useCanvasInsertion() {
       .filter((node) => !pending.beforeIds.has(node.id))
       .map((node) => node.id);
 
-    if (pending.mode === "single") {
-      const targetId =
-        pending.targetNodeId &&
-        new Set(nodes.map((node) => node.id)).has(pending.targetNodeId)
-          ? pending.targetNodeId
-          : newNodeIds[0];
+    const targetId =
+      pending.targetNodeId &&
+      new Set(nodes.map((node) => node.id)).has(pending.targetNodeId)
+        ? pending.targetNodeId
+        : newNodeIds[0];
 
-      if (!targetId) return;
-      pendingSelectionRef.current = null;
-      setSelectedEdgeId(null);
-      setNodes((current) =>
-        current.map((node) => ({
-          ...node,
-          selected: node.id === targetId,
-        })),
-      );
-      return;
-    }
-
-    if (newNodeIds.length === 0) return;
-    const newIdSet = new Set(newNodeIds);
+    if (!targetId) return;
     pendingSelectionRef.current = null;
     setSelectedEdgeId(null);
     setNodes((current) =>
       current.map((node) => ({
         ...node,
-        selected: newIdSet.has(node.id),
+        selected: node.id === targetId,
       })),
     );
   }, [nodes, setNodes, setSelectedEdgeId]);

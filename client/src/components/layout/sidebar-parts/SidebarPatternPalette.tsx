@@ -14,6 +14,8 @@ import {
 export interface SidebarPattern {
   id: number;
   name: string;
+  /** The referenced metamodel the pattern comes from; unset for the project's own. */
+  from?: string;
 }
 
 export interface SidebarPatternPaletteProps {
@@ -75,7 +77,11 @@ export function SidebarPatternPalette({
                 <SidebarMenuButton
                   asChild
                   isActive={isActive}
-                  tooltip={pattern.name}
+                  tooltip={
+                    pattern.from
+                      ? `${pattern.name} (from ${pattern.from})`
+                      : pattern.name
+                  }
                   className={cn(
                     "pr-14 transition-all duration-200",
                     isActive
@@ -83,26 +89,46 @@ export function SidebarPatternPalette({
                       : "text-white/70 hover:bg-white/5 hover:pl-3 hover:text-white",
                   )}
                 >
-                  <Link
-                    href={`/project/${projectId}/view/${pattern.id}`}
-                    onClick={(event) =>
-                      onNavigate(event, `/project/${projectId}/view/${pattern.id}`)
-                    }
-                    className="flex min-w-0 items-center gap-2"
-                  >
-                    <span className="truncate font-medium">{pattern.name}</span>
-                  </Link>
+                  {pattern.from ? (
+                    <span
+                      className="flex min-w-0 items-center gap-2"
+                      data-testid={`library-pattern-${pattern.id}`}
+                    >
+                      <span className="truncate font-medium">
+                        {pattern.name}
+                      </span>
+                      <span className="truncate text-[10px] text-white/40">
+                        {pattern.from}
+                      </span>
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/project/${projectId}/view/${pattern.id}`}
+                      onClick={(event) =>
+                        onNavigate(
+                          event,
+                          `/project/${projectId}/view/${pattern.id}`,
+                        )
+                      }
+                      className="flex min-w-0 items-center gap-2"
+                    >
+                      <span className="truncate font-medium">
+                        {pattern.name}
+                      </span>
+                    </Link>
+                  )}
                 </SidebarMenuButton>
                 <SidebarMenuAction
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    if (currentViewId) onInsertPattern(pattern.id, currentViewId);
+                    if (currentViewId)
+                      onInsertPattern(pattern.id, currentViewId);
                   }}
                   disabled={!currentViewId}
                   showOnHover
                   className={cn(
-                    "right-7",
+                    pattern.from ? "right-1" : "right-7",
                     currentViewId
                       ? "text-white/50 hover:bg-white/10 hover:text-white"
                       : "cursor-not-allowed text-white/20 hover:bg-transparent",
@@ -115,18 +141,20 @@ export function SidebarPatternPalette({
                 >
                   <ArrowRight className="h-3.5 w-3.5" />
                 </SidebarMenuAction>
-                <SidebarMenuAction
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    onConfigurePattern(pattern);
-                  }}
-                  className="text-white/60 opacity-0 transition-opacity hover:bg-white/10 hover:text-white group-hover/item:opacity-100"
-                  title="Configure pattern"
-                  data-testid={`button-configure-pattern-${pattern.id}`}
-                >
-                  <Settings2 className="h-4 w-4" />
-                </SidebarMenuAction>
+                {!pattern.from && (
+                  <SidebarMenuAction
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      onConfigurePattern(pattern);
+                    }}
+                    className="text-white/60 opacity-0 transition-opacity hover:bg-white/10 hover:text-white group-hover/item:opacity-100"
+                    title="Configure pattern"
+                    data-testid={`button-configure-pattern-${pattern.id}`}
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </SidebarMenuAction>
+                )}
               </SidebarMenuItem>
             );
           })}

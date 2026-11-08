@@ -1,6 +1,7 @@
 import type { FlowQuery, NodeMeta, ReferencedViewGroup } from "./types";
 import type { ProjectType } from "@shared/schema";
 import type { View } from "@shared/schema";
+import type { PatternListing } from "@shared/routes";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { type SidebarViewNodeListArgs } from "./SidebarViewNodeList";
 import { type MouseEvent } from "react";
@@ -32,7 +33,7 @@ export interface SidebarTabsContentProps {
   renderViewNodeList: (args: SidebarViewNodeListArgs) => React.JSX.Element;
   onCreateView: () => void;
   projectId: number;
-  patternsQuery: UseQueryResult<View[]>;
+  patternsQuery: UseQueryResult<PatternListing[]>;
   setEditingView: React.Dispatch<React.SetStateAction<View | null>>;
   handleLinkClick: (event?: MouseEvent, href?: string) => void;
   renderReferencedNodePalette: () => React.JSX.Element;
@@ -115,6 +116,8 @@ export function SidebarTabsContent({
                       patterns={(patternsQuery.data ?? []).map((pattern) => ({
                         id: pattern.id,
                         name: pattern.name,
+                        // Patterns of referenced metamodels can only be inserted.
+                        from: pattern.ownedByProject ? undefined : pattern.projectName,
                       }))}
                       isLoading={patternsQuery.isLoading}
                       isError={patternsQuery.isError}
