@@ -14,7 +14,6 @@ import { useCanvasDisplayGraph } from "./useCanvasDisplayGraph";
 import { usePatternCreation } from "./usePatternCreation";
 import { useElementSelection } from "../state/useElementSelection";
 import { useCanvasElementActions } from "./useCanvasElementActions";
-import { useCanvasTableRows } from "./useCanvasTableRows";
 // DiagramCanvas.tsx
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -43,8 +42,10 @@ import EventDefNode from "../nodes/EventDefNode";
 import CapabilityDefNode from "../nodes/CapabilityDefNode";
 import { ModelRulesPanel } from "../panels/ModelRulesPanel";
 import { MetamodelAiAssistant } from "../panels/MetamodelAiAssistant";
-import type { NodeData } from "../types";
-import { CanvasTableMode } from "./CanvasTableMode";
+import { ConnectedCanvasTableMode } from "./CanvasTableMode";
+import { CanvasEdgeCreateMenu } from "./CanvasEdgeCreateMenu";
+import { useInheritedTypeStyles } from "./useInheritedTypeStyles";
+import { useSelectedNodes } from "./useSelectedNodes";
 import { ConnectionPreviewLine, edgeTypes, type CustomEdgeData } from "../edges/CustomEdges";
 import { useEdgeCreation } from "../hooks/useEdgeCreation";
 import { EdgeRelationConfirmationProvider } from "../edges/EdgeRelationConfirmation";
@@ -57,17 +58,14 @@ import { DiagramModelProvider, useDiagramModel } from "../state/DiagramModelProv
 import { useDiagramScreenshot } from "../hooks/useDiagramScreenshot";
 import { useDiagramValidation } from "../hooks/useDiagramValidation";
 import { useFlowPlayback } from "../hooks/useFlowPlayback";
-import { EdgeCreateMenu } from "../menus/EdgeCreateMenu";
 import { ScreenshotDialog } from "../dialogs/ScreenshotDialog";
 import { DeleteConfirmDialog } from "../dialogs/DeleteConfirmDialog";
-import { getTypeAncestors } from "@shared/metamodel-inheritance";
 import { api } from "@shared/routes";
 import type { FlowRecoveryResponse } from "@shared/routes";
 import type { FlowEdgeInput, SyncFlowNodeInput } from "@shared/flow-inputs";
 import { useQuery } from "@tanstack/react-query";
 import { apiCall } from "@/lib/api-client";
 import {
-  dispatchDiagramEvent,
   subscribeDiagramEvent,
 } from "@/lib/diagram-events";
 import { computeStraightenedEdge } from "./straightenEdge";
@@ -115,7 +113,6 @@ function FlowInner({
   viewId,
   projectId,
   projectType,
-  referencedMetamodels = [],
   displayMode = "graph",
   onDisplayModeChange,
 }: DiagramCanvasProps) {
@@ -193,10 +190,6 @@ function FlowInner({
   );
   // Selection + panels
   const selectedNodeId = useDiagramStore((state) => state.selectedNodeId);
-  const selectedEdgeId = useDiagramStore((state) => state.selectedEdgeId);
-  const setSelectedNodeId = useDiagramStore((state) => state.setSelectedNodeId);
-  const isNodePanelOpen = useDiagramStore((state) => state.nodePanelOpen);
-  const isEdgePanelOpen = useDiagramStore((state) => state.edgePanelOpen);
   const pendingDelete = useDiagramStore((state) => state.pendingDelete);
   const cancelDelete = useDiagramStore((state) => state.cancelDelete);
   const deleteDialogOpen = pendingDelete !== null;
@@ -217,10 +210,6 @@ function FlowInner({
   } = useDiagramCanvasPreferences();
   const helpDialogOpen = useDiagramStore((state) => state.helpDialogOpen);
   const setHelpDialogOpen = useDiagramStore((state) => state.setHelpDialogOpen);
-  const nodeTableFilter = useDiagramStore((state) => state.nodeTableFilter);
-  const edgeTableFilter = useDiagramStore((state) => state.edgeTableFilter);
-  const setNodeTableFilter = useDiagramStore((state) => state.setNodeTableFilter);
-  const setEdgeTableFilter = useDiagramStore((state) => state.setEdgeTableFilter);
   const {
     dragPreviewNode,
     handleCanvasDragOver,
@@ -238,16 +227,8 @@ function FlowInner({
 
   const {
     isFlowMode,
-    metamodelDefaultType,
-    availablePartDefs,
-    availablePartDefNodes,
-    availablePartDefEdges,
-    partDefStyleById,
-    partTypeOptions,
     activeModelRules,
     inheritedModelRuleIds,
-    parentMap,
-    relationEdges,
     configuredRelationTypes,
     localModelRules,
     referencedModelRules,
@@ -258,20 +239,10 @@ function FlowInner({
 
 
   const {
-    selectNode,
-    selectEdge,
     openNodePanel,
     openEdgePanel,
-    closeNodePanel,
-    closeEdgePanel,
   } = useElementSelection();
 
-  useEffect(() => {
-    dispatchDiagramEvent("selected-node-changed", {
-      nodeId: selectedNodeId,
-      viewId,
-    });
-  }, [selectedNodeId, viewId]);
   const {
     insertNodeIntoView,
   } = useCanvasInsertion();
@@ -360,24 +331,6 @@ function FlowInner({
     allowedEdgeTypes: configuredRelationTypes,
   });
 
-  const [limitToValidTargets, setLimitToValidTargets] = useState<boolean>(
-    () => {
-      if (typeof window === "undefined") return true;
-      const stored = window.sessionStorage.getItem(
-        "flow.edgeCreateMenu.limitToValidTargets",
-      );
-      if (stored === null) return true;
-      return stored === "true";
-    },
-  );
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.sessionStorage.setItem(
-      "flow.edgeCreateMenu.limitToValidTargets",
-      String(limitToValidTargets),
-    );
-  }, [limitToValidTargets]);
 
   const {
     displayNodes,
@@ -394,65 +347,10 @@ function FlowInner({
     dragPreviewNode,
   });
 
-  const edgeCreateSourceTypeId = useMemo(() => {
-    if (!pendingConnectionSource?.nodeId) return null;
-    const sourceNode = nodes.find(
-      (node) => node.id === pendingConnectionSource.nodeId,
-    );
-    return (sourceNode?.data as NodeData | undefined)?.typeId ?? null;
-  }, [nodes, pendingConnectionSource?.nodeId]);
 
-  const validTargetTypeIds = useMemo(() => {
-    if (!edgeCreateSourceTypeId) return null;
-    const sourceAncestors = getTypeAncestors(edgeCreateSourceTypeId, parentMap);
-    const validTargets = new Set<string>();
-
-    partTypeOptions.forEach((option) => {
-      const targetAncestors = getTypeAncestors(option.id, parentMap);
-      const hasRelation = relationEdges.some(
-        (edge) =>
-          sourceAncestors.has(edge.sourceTypeId) &&
-          targetAncestors.has(edge.targetTypeId),
-      );
-      if (hasRelation) {
-        validTargets.add(option.id);
-      }
-    });
-
-    return validTargets;
-  }, [relationEdges, edgeCreateSourceTypeId, parentMap, partTypeOptions]);
-
-  const filteredPartTypeOptions = useMemo(() => {
-    if (!limitToValidTargets || !validTargetTypeIds) return partTypeOptions;
-    return partTypeOptions.filter((option) =>
-      validTargetTypeIds.has(option.id),
-    );
-  }, [limitToValidTargets, partTypeOptions, validTargetTypeIds]);
-
-  const selectedNodes = useMemo(
-    () => nodes.filter((node) => node.selected),
-    [nodes],
-  );
-  const selectedNodeIds = useMemo(
-    () => selectedNodes.map((node) => node.id),
-    [selectedNodes],
-  );
+  const { selectedNodes, selectedNodeIds } = useSelectedNodes();
   const canSavePattern = selectedNodes.length >= 2;
 
-  useEffect(() => {
-    const nextSelectedId =
-      selectedNodes.length > 0 ? selectedNodes[0].id : null;
-    setSelectedNodeId((prev) =>
-      prev === nextSelectedId ? prev : nextSelectedId,
-    );
-  }, [selectedNodes, setSelectedNodeId]);
-
-  const selectedNode = selectedNodeId
-    ? nodes.find((n) => n.id === selectedNodeId) || null
-    : null;
-  const selectedEdge = selectedEdgeId
-    ? edges.find((e) => e.id === selectedEdgeId) || null
-    : null;
 
   const selectedEdgeForToolbar = useMemo(
     () => edges.find((edge) => edge.selected) || null,
@@ -460,16 +358,6 @@ function FlowInner({
   );
 
 
-  const parentNodesForSelected = useMemo(() => {
-    if (!selectedNodeId) return [];
-    const selected = nodes.find((node) => node.id === selectedNodeId);
-    const typeId = (selected?.data as NodeData | undefined)?.typeId;
-    if (!typeId) return [];
-    const parent =
-      availablePartDefNodes.find((node) => node.id === typeId) ||
-      nodes.find((node) => node.id === typeId);
-    return parent ? [parent] : [];
-  }, [nodes, selectedNodeId, availablePartDefNodes]);
   const {
     openPatternDialog,
     patternDialogOpen,
@@ -487,42 +375,7 @@ function FlowInner({
     selectedNodeIds,
   });
 
-  useEffect(() => {
-    if (projectType !== "instance") return;
-
-    setNodes((current) => {
-      let hasChanges = false;
-      const next = current.map((node) => {
-        if (node.type !== "part") return node;
-        const data = node.data as unknown as NodeData | undefined;
-        if (!data?.typeId) return node;
-        const style = partDefStyleById.get(data.typeId);
-        if (!style) return node;
-        const shouldInherit =
-          data.inheritStyle === true ||
-          (data.inheritStyle !== false && !data.icon && !data.color);
-        if (!shouldInherit) return node;
-        if (
-          data.icon === style.icon &&
-          data.color === style.color &&
-          data.inheritStyle === true
-        ) {
-          return node;
-        }
-        hasChanges = true;
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            icon: style.icon,
-            color: style.color,
-            inheritStyle: true,
-          },
-        };
-      });
-      return hasChanges ? next : current;
-    });
-  }, [partDefStyleById, projectType, setNodes]);
+  useInheritedTypeStyles();
 
   useEffect(() => {
     setIsCanvasReady(false);
@@ -616,15 +469,6 @@ function FlowInner({
     deleteDialogOpen,
     onSave: handleSave,
   });
-  const {
-    nodeTableRows,
-    filteredNodeTableRows,
-    edgeTableRows,
-    filteredEdgeTableRows,
-  } = useCanvasTableRows({
-    nodeTableFilter,
-    edgeTableFilter,
-  });
 
   if (isLoading) {
     return (
@@ -660,27 +504,12 @@ function FlowInner({
         data-testid="diagram-canvas-region"
       >
       {isTableMode ? (
-        <CanvasTableMode
-          projectType={projectType}
-          nodeTableRows={nodeTableRows}
-          filteredNodeTableRows={filteredNodeTableRows}
-          nodeTableFilter={nodeTableFilter}
-          onNodeTableFilterChange={setNodeTableFilter}
-          edgeTableRows={edgeTableRows}
-          filteredEdgeTableRows={filteredEdgeTableRows}
-          edgeTableFilter={edgeTableFilter}
-          onEdgeTableFilterChange={setEdgeTableFilter}
-          selectedNodeId={selectedNodeId}
-          selectedEdgeId={selectedEdgeId}
+        <ConnectedCanvasTableMode
           instanceNodeTypeOptions={instanceNodeTypeOptions}
           metamodelNodeTypeOptions={metamodelNodeTypeOptions}
-          onSelectNode={selectNode}
-          onSelectEdge={selectEdge}
-          onOpenNodePanel={openNodePanel}
-          onOpenEdgePanel={openEdgePanel}
           onInlineNodeFieldChange={handleInlineNodeFieldChange}
           onInlineEdgeFieldChange={handleInlineEdgeFieldChange}
-          displayMode={displayMode === "table" ? "table" : "graph"}
+          displayMode="table"
           onDisplayModeChange={(mode) => onDisplayModeChange?.(mode)}
         />
       ) : isCanvasReady ? (
@@ -842,54 +671,14 @@ function FlowInner({
         helpContent={helpContent}
       />
 
-      <EdgeCreateMenu
-        open={!!edgeCreateMenu}
-        position={
-          edgeCreateMenu
-            ? { x: edgeCreateMenu.x, y: edgeCreateMenu.y }
-            : undefined
-        }
-        projectType={projectType}
-        partTypeOptions={filteredPartTypeOptions}
-        metamodelDefaultType={metamodelDefaultType}
-        limitToValidTargets={limitToValidTargets}
-        onLimitToValidTargetsChange={setLimitToValidTargets}
-        onSelectDefault={() =>
-          finalizeEdgeCreateNode(
-            metamodelDefaultType
-              ? {
-                  typeLabel: metamodelDefaultType.label,
-                  icon: metamodelDefaultType.icon,
-                }
-              : undefined,
-          )
-        }
-        onSelectType={(option) =>
-          finalizeEdgeCreateNode({
-            typeId: option.id,
-            typeLabel: option.label,
-            icon: option.icon,
-            color: option.color,
-          })
-        }
+      <CanvasEdgeCreateMenu
+        menu={edgeCreateMenu}
+        sourceNodeId={pendingConnectionSource?.nodeId ?? null}
+        onCreate={finalizeEdgeCreateNode}
         onCancel={closeEdgeCreateMenu}
       />
 
       <CanvasInspectorPanels
-        node={selectedNode}
-        edge={selectedEdge}
-        nodes={nodes}
-        edges={edges}
-        nodePanelOpen={isNodePanelOpen}
-        edgePanelOpen={isEdgePanelOpen}
-        availablePartDefs={availablePartDefs}
-        availablePartDefNodes={availablePartDefNodes}
-        availablePartDefEdges={availablePartDefEdges}
-        parentNodes={parentNodesForSelected}
-        referencedMetamodels={referencedMetamodels}
-        allowedEdgeTypes={configuredRelationTypes}
-        onCloseNodePanel={closeNodePanel}
-        onCloseEdgePanel={closeEdgePanel}
         onSaveNode={handleSaveNodeData}
         onDeleteNode={handleDeleteNode}
         onSaveEdge={handleSaveEdgeData}

@@ -275,7 +275,8 @@ export function useEdgeCreation({
         flowType,
       });
 
-      takeSnapshot(nodes, edges);
+      // Undo returns to the diagram before the drag, without the placeholder element.
+      takeSnapshot(nodes.filter((node) => node.id !== ghostId), edges);
       setNodes((nds) =>
         nds.map((node) =>
           node.id === ghostId
