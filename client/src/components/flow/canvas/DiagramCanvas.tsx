@@ -54,6 +54,7 @@ import { EdgeRelationConfirmationProvider } from "../edges/EdgeRelationConfirmat
 
 import { DiagramToolbar } from "./DiagramToolBar";
 import { useDiagramCanvas } from "../hooks/useDiagramCanvas";
+import { DiagramStoreProvider, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { useDiagramScreenshot } from "../hooks/useDiagramScreenshot";
 import { useDiagramValidation } from "../hooks/useDiagramValidation";
 import { useFlowPlayback } from "../hooks/useFlowPlayback";
@@ -225,6 +226,10 @@ function FlowInner({
     label?: string;
   } | null>(null);
   const [isCanvasReady, setIsCanvasReady] = useState(false);
+  // Decided when the canvas mounts and then kept: changing React Flow's
+  // `fitView` prop later would trigger another fit.
+  const [fitViewOnMount, setFitViewOnMount] = useState(false);
+  const diagramStore = useDiagramStoreApi();
   const {
     snapNodesEnabled,
     setSnapEnabled,
@@ -773,10 +778,11 @@ function FlowInner({
   useEffect(() => {
     if (isLoading) return;
     const timer = window.setTimeout(() => {
+      setFitViewOnMount(diagramStore.getState().nodes.length > 0);
       setIsCanvasReady(true);
     }, 120);
     return () => window.clearTimeout(timer);
-  }, [isLoading, viewId]);
+  }, [diagramStore, isLoading, viewId]);
 
   const onCanvasNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -1035,7 +1041,10 @@ function FlowInner({
           connectionLineComponent={ConnectionPreviewLine}
           minZoom={0.1}
           deleteKeyCode={null}
-          fitView
+          // Fit once when the canvas mounts with elements. On an empty diagram
+          // React Flow would otherwise zoom onto the first element dropped in,
+          // pushing the next one off-screen.
+          fitView={fitViewOnMount}
           className={`bg-slate-50 dark:bg-slate-950${isConnecting ? " flow-connecting" : ""}${isConnectionValid === true ? " flow-connecting-valid" : ""}${isConnectionValid === false ? " flow-connecting-invalid" : ""}`}
         >
           <AggregationMarkerDefs />
@@ -1288,7 +1297,9 @@ function FlowInner({
 export function DiagramCanvas(props: DiagramCanvasProps) {
   return (
     <ReactFlowProvider>
-      <FlowInner {...props} />
+      <DiagramStoreProvider>
+        <FlowInner {...props} />
+      </DiagramStoreProvider>
     </ReactFlowProvider>
   );
 }
