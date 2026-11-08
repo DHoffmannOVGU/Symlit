@@ -1,6 +1,6 @@
 # Symlit: Replit → GitHub migration plan
 
-Status: **local edition complete and stable on `main`** (PRs #1–#4). Hosted edition deferred.
+Status: **local edition complete and stable on `main`** (PRs #1–#12), ready to tag `v0.1.0`. Hosted edition deferred.
 Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc7732`, 217 commits).
 
 ### Decisions taken
@@ -43,9 +43,15 @@ Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc
 | Guided tutorial (two linked projects, coach panel, 15 auto-detected steps) replacing the quickstart | done |
 | Recursive metamodel export, `projects.template_id`, page zoom, demo seed handles | done |
 | "Unsaved changes" on open and blank sidebar bugs fixed; zero lint warnings | done |
+| One bidirectional handle per element side (reliable relationship drawing) | done |
+| Per-diagram editor store (Zustand) + model context; `DiagramCanvas` ~500 lines; large hooks split | done |
+| Editor bundle 1,155 → 498 kB; no ORM in the browser; panels, dagre, screenshots lazy-loaded | done |
+| ELK evaluated for Auto Layout, not adopted (decision record); Auto Layout re-attaches relationships to facing sides | done |
+| Relationship data: shared definition, strict writes, migration 0005 cleaned stored data | done |
+| `no-explicit-any` on; server-controlled project fields (`templateId`, kind) | done |
 | `docker compose up --build` verified on a machine with Docker | **open – needs the owner** |
-| Further frontend decomposition, relationship data validation, smaller findings | tracked in [`BACKLOG.md`](BACKLOG.md) |
-| First release (tag `v0.1.0`) | open |
+| First release: tag `v0.1.0` + GitHub release (notes in `CHANGELOG.md`) | **open – needs the owner** (this session cannot push tags) |
+| Templates (incl. reusing an element in two diagrams), SysML v2 export, packaged executable | open / parked, see [`BACKLOG.md`](BACKLOG.md) |
 | Hosted edition (Phases 4 and 6) | deferred; decide D1 (same repo vs private repo) first |
 
 ### Pull requests
@@ -56,6 +62,14 @@ Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc
 | #2 | Remove method projects and internal views, rename to Symlit, Auto Layout button |
 | #3 | Guided tutorial; recursive export, template ids, page zoom, seed handles; two load/sidebar bugs |
 | #4 | Auto layout spacing, export dialog closes, all hook warnings fixed |
+| #5 | One handle per side (loose connection mode); debug info removed; sidebar types named |
+| #6 | Diagram store + model context, `DiagramCanvas` slimmed; undo across diagrams, first-drop zoom and placeholder-undo bugs |
+| #7 | Icon registry and lazy panels (editor 1,155 → 542 kB); ELK evaluated, not adopted |
+| #8 | `shared/contracts.ts` (no ORM in the browser), lazy dagre, panels read the store |
+| #9 | Relationship data health: shared schema, strict writes, migration 0005; pattern types kept |
+| #10 | `useDiagramCanvas` / `useEdgeCreation` split; metamodel relationships undoable; `CHANGELOG.md` |
+| #11 | `no-explicit-any` on; `templateId`/kind server-controlled; starter reference check |
+| #12 | Auto Layout re-attaches relationships to facing sides |
 
 ### Working notes for contributors
 
