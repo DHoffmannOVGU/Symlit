@@ -39,7 +39,10 @@ import { useEdgeCreation } from "../hooks/useEdgeCreation";
 import { EdgeRelationConfirmationProvider } from "../edges/EdgeRelationConfirmation";
 
 import { CanvasToolbar } from "./CanvasToolbar";
-import { useDiagramCanvas } from "../hooks/useDiagramCanvas";
+import { useDiagramLoading } from "../hooks/useDiagramLoading";
+import { useDiagramSaving } from "../hooks/useDiagramSaving";
+import { useLayoutActions } from "../hooks/useLayoutActions";
+import { useAddElement } from "../hooks/useAddElement";
 import { DiagramStoreProvider, useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { DiagramModelProvider, useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramScreenshot } from "../hooks/useDiagramScreenshot";
@@ -90,20 +93,16 @@ function FlowInner({
   const [suspendFlowLoad, setSuspendFlowLoad] = useState(false);
   const canvasShellRef = useRef<HTMLDivElement | null>(null);
 
+  const { isLoading, isError, reload: reloadDiagram } = useDiagramLoading(suspendFlowLoad);
   const {
-    isLoading,
-    isError,
-    reload: reloadDiagram,
-    handleAddNode,
-    handleAutoLayout,
-    handleLayoutSelected,
-    handleCenterSelected,
-    handleSave,
-    handleSaveAsync,
-    handleSaveRecovered,
+    save: handleSave,
+    saveAsync: handleSaveAsync,
+    saveRecovered: handleSaveRecovered,
     isSaving,
     isDirty,
-  } = useDiagramCanvas(viewId, projectType, suspendFlowLoad);
+  } = useDiagramSaving();
+  const { autoLayout, layoutSelected, centerSelected } = useLayoutActions();
+  const handleAddNode = useAddElement();
 
   const {
     screenshot,
@@ -410,9 +409,9 @@ function FlowInner({
             selectedNodeIds={selectedNodeIds}
             canSavePattern={canSavePattern}
             onSavePattern={patternCreation.openPatternDialog}
-            onAutoLayout={handleAutoLayout}
-            onLayoutSelected={handleLayoutSelected}
-            onCenterSelected={handleCenterSelected}
+            onAutoLayout={autoLayout}
+            onLayoutSelected={layoutSelected}
+            onCenterSelected={centerSelected}
             onScreenshot={takeScreenshot}
             onValidate={validation.handleValidate}
           />

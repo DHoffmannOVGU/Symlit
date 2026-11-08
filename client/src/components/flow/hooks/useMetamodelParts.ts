@@ -26,7 +26,7 @@ import {
 
 type PartDefSummary = { id: string; label: string };
 
-type PartDefEdge = {
+export type PartDefEdge = {
   id: string;
   edgeType: CustomEdgeData["edgeType"];
   flowType?: CustomEdgeData["flowType"];

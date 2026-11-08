@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { normalizeFlow } from "./useDiagramCanvas";
+import { diagramSignature, normalizeFlow, toCanvasGraph, toSavePayload } from "./diagram-serialization";
 import { flowResponseSchema, flowSyncInputSchema } from "@shared/routes";
 import type { MagicRelationType } from "@shared/metamodel-setup";
 
@@ -384,4 +384,30 @@ test("rejects sync payloads with malformed geometry and endpoints", () => {
       .success,
     false,
   );
+});
+test("loading and saving an unchanged diagram gives the same signature", () => {
+  const stored = {
+    nodes: [
+      { id: "a", type: "part", projectId: 1, position: { x: 0, y: 0 }, data: { label: "A", type: "Part", _nodeStyle: { width: 320, height: 180 } }, createdAt: null },
+      { id: "b", type: "part", projectId: 1, position: { x: 400, y: 0 }, data: { label: "B" }, createdAt: null },
+    ],
+    edges: [
+      { id: "ab", source: "a", target: "b", edgeType: "composition", sourceHandle: "right", targetHandle: "left", data: { edgeType: "composition", label: "has" } },
+      { id: "ba", source: "b", target: "a", edgeType: "association", sourceHandle: null, targetHandle: "right-target", data: null },
+    ],
+  };
+  const canvas = toCanvasGraph(stored);
+  const loaded = diagramSignature(canvas.nodes, canvas.edges, "instance");
+  const payload = toSavePayload(canvas.nodes, canvas.edges, "instance");
+  assert.equal(diagramSignature(payload.nodes, payload.edges, "instance"), loaded);
+
+  // What the canvas restores from the stored form.
+  assert.deepEqual(canvas.nodes[0].style, { width: 320, height: 180 }, "resized elements keep their size");
+  assert.equal((canvas.nodes[0].data as { type?: string }).type, "Object", "old type labels are canonical");
+  assert.deepEqual([canvas.edges[1].sourceHandle, canvas.edges[1].targetHandle], ["bottom", "right"]);
+  // What is saved: sizes in data, relationships in canonical form.
+  assert.deepEqual((payload.nodes[0].data as { _nodeStyle?: unknown })._nodeStyle, { width: 320, height: 180 });
+  assert.equal(payload.edges[0].edgeType, "composition");
+  assert.equal((payload.edges[0].data as { edgeType?: string }).edgeType, "composition");
+  assert.ok(flowSyncInputSchema.safeParse(payload).success, "the save payload passes the save checks");
 });

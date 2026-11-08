@@ -30,9 +30,6 @@ commit that fixed them.
   "Tidy connections" action.
 - **The diagram editor chunk is 498 kB (gzip ~160 kB).** What remains is mostly React Flow,
   the canvas, the sidebar and Radix.
-- **`useDiagramCanvas` and `useEdgeCreation` are still large (~590 and ~540 lines).** Loading,
-  saving and layout could be separate hooks, and the "drag onto empty canvas" placeholder flow could
-  become store actions.
 - **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
 
 ## Done
@@ -96,3 +93,6 @@ commit that fixed them.
 - Saved patterns lost their relationship types: the client did not send them and the server stored every pattern relationship as an association. Fixed, with a test.
 - Pattern elements' data was accepted unchecked; it uses the same schema as diagram elements now.
 - Relationships read model-rule style fields (`ruleStrokeWidth` etc.) that nothing ever wrote; removed.
+- `useDiagramCanvas` (585 lines) was split into pure load/save conversion (`diagram-serialization.ts`, with a round-trip test) and `useDiagramLoading`, `useDiagramSaving`, `useLayoutActions`, `useAddElement`; three unused exports were removed.
+- `useEdgeCreation` (509 lines) was split into pure helpers (`relationship-defaults.ts`, tested), `useConnectElements` and `useDropOnCanvas`. Two unused parameters were removed.
+- Drawing a relationship in a metamodel recorded no undo step, so it could not be undone. Fixed; the relationship browser test now undoes and redoes one.
