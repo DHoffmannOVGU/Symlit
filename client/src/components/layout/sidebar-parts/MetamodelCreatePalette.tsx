@@ -4,7 +4,7 @@ import type { View } from "@shared/schema";
 import { type DragEvent } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import * as Icons from "lucide-react";
+import { getNodeIcon } from "@/lib/node-icons";
 import type { FlowNode } from "@shared/schema";
 import { Label } from "@/components/ui/label";
 import {
@@ -159,7 +159,7 @@ export function MetamodelCreatePalette({
           <>
              {visibleMetamodelNodeTypes.map((item) => {
               const IconComponent =
-                (Icons as Record<string, any>)[item.iconName] || Icons.Box;
+                getNodeIcon(item.iconName);
               const disabled = !currentViewId;
               return (
                 <button
@@ -254,7 +254,7 @@ export function MetamodelCreatePalette({
                   metamodelCreatePaletteItems.map(
                     ({ node, meta, view, duplicateCount }) => {
                       const IconComponent =
-                        (Icons as Record<string, any>)[meta.iconName] || Icons.Box;
+                        getNodeIcon(meta.iconName);
                       const typeId = getCanonicalTypeId(node);
                       const nodeType = (node.type || "partdef") as SidebarCreateMetamodelNodeDetail["nodeType"];
                       const disabled = !currentViewId;

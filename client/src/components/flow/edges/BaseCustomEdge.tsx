@@ -5,7 +5,8 @@ import {
   type EdgeProps,
   useStore,
 } from "@xyflow/react";
-import * as Icons from "lucide-react";
+import { getNodeIcon } from "@/lib/node-icons";
+import { Pencil as PencilIcon, RefreshCw as RefreshCwIcon, Trash2 as Trash2Icon } from "lucide-react";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { AnchorHandles } from "./EdgeHandles";
 import { StraightEdgeDragHandle } from "./StraightEdgeDragHandle";
@@ -30,7 +31,7 @@ export type EdgeAction =
 
 export interface CustomEdgeConfig {
   /** Lucide icon name used for the "switch edge type" toolbar button. */
-  toolbarIconName: keyof typeof Icons;
+  toolbarIconName: string;
   /** Optional override for `markerStart` (e.g. aggregation diamond). */
   markerStartOverride?: string;
   /** When set, applied as inline `zIndex` on the label/toolbar containers. */
@@ -138,7 +139,7 @@ export const BaseCustomEdge = ({
     ? { zIndex: config.labelZIndex }
     : undefined;
 
-  const ToolbarIcon = Icons[config.toolbarIconName] as Icons.LucideIcon;
+  const ToolbarIcon = getNodeIcon(config.toolbarIconName);
   const relationMarkers = getEdgeMarkerOverrides(edgeData?.edgeType ?? type);
   const resolvedMarkerStart =
     config.markerStartOverride ?? relationMarkers.markerStart ?? markerStart;
@@ -253,7 +254,7 @@ export const BaseCustomEdge = ({
                 handleEdgeAction("reverse-direction");
               }}
             >
-              <Icons.RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCwIcon className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
@@ -266,7 +267,7 @@ export const BaseCustomEdge = ({
                 handleEdgeAction("edit");
               }}
             >
-              <Icons.Pencil className="h-3.5 w-3.5" />
+              <PencilIcon className="h-3.5 w-3.5" />
             </button>
             <button
               type="button"
@@ -279,7 +280,7 @@ export const BaseCustomEdge = ({
                 handleEdgeAction("delete");
               }}
             >
-              <Icons.Trash2 className="h-3.5 w-3.5" />
+              <Trash2Icon className="h-3.5 w-3.5" />
             </button>
           </div>
         </EdgeLabelRenderer>

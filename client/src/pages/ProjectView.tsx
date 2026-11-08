@@ -15,7 +15,10 @@ import { useView, useViews } from "@/hooks/use-views";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { DiagramCanvas } from "@/components/flow/canvas/DiagramCanvas";
 import { CreateViewDialog } from "@/components/layout/CreateViewDialog";
-import { EditViewDialog } from "@/components/layout/EditViewDialog";
+import { lazyNamed, MountWhenOpened } from "@/lib/lazy";
+
+// Loads when first opened (it brings the form library).
+const EditViewDialog = lazyNamed(() => import("@/components/layout/EditViewDialog"), "EditViewDialog");
 import { Layers, Loader2, Plus, ArrowRight, Settings2, Save } from "lucide-react";
 import {
   SidebarProvider,
@@ -415,11 +418,13 @@ export default function ProjectView() {
           onOpenChange={setIsCreateViewOpen}
           projectId={projectId}
         />
-        <EditViewDialog
+        <MountWhenOpened open={!!editingView}>
+          <EditViewDialog
           view={editingView}
           open={!!editingView}
           onOpenChange={(open) => !open && setEditingView(null)}
         />
+        </MountWhenOpened>
         {tutorialCoach.active && tutorialCoach.progress && tutorialCoach.scope && (
           <TutorialCoach
             progress={tutorialCoach.progress}

@@ -1,6 +1,7 @@
 import React from "react";
 import { Handle, Position, NodeProps, NodeResizer } from "@xyflow/react";
-import * as Icons from "lucide-react";
+import { getNodeIcon } from "@/lib/node-icons";
+import { AlertTriangle as AlertTriangleIcon, BadgeAlert as BadgeAlertIcon, BadgeCheck as BadgeCheckIcon, Copy as CopyIcon, Pencil as PencilIcon, Trash2 as Trash2Icon } from "lucide-react";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 
 interface PartNodeData {
@@ -45,7 +46,7 @@ type BasePartNodeProps = NodeProps & {
 
 const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
   const nodeData = data as unknown as PartNodeData;
-  const IconComponent = (Icons as any)[nodeData.icon || "Box"] || Icons.Box;
+  const IconComponent = getNodeIcon(nodeData.icon);
   const accentColor =
     nodeData.ruleAccentColor || nodeData.color || config.defaultAccentColor;
   const iconBg = nodeData.color ? `${accentColor}25` : config.defaultIconBg;
@@ -197,7 +198,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
                     }}
                     disabled={isReadOnly}
                   >
-                    <Icons.Pencil className="h-3.5 w-3.5" />
+                    <PencilIcon className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
@@ -206,7 +207,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => handleAction(event, "copy")}
                   >
-                    <Icons.Copy className="h-3.5 w-3.5" />
+                    <CopyIcon className="h-3.5 w-3.5" />
                   </button>
                   <button
                     type="button"
@@ -222,7 +223,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
                     }}
                     disabled={isReadOnly}
                   >
-                    <Icons.Trash2 className="h-3.5 w-3.5" />
+                    <Trash2Icon className="h-3.5 w-3.5" />
                   </button>
             </div>
           </div>
@@ -271,11 +272,11 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
               title={statusSummary}
             >
               {hasMixedRuleStates ? (
-                <Icons.BadgeAlert className="h-3.5 w-3.5" />
+                <BadgeAlertIcon className="h-3.5 w-3.5" />
               ) : unfulfilledCount > 0 ? (
-                <Icons.AlertTriangle className="h-3.5 w-3.5" />
+                <AlertTriangleIcon className="h-3.5 w-3.5" />
               ) : (
-                <Icons.BadgeCheck className="h-3.5 w-3.5" />
+                <BadgeCheckIcon className="h-3.5 w-3.5" />
               )}
               <span>{fulfilledCount}/{ruleStatusItems.length}</span>
             </div>
