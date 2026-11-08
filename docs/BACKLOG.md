@@ -15,12 +15,20 @@ commit that fixed them.
 - **Starter templates cannot reuse an element in two views.** `validateStarterTemplate` rejects
   the same node id in several views, although the data model supports it.
 
+### Features
+- **SysML v2 textual export (later import).** The vocabulary already follows SysML v2; export
+  makes models diffable and usable in SysML v2 tools. See
+  `docs/decisions/diagram-editor-state-and-libraries.md`.
+
 ### Server
 
 - **Relationship data is still unchecked.** Edge `data` is `z.any()` because the same schema
   parses stored relationships on load; tightening it needs a check of what older diagrams contain.
 
 ### Client
+- **Auto Layout with ELK (`elkjs`).** Port side constraints match the four side handles and edges
+  get orthogonal routing; could replace `dagre`, `entitree-flex` and the row rule. Lazy-load it
+  (~1.5 MB). See `docs/decisions/diagram-editor-state-and-libraries.md`.
 - **The diagram editor chunk is still 1.1 MB.** Pages are lazy-loaded now, but React Flow, the
   panels and layout engines (`dagre`, `entitree-flex`) load as one chunk. The panels and layout
   code could be split further once `DiagramCanvas.tsx` is decomposed.
