@@ -1,4 +1,4 @@
-import * as Icons from "lucide-react";
+import { getNodeIcon } from "@/lib/node-icons";
 import { Switch } from "@/components/ui/switch";
 import type { ProjectType } from "@shared/schema";
 
@@ -71,7 +71,7 @@ export function EdgeCreateMenu({
             ) : (
               partTypeOptions.map((option) => {
                 const IconComponent =
-                  (Icons as any)[option.icon || "Box"] || Icons.Box;
+                  getNodeIcon(option.icon);
                 const iconColor = option.color || "hsl(var(--foreground))";
                 const iconBg = option.color
                   ? `${option.color}20`

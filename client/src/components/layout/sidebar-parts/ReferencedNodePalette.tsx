@@ -5,7 +5,7 @@ import { type DragEvent } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Check, AlertTriangle } from "lucide-react";
-import * as Icons from "lucide-react";
+import { getNodeIcon } from "@/lib/node-icons";
 import type { FlowNode } from "@shared/schema";
 import { Label } from "@/components/ui/label";
 import {
@@ -217,8 +217,7 @@ export function ReferencedNodePalette({
                     referencedPaletteItems.map(
                       ({ node, meta, view, duplicateCount }) => {
                         const IconComponent =
-                          (Icons as Record<string, any>)[meta.iconName] ||
-                          Icons.Box;
+                          getNodeIcon(meta.iconName);
                         const typeId = getCanonicalTypeId(node);
                         const alreadyInCurrentView = currentViewId
                           ? currentViewNodeIds.has(node.id)
@@ -295,7 +294,7 @@ export function ReferencedNodePalette({
               <div className="space-y-2">
                 {BASE_INSTANCE_TYPE_ITEMS.map((item) => {
                   const IconComponent =
-                    (Icons as Record<string, any>)[item.iconName] || Icons.Box;
+                    getNodeIcon(item.iconName);
                   const dragPayload = currentViewId
                     ? {
                         nodeId: item.id,

@@ -1,6 +1,5 @@
 // src/diagram/hooks/useDiagramScreenshot.ts
 import { useCallback, useState } from "react";
-import { toPng } from "html-to-image";
 import { useToast } from "@/hooks/use-toast";
 
 export function useDiagramScreenshot() {
@@ -18,6 +17,8 @@ export function useDiagramScreenshot() {
     const width = wrapper.clientWidth;
     const height = wrapper.clientHeight;
 
+    // Loaded on first use: only needed when someone takes a screenshot.
+    const { toPng } = await import("html-to-image");
     const dataUrl = await toPng(wrapper, {
       backgroundColor: "#f8fafc",
       width,

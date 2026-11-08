@@ -50,8 +50,25 @@ import {
   Wallet,
   Wrench,
   Zap,
+  ArrowDownRight,
+  Bot,
+  Boxes,
+  ClipboardCheck,
+  FileCheck2,
+  GitBranch,
+  Globe2,
+  Link2,
+  Radio,
+  UserRound,
   type LucideIcon,
 } from "lucide-react";
+
+/*
+ * Icons elements can show, by the name stored in their data (`icon`/`iconName`).
+ * Only these are bundled: importing all of lucide-react to look names up
+ * added ~750 kB to the editor. Add a name here before using it anywhere.
+ */
+
 
 export interface NodeIconEntry {
   value: string;
@@ -114,3 +131,29 @@ export const extendedNodeIcons: NodeIconEntry[] = [
   { value: "Wallet", icon: Wallet },
   { value: "Wrench", icon: Wrench },
 ];
+
+/** Icons used by built-in element types, templates, the tutorial and relationship toolbars. */
+const builtInIcons: NodeIconEntry[] = [
+  { value: "ArrowDownRight", icon: ArrowDownRight },
+  { value: "Bot", icon: Bot },
+  { value: "Boxes", icon: Boxes },
+  { value: "ClipboardCheck", icon: ClipboardCheck },
+  { value: "FileCheck2", icon: FileCheck2 },
+  { value: "GitBranch", icon: GitBranch },
+  { value: "Globe2", icon: Globe2 },
+  { value: "Link2", icon: Link2 },
+  { value: "Radio", icon: Radio },
+  { value: "UserRound", icon: UserRound },
+];
+
+const iconsByName = new Map<string, LucideIcon>(
+  [...quickNodeIcons, ...extendedNodeIcons, ...builtInIcons].map((entry) => [entry.value, entry.icon]),
+);
+
+/** Names that `getNodeIcon` knows. */
+export const NODE_ICON_NAMES: readonly string[] = Array.from(iconsByName.keys());
+
+/** The icon stored under `name`, or the default box for unknown or missing names. */
+export function getNodeIcon(name: string | null | undefined): LucideIcon {
+  return (name && iconsByName.get(name)) || Box;
+}

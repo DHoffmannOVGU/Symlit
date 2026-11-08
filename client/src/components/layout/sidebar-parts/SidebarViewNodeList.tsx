@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Box, Settings2, ChevronRight, ArrowRight, Check, GripVertical } from "lucide-react";
-import * as Icons from "lucide-react";
+import { getNodeIcon } from "@/lib/node-icons";
 import type { FlowNode, View } from "@shared/schema";
 import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 import {
@@ -252,7 +252,7 @@ export function SidebarViewNodeList({
               )}
             {nodes.map((node) => {
               const meta = getNodeMeta(node);
-              const IconComponent = (Icons as any)[meta.iconName] || Icons.Box;
+              const IconComponent = getNodeIcon(meta.iconName);
               const iconBg = meta.color
                 ? `${meta.color}25`
                 : "rgba(255,255,255,0.08)";

@@ -29,8 +29,7 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { nodeTypes } from "../nodes/nodeTypes";
-import { ModelRulesPanel } from "../panels/ModelRulesPanel";
-import { MetamodelAiAssistant } from "../panels/MetamodelAiAssistant";
+import { lazyNamed, MountWhenOpened } from "@/lib/lazy";
 import { ConnectedCanvasTableMode } from "./CanvasTableMode";
 import { CanvasEdgeCreateMenu } from "./CanvasEdgeCreateMenu";
 import { useInheritedTypeStyles } from "./useInheritedTypeStyles";
@@ -77,6 +76,10 @@ export interface DiagramCanvasProps {
   displayMode?: "graph" | "table";
   onDisplayModeChange?: (mode: "graph" | "table") => void;
 }
+
+// Side panels load when first opened.
+const ModelRulesPanel = lazyNamed(() => import("../panels/ModelRulesPanel"), "ModelRulesPanel");
+const MetamodelAiAssistant = lazyNamed(() => import("../panels/MetamodelAiAssistant"), "MetamodelAiAssistant");
 
 function FlowInner({
   viewId,
@@ -462,6 +465,7 @@ function FlowInner({
         onDeleteEdge={handleDeleteEdge}
       />
 
+      <MountWhenOpened open={aiAssistantOpen && projectType === "metamodel"}>
       <MetamodelAiAssistant
         open={aiAssistantOpen && projectType === "metamodel"}
         onClose={() => setAiAssistantOpen(false)}
@@ -472,7 +476,9 @@ function FlowInner({
         metamodelSetup={metamodelSetup}
         onApply={handleApplyAiProposal}
       />
+      </MountWhenOpened>
 
+      <MountWhenOpened open={modelRulesPanelVisible}>
       <ModelRulesPanel
         open={modelRulesPanelVisible}
         onClose={closeModelRules}
@@ -486,6 +492,7 @@ function FlowInner({
         nodes={nodes}
         edges={edges}
       />
+      </MountWhenOpened>
 
       <ScreenshotDialog
         open={isScreenshotOpen}

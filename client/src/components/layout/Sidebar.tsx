@@ -27,7 +27,10 @@ import {
   dispatchDiagramEvent,
   subscribeDiagramEvent,
 } from "@/lib/diagram-events";
-import { EditViewDialog } from "@/components/layout/EditViewDialog";
+import { lazyNamed, MountWhenOpened } from "@/lib/lazy";
+
+// Loads when first opened (it brings the form library).
+const EditViewDialog = lazyNamed(() => import("@/components/layout/EditViewDialog"), "EditViewDialog");
 import { Sidebar as ShadcnSidebar, useSidebar } from "@/components/ui/sidebar";
 import {
   BASE_METAMODEL_ID,
@@ -608,11 +611,15 @@ export function Sidebar({
         }}
       />
 
-      <EditViewDialog
+      <MountWhenOpened open={!!editingView}>
+
+        <EditViewDialog
         view={editingView}
         open={!!editingView}
         onOpenChange={(open) => !open && setEditingView(null)}
       />
+
+      </MountWhenOpened>
     </>
   );
 }

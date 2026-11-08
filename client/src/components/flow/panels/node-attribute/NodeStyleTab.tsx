@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { nodeColors } from "./style-presets";
-import { extendedNodeIcons, quickNodeIcons } from "./icon-registry";
+import { extendedNodeIcons, quickNodeIcons } from "@/lib/node-icons";
 
 export interface NodeStyleTabProps {
   canInheritStyle: boolean;

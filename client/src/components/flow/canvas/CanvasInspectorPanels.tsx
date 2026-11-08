@@ -1,6 +1,9 @@
 import { useMemo } from "react";
-import { EdgeAttributePanel } from "../panels/EdgeAttributePanel";
-import { NodeAttributePanel } from "../panels/NodeAttributePanel";
+import { lazyNamed, MountWhenOpened } from "@/lib/lazy";
+
+// The panels load when first opened.
+const NodeAttributePanel = lazyNamed(() => import("../panels/NodeAttributePanel"), "NodeAttributePanel");
+const EdgeAttributePanel = lazyNamed(() => import("../panels/EdgeAttributePanel"), "EdgeAttributePanel");
 import type { CustomEdgeData, NodeData } from "../types";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
@@ -45,6 +48,7 @@ export function CanvasInspectorPanels({
 
   return (
     <>
+      <MountWhenOpened open={nodePanelOpen && !!node}>
       {nodePanelOpen && node ? (
         <NodeAttributePanel
           node={node}
@@ -60,7 +64,9 @@ export function CanvasInspectorPanels({
           parentNodes={parentNodes}
         />
       ) : null}
+      </MountWhenOpened>
 
+      <MountWhenOpened open={edgePanelOpen && !!edge}>
       {edgePanelOpen && edge ? (
         <EdgeAttributePanel
           edge={edge}
@@ -72,6 +78,7 @@ export function CanvasInspectorPanels({
           allowedEdgeTypes={configuredRelationTypes}
         />
       ) : null}
+      </MountWhenOpened>
     </>
   );
 }

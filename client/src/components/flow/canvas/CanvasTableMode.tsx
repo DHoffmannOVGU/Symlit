@@ -26,7 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import * as Icons from "lucide-react";
+import { getNodeIcon } from "@/lib/node-icons";
+import { ArrowDownRight as ArrowDownRightIcon, Boxes as BoxesIcon, Diamond as DiamondIcon, GitBranchPlus as GitBranchPlusIcon, Link2 as Link2Icon, Network as NetworkIcon, TableProperties as TablePropertiesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProjectType } from "@shared/schema";
 import { magicRelationTypeCatalog } from "@shared/metamodel-setup";
@@ -123,7 +124,7 @@ export function CanvasTableMode({
             )}
             onClick={() => onDisplayModeChange("graph")}
           >
-            <Icons.Network className="h-4 w-4" />
+            <NetworkIcon className="h-4 w-4" />
           </Button>
           <Button
             variant="outline"
@@ -136,7 +137,7 @@ export function CanvasTableMode({
             )}
             onClick={() => onDisplayModeChange("table")}
           >
-            <Icons.TableProperties className="h-4 w-4" />
+            <TablePropertiesIcon className="h-4 w-4" />
           </Button>
         </div>
         <Card className="border-slate-200 shadow-sm">
@@ -185,7 +186,7 @@ export function CanvasTableMode({
                   ) : (
                     filteredNodeTableRows.map((row) => {
                       const NodeIcon =
-                        (Icons as Record<string, any>)[row.icon] || Icons.Box;
+                        getNodeIcon(row.icon);
                       const isSelected = selectedNodeId === row.id;
                       const isReadOnly = row.isReadOnly;
                       const nodeTypeValue =
@@ -370,15 +371,15 @@ export function CanvasTableMode({
                     filteredEdgeTableRows.map((row) => {
                       const EdgeIcon =
                         row.type === "aggregation"
-                          ? Icons.Diamond
+                          ? DiamondIcon
                           : row.type === "composition"
-                            ? Icons.Boxes
+                            ? BoxesIcon
                             : row.type === "generalization" ||
                                 row.type === "realization"
-                              ? Icons.GitBranchPlus
+                              ? GitBranchPlusIcon
                               : row.type === "dependency"
-                                ? Icons.ArrowDownRight
-                            : Icons.Link2;
+                                ? ArrowDownRightIcon
+                            : Link2Icon;
                       const isSelected = selectedEdgeId === row.id;
                       return (
                         <TableRow

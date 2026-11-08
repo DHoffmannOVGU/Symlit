@@ -3,7 +3,7 @@ import { type MouseEvent } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Home } from "lucide-react";
-import * as Icons from "lucide-react";
+import { Download as DownloadIcon, ListChecks as ListChecksIcon, Sparkles as SparklesIcon } from "lucide-react";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { Separator } from "@/components/ui/separator";
 import { SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from "@/components/ui/sidebar";
@@ -40,7 +40,7 @@ export function SidebarFooterActions({
                   onClick={() => dispatchDiagramEvent("metamodel-ai-assistant-toggle-request", { viewId: currentViewId })}
                   data-testid="button-ai-model-assistant"
                 >
-                  <Icons.Sparkles className="w-4 h-4 mr-2" />
+                  <SparklesIcon className="w-4 h-4 mr-2" />
                   AI Model Assistant
                 </Button>
               ) : null}
@@ -57,7 +57,7 @@ export function SidebarFooterActions({
                   }
                   data-testid="button-model-rules"
                 >
-                  <Icons.ListChecks className="w-4 h-4 mr-2" />
+                  <ListChecksIcon className="w-4 h-4 mr-2" />
                   {projectType === "instance" ? "Instance Rules" : "Model Rules"}
                 </Button>
               ) : null}
@@ -67,7 +67,7 @@ export function SidebarFooterActions({
                 onClick={() => setExportDialogOpen(true)}
                 data-testid="button-export-project"
               >
-                <Icons.Download className="w-4 h-4 mr-2" />
+                <DownloadIcon className="w-4 h-4 mr-2" />
                 Export Project
               </Button>
               <Separator className="bg-white/10" />
