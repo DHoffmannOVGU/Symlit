@@ -60,3 +60,42 @@ test("only one delete confirmation is pending at a time", () => {
   store.getState().cancelDelete();
   assert.equal(store.getState().pendingDelete, null);
 });
+
+test("confirming a delete removes elements with their relationships and clears their selection", () => {
+  const store = createDiagramStore();
+  const s = () => store.getState();
+  s().setNodes([node("a"), node("b"), node("c")]);
+  s().setEdges([
+    { id: "ab", source: "a", target: "b" },
+    { id: "bc", source: "b", target: "c" },
+  ] as never);
+  s().setSelectedNodeId("a");
+  s().setNodePanelOpen(true);
+  s().requestDelete({ nodeIds: ["a"], edgeIds: [] });
+  s().confirmDelete();
+  assert.deepEqual(s().nodes.map((n) => n.id), ["b", "c"]);
+  assert.deepEqual(s().edges.map((e) => e.id), ["bc"]);
+  assert.equal(s().selectedNodeId, null);
+  assert.equal(s().nodePanelOpen, false);
+  assert.equal(s().pendingDelete, null);
+  s().undo();
+  assert.deepEqual(s().nodes.map((n) => n.id), ["a", "b", "c"]);
+});
+
+test("selecting and opening panels keeps canvas selection and panels consistent", () => {
+  const store = createDiagramStore();
+  const s = () => store.getState();
+  s().setNodes([node("a"), node("b")]);
+  s().setEdges([{ id: "ab", source: "a", target: "b" }] as never);
+  s().openNodePanel("a");
+  assert.deepEqual(s().nodes.map((n) => !!n.selected), [true, false]);
+  assert.equal(s().nodePanelOpen, true);
+  s().openEdgePanel("ab");
+  assert.equal(s().selectedNodeId, null);
+  assert.equal(s().nodePanelOpen, false);
+  assert.equal(s().edgePanelOpen, true);
+  assert.deepEqual(s().nodes.map((n) => !!n.selected), [false, false]);
+  s().closeEdgePanel();
+  assert.equal(s().selectedEdgeId, null);
+  assert.equal(s().edgePanelOpen, false);
+});

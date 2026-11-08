@@ -45,18 +45,31 @@ export interface DiagramState {
   setSelectedNodeId: (updater: Updater<string | null>) => void;
   setSelectedEdgeId: (updater: Updater<string | null>) => void;
 
+  /** Selects exactly this element on the canvas (and nothing else); closes the relationship panel. */
+  selectNode: (nodeId: string) => void;
+  /** Selects exactly this relationship on the canvas (and nothing else); closes the element panel. */
+  selectEdge: (edgeId: string) => void;
+  /** Selects the relationship and opens its panel. */
+  openEdgePanel: (edgeId: string) => void;
+  /** Selects the element and opens its panel (callers check read-only elements first). */
+  openNodePanel: (nodeId: string) => void;
+  closeNodePanel: () => void;
+  closeEdgePanel: () => void;
+
   nodePanelOpen: boolean;
   edgePanelOpen: boolean;
-  setNodePanelOpen: (open: boolean) => void;
-  setEdgePanelOpen: (open: boolean) => void;
+  setNodePanelOpen: (updater: Updater<boolean>) => void;
+  setEdgePanelOpen: (updater: Updater<boolean>) => void;
 
   /** Elements waiting for the user to confirm their deletion. */
   pendingDelete: PendingDelete | null;
   requestDelete: (payload: PendingDelete) => void;
   cancelDelete: () => void;
+  /** Deletes the pending elements (and relationships attached to deleted elements), undoably. */
+  confirmDelete: () => void;
 
   helpDialogOpen: boolean;
-  setHelpDialogOpen: (open: boolean) => void;
+  setHelpDialogOpen: (updater: Updater<boolean>) => void;
 
   nodeTableFilter: string;
   edgeTableFilter: string;
@@ -117,10 +130,37 @@ export function createDiagramStore() {
     setSelectedEdgeId: (updater) =>
       set((state) => ({ selectedEdgeId: resolve(updater, state.selectedEdgeId) })),
 
+    selectNode: (nodeId) =>
+      set((state) => ({
+        nodes: state.nodes.map((node) => ({ ...node, selected: node.id === nodeId })),
+        edges: state.edges.map((edge) => ({ ...edge, selected: false })),
+        selectedNodeId: nodeId,
+        selectedEdgeId: null,
+        edgePanelOpen: false,
+      })),
+    selectEdge: (edgeId) =>
+      set((state) => ({
+        edges: state.edges.map((edge) => ({ ...edge, selected: edge.id === edgeId })),
+        nodes: state.nodes.map((node) => ({ ...node, selected: false })),
+        selectedEdgeId: edgeId,
+        selectedNodeId: null,
+        nodePanelOpen: false,
+      })),
+    openEdgePanel: (edgeId) => {
+      get().selectEdge(edgeId);
+      set({ edgePanelOpen: true });
+    },
+    openNodePanel: (nodeId) => {
+      get().selectNode(nodeId);
+      set({ nodePanelOpen: true });
+    },
+    closeNodePanel: () => set({ nodePanelOpen: false, selectedNodeId: null }),
+    closeEdgePanel: () => set({ edgePanelOpen: false, selectedEdgeId: null }),
+
     nodePanelOpen: false,
     edgePanelOpen: false,
-    setNodePanelOpen: (open) => set({ nodePanelOpen: open }),
-    setEdgePanelOpen: (open) => set({ edgePanelOpen: open }),
+    setNodePanelOpen: (updater) => set((state) => ({ nodePanelOpen: resolve(updater, state.nodePanelOpen) })),
+    setEdgePanelOpen: (updater) => set((state) => ({ edgePanelOpen: resolve(updater, state.edgePanelOpen) })),
 
     pendingDelete: null,
     requestDelete: (payload) => {
@@ -128,9 +168,33 @@ export function createDiagramStore() {
       set({ pendingDelete: payload });
     },
     cancelDelete: () => set({ pendingDelete: null }),
+    confirmDelete: () => {
+      const { pendingDelete, takeSnapshot } = get();
+      if (!pendingDelete) return;
+      const nodeIds = new Set(pendingDelete.nodeIds);
+      const edgeIds = new Set(pendingDelete.edgeIds);
+      if (nodeIds.size === 0 && edgeIds.size === 0) {
+        set({ pendingDelete: null });
+        return;
+      }
+      takeSnapshot();
+      set((state) => {
+        const nodeDeleted = state.selectedNodeId !== null && nodeIds.has(state.selectedNodeId);
+        const edgeDeleted = state.selectedEdgeId !== null && edgeIds.has(state.selectedEdgeId);
+        return {
+          nodes: state.nodes.filter((node) => !nodeIds.has(node.id)),
+          edges: state.edges.filter(
+            (edge) => !edgeIds.has(edge.id) && !nodeIds.has(edge.source) && !nodeIds.has(edge.target),
+          ),
+          pendingDelete: null,
+          ...(nodeDeleted ? { selectedNodeId: null, nodePanelOpen: false } : {}),
+          ...(edgeDeleted ? { selectedEdgeId: null, edgePanelOpen: false } : {}),
+        };
+      });
+    },
 
     helpDialogOpen: false,
-    setHelpDialogOpen: (open) => set({ helpDialogOpen: open }),
+    setHelpDialogOpen: (updater) => set((state) => ({ helpDialogOpen: resolve(updater, state.helpDialogOpen) })),
 
     nodeTableFilter: "",
     edgeTableFilter: "",
