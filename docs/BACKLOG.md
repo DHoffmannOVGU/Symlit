@@ -23,11 +23,6 @@ commit that fixed them.
 ### Server
 
 ### Client
-- **Option: re-attach relationships to facing sides during Auto Layout.** Measured on the sample
-  diagrams it makes every relationship's handles face each other and shortens lines by 20–27 %
-  while keeping rows (see the ELK section in `docs/decisions/diagram-editor-state-and-libraries.md`).
-  It changes the sides users drew, so decide whether it is automatic, a toggle, or a separate
-  "Tidy connections" action.
 - **The diagram editor chunk is 498 kB (gzip ~160 kB).** What remains is mostly React Flow,
   the canvas, the sidebar and Radix.
 
@@ -98,3 +93,4 @@ commit that fixed them.
 - `no-explicit-any` was off. It is on now (tests excepted). The 18 remaining `any`s were replaced with real types, and 20 `node.data as unknown as NodeData` double casts were removed by typing the attribute panel and metamodel parts with `DiagramNode`. The Gemini response is parsed with a schema (an unreadable response now gives a clear error instead of a 500).
 - Project create/update/starter accepted `templateId` from clients, so any project could be marked as a tutorial project (and then deleted by "Remove tutorial"); updates could also switch a project between metamodel and instance. Both are server-controlled now.
 - Starter projects skipped the referenced-metamodel check that normal project creation does, so they could reference another user's project or an instance model. They are checked now.
+- Auto Layout now also re-attaches every relationship to the sides of its elements that face each other (decided: tidying connections is part of Auto Layout, the one-click way to a clean diagram). On the sample diagrams every relationship's handles face each other afterwards, with shorter lines and fewer crossings; the quality test enforces it.

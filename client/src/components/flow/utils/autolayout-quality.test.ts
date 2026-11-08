@@ -6,20 +6,23 @@ import { layoutMetrics } from "./layout-metrics";
 
 // Quality floor for Auto Layout on realistic sample diagrams. If a change to
 // the layout makes these worse, it should be a deliberate decision.
-// Measured 2026-11 (dagre + side-relationship rows); see
+// Measured 2026-11 (dagre + side-relationship rows + facing sides); see
 // docs/decisions/diagram-editor-state-and-libraries.md for the ELK comparison.
 const MAX_CROSSINGS: Record<string, number> = {
-  "drone system (tree + side links)": 3,
+  "drone system (tree + side links)": 2,
   "process chain (side to side)": 0,
-  "random mix (all handle sides)": 14,
+  "random mix (all handle sides)": 12,
   "tutorial instance": 0,
 };
 
 for (const sample of LAYOUT_SAMPLES) {
   test(`auto layout of "${sample.name}" has no overlaps and few crossings`, () => {
-    const { nodes } = getAutoLayout(sample.nodes, sample.edges);
-    const metrics = layoutMetrics(nodes, sample.edges);
+    const { nodes, edges } = getAutoLayout(sample.nodes, sample.edges);
+    const metrics = layoutMetrics(nodes, edges);
     assert.equal(metrics.overlaps, 0);
+    // Relationships are re-attached to the sides that face each other.
+    const [facing, total] = metrics.handlesFacing.split("/");
+    assert.equal(facing, total, `handles facing: ${metrics.handlesFacing}`);
     assert.ok(
       metrics.crossings <= MAX_CROSSINGS[sample.name],
       `${metrics.crossings} crossings (allowed ${MAX_CROSSINGS[sample.name]})`,

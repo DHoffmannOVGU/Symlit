@@ -14,6 +14,8 @@ type Id = string;
  * handles) keep those elements in one row; all other relationships form a
  * top-to-bottom hierarchy. Rows are laid out with dagre using the elements'
  * real sizes, and members of a row keep their current left-to-right order.
+ * Afterwards every relationship is attached to the sides of its two elements
+ * that face each other (see `attachToFacingSides`).
  */
 export function getAutoLayout<TNode extends Node, TEdge extends Edge>(
   nodes: TNode[],
@@ -82,7 +84,7 @@ export function getAutoLayout<TNode extends Node, TEdge extends Edge>(
       },
     };
   });
-  return { nodes: laidOut, edges };
+  return { nodes: laidOut, edges: attachToFacingSides(laidOut, edges) };
 }
 
 function getHorizontalGroups(nodeIds: Set<Id>, edges: Edge[]) {
@@ -123,4 +125,35 @@ export function isHorizontalEdge(edge: Edge) {
   return (
     isSide(sourceHandle, data?.sourceAnchor?.side) && isSide(targetHandle, data?.targetAnchor?.side)
   );
+}
+
+/**
+ * Re-attaches each relationship to the sides of its two elements that face
+ * each other, given where the elements are. Handles work in both directions,
+ * so only the sides change, never the direction. Anchor offsets saved for the
+ * old sides (straightened relationships) are dropped.
+ */
+export function attachToFacingSides<TEdge extends Edge>(nodes: Node[], edges: TEdge[]): TEdge[] {
+  const boxes = new Map(
+    nodes.map((node) => {
+      const { width, height } = nodeSize(node);
+      return [node.id, { x: node.position.x + width / 2, y: node.position.y + height / 2, width, height }];
+    }),
+  );
+  return edges.map((edge) => {
+    const a = boxes.get(edge.source);
+    const b = boxes.get(edge.target);
+    if (!a || !b || edge.source === edge.target) return edge;
+    // Compare offsets relative to the elements' sizes, so wide elements side
+    // by side still count as "next to each other".
+    const dx = (b.x - a.x) / (a.width + b.width);
+    const dy = (b.y - a.y) / (a.height + b.height);
+    const horizontal = Math.abs(dx) > Math.abs(dy);
+    const sourceHandle = horizontal ? (dx > 0 ? "right" : "left") : dy > 0 ? "bottom" : "top";
+    const targetHandle = horizontal ? (dx > 0 ? "left" : "right") : dy > 0 ? "top" : "bottom";
+    if (edge.sourceHandle === sourceHandle && edge.targetHandle === targetHandle) return edge;
+    const data = edge.data as Record<string, unknown> | undefined;
+    const { sourceAnchor: _s, targetAnchor: _t, ...rest } = data ?? {};
+    return { ...edge, sourceHandle, targetHandle, ...(data ? { data: rest } : {}) };
+  });
 }

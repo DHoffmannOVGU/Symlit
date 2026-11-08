@@ -54,8 +54,8 @@ renderers to draw ELK's bend points. It costs a 1.6 MB lazy chunk.
 **What did help:** re-attaching each relationship to the sides of its elements that face each other
 after layout (possible since handles work in both directions). On top of dagre it made every
 relationship's handles face each other in all samples, shortened lines by 20–27 % and removed a
-crossing or two, while keeping rows. It changes the sides users drew, so it is a product decision
-(see `docs/BACKLOG.md`).
+crossing or two, while keeping rows. Decision: it is part of Auto Layout (one click
+for a clean diagram), see `attachToFacingSides` in `autolayout.ts`.
 
 **Revisit ELK when** relationships should be routed around elements (bend points), or for large
 diagrams where crossing minimisation matters more than rows. `autolayout-quality.test.ts` keeps
