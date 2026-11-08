@@ -1,4 +1,3 @@
-import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { DiagramLoadError } from "./DiagramLoadError";
 import { SavePatternDialog } from "./SavePatternDialog";
 import { DiagramHelpDialog } from "./DiagramHelpDialog";
@@ -15,7 +14,7 @@ import { usePatternCreation } from "./usePatternCreation";
 import { useElementSelection } from "../state/useElementSelection";
 import { useCanvasElementActions } from "./useCanvasElementActions";
 // DiagramCanvas.tsx
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ReactFlow,
   Controls,
@@ -46,12 +45,12 @@ import { ConnectedCanvasTableMode } from "./CanvasTableMode";
 import { CanvasEdgeCreateMenu } from "./CanvasEdgeCreateMenu";
 import { useInheritedTypeStyles } from "./useInheritedTypeStyles";
 import { useSelectedNodes } from "./useSelectedNodes";
-import { ConnectionPreviewLine, edgeTypes, type CustomEdgeData } from "../edges/CustomEdges";
+import { ConnectionPreviewLine, edgeTypes } from "../edges/CustomEdges";
 import { useEdgeCreation } from "../hooks/useEdgeCreation";
 import { EdgeRelationConfirmationProvider } from "../edges/EdgeRelationConfirmation";
 
 
-import { DiagramToolbar } from "./DiagramToolBar";
+import { CanvasToolbar } from "./CanvasToolbar";
 import { useDiagramCanvas } from "../hooks/useDiagramCanvas";
 import { DiagramStoreProvider, useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { DiagramModelProvider, useDiagramModel } from "../state/DiagramModelProvider";
@@ -60,15 +59,9 @@ import { useDiagramValidation } from "../hooks/useDiagramValidation";
 import { useFlowPlayback } from "../hooks/useFlowPlayback";
 import { ScreenshotDialog } from "../dialogs/ScreenshotDialog";
 import { DeleteConfirmDialog } from "../dialogs/DeleteConfirmDialog";
-import { api } from "@shared/routes";
-import type { FlowRecoveryResponse } from "@shared/routes";
-import type { FlowEdgeInput, SyncFlowNodeInput } from "@shared/flow-inputs";
-import { useQuery } from "@tanstack/react-query";
-import { apiCall } from "@/lib/api-client";
 import {
   subscribeDiagramEvent,
 } from "@/lib/diagram-events";
-import { computeStraightenedEdge } from "./straightenEdge";
 import { useDiagramHelpContent } from "./useDiagramHelpContent";
 import { useDiagramCanvasPreferences } from "./useDiagramCanvasPreferences";
 import { useDiagramLeaveConfirmation } from "./useDiagramLeaveConfirmation";
@@ -118,12 +111,6 @@ function FlowInner({
 }: DiagramCanvasProps) {
   const [suspendFlowLoad, setSuspendFlowLoad] = useState(false);
   const canvasShellRef = useRef<HTMLDivElement | null>(null);
-  const [recoveryOpen, setRecoveryOpen] = useState(false);
-  const recoveryQuery = useQuery<FlowRecoveryResponse>({
-    queryKey: [api.flow.recovery.path, viewId],
-    queryFn: () => apiCall(api.flow.recovery, { params: { viewId } }),
-    enabled: false,
-  });
 
   const {
     isLoading,
@@ -133,14 +120,9 @@ function FlowInner({
     nodes,
     edges,
     setNodes,
-    setEdges,
 
     onEdgesChange,
 
-    undo,
-    redo,
-    canUndo,
-    canRedo,
 
 
     handleAddNode,
@@ -156,25 +138,6 @@ function FlowInner({
   } = useDiagramCanvas(viewId, projectType, suspendFlowLoad);
 
 
-  const openRecovery = useCallback(() => {
-    setSuspendFlowLoad(true);
-    setRecoveryOpen(true);
-    void recoveryQuery.refetch();
-  }, [recoveryQuery]);
-
-  const handleRecoverySave = useCallback(
-    async (
-      repairedNodes: SyncFlowNodeInput[],
-      repairedEdges: FlowEdgeInput[],
-    ) => {
-      await handleSaveRecovered(repairedNodes, repairedEdges);
-      const result = await reloadDiagram();
-      if (result.error) throw result.error;
-      setRecoveryOpen(false);
-      setSuspendFlowLoad(false);
-    },
-    [handleSaveRecovered, reloadDiagram],
-  );
 
   const {
     screenshot,
@@ -189,7 +152,6 @@ function FlowInner({
     connection.inProgress ? connection.isValid : null,
   );
   // Selection + panels
-  const selectedNodeId = useDiagramStore((state) => state.selectedNodeId);
   const pendingDelete = useDiagramStore((state) => state.pendingDelete);
   const cancelDelete = useDiagramStore((state) => state.cancelDelete);
   const deleteDialogOpen = pendingDelete !== null;
@@ -198,16 +160,8 @@ function FlowInner({
   // `fitView` prop later would trigger another fit.
   const [fitViewOnMount, setFitViewOnMount] = useState(false);
   const diagramStore = useDiagramStoreApi();
-  const {
-    snapNodesEnabled,
-    setSnapEnabled,
-    showBackgroundDots,
-    setShowBackgroundDots,
-    alwaysShowAccent,
-    setAlwaysShowAccent,
-    showNodeDescriptions,
-    setShowNodeDescriptions,
-  } = useDiagramCanvasPreferences();
+  const preferences = useDiagramCanvasPreferences();
+  const { snapNodesEnabled, showBackgroundDots, alwaysShowAccent, showNodeDescriptions } = preferences;
   const helpDialogOpen = useDiagramStore((state) => state.helpDialogOpen);
   const setHelpDialogOpen = useDiagramStore((state) => state.setHelpDialogOpen);
   const {
@@ -281,24 +235,16 @@ function FlowInner({
     clearDragPreview,
   });
 
+  const playback = useFlowPlayback();
   const {
     flowCompleted,
     flowCurrentTick,
     flowEndLabel,
-    flowEndNodeId,
     flowMaxTick,
     flowSchedule,
     flowStartLabel,
-    flowStartNodeId,
-    handlePlayFlow,
-    handleResetFlow,
-    handleSetFlowEnd,
-    handleSetFlowStart,
-    handleStepBack,
-    handleStepForward,
-    handleStopFlow,
     isFlowRunning,
-  } = useFlowPlayback();
+  } = playback;
 
   const {
     applyIssueHighlights,
@@ -352,10 +298,6 @@ function FlowInner({
   const canSavePattern = selectedNodes.length >= 2;
 
 
-  const selectedEdgeForToolbar = useMemo(
-    () => edges.find((edge) => edge.selected) || null,
-    [edges],
-  );
 
 
   const {
@@ -420,24 +362,6 @@ function FlowInner({
     [openEdgePanel],
   );
 
-  const handleStraightenEdge = useCallback(() => {
-    if (!selectedEdgeForToolbar) return;
-    const patch = computeStraightenedEdge(selectedEdgeForToolbar, nodes);
-    if (!patch) return;
-
-    setEdges((current) =>
-      current.map((edge) =>
-        edge.id === selectedEdgeForToolbar.id
-          ? {
-              ...edge,
-              data: patch.data,
-              sourceHandle: patch.sourceHandle,
-              targetHandle: patch.targetHandle,
-            }
-          : edge,
-      ),
-    );
-  }, [nodes, selectedEdgeForToolbar, setEdges]);
   const {
     handleCopyNode,
     handleDeleteNode,
@@ -484,14 +408,11 @@ function FlowInner({
   if (isError) {
     return (
       <DiagramLoadError
+        viewId={viewId}
         reloadDiagram={reloadDiagram}
-        openRecovery={openRecovery}
-        recoveryOpen={recoveryOpen}
-        recoveryQuery={recoveryQuery}
         isSaving={isSaving}
-        setRecoveryOpen={setRecoveryOpen}
         setSuspendFlowLoad={setSuspendFlowLoad}
-        handleRecoverySave={handleRecoverySave}
+        saveRecovered={handleSaveRecovered}
       />
     );
   }
@@ -557,80 +478,19 @@ function FlowInner({
           <CanvasAlignmentGuides guides={alignmentGuides} />
           <Controls className="bg-white dark:bg-slate-900 border-border shadow-lg" />
 
-          <DiagramToolbar
-            projectType={projectType}
+          <CanvasToolbar
             displayMode={displayMode}
             onDisplayModeChange={(mode) => onDisplayModeChange?.(mode)}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            canStraightenEdge={Boolean(
-              !isFlowMode &&
-                selectedEdgeForToolbar &&
-                (selectedEdgeForToolbar.data as CustomEdgeData | undefined)
-                  ?.pathType === "straight",
-            )}
-            canLayoutSelection={selectedNodeIds.length > 0}
-            canAutoLayout={nodes.length > 0}
+            preferences={preferences}
+            playback={playback}
+            selectedNodeIds={selectedNodeIds}
             canSavePattern={canSavePattern}
             onSavePattern={openPatternDialog}
-            onUndo={undo}
-            onRedo={redo}
-            snapNodesEnabled={snapNodesEnabled}
-            alwaysShowAccent={alwaysShowAccent}
-            showBackgroundDots={showBackgroundDots}
-            showNodeDescriptions={showNodeDescriptions}
-            isFlowMode={isFlowMode}
-            isFlowRunning={isFlowRunning}
-            canSetFlowStart={Boolean(selectedNodeId)}
-            canSetFlowEnd={Boolean(selectedNodeId)}
-            canPlayFlow={Boolean(flowStartNodeId && flowEndNodeId)}
-            canStepBack={Boolean(!isFlowRunning && flowCurrentTick > 1)}
-            canStepForward={Boolean(
-              !isFlowRunning &&
-                flowStartNodeId &&
-                flowEndNodeId &&
-                (flowMaxTick === null || flowCurrentTick < flowMaxTick),
-            )}
-            onSetFlowStart={handleSetFlowStart}
-            onSetFlowEnd={handleSetFlowEnd}
-            onPlayFlow={handlePlayFlow}
-            onStopFlow={handleStopFlow}
-            onStepBack={handleStepBack}
-            onStepForward={handleStepForward}
-            onResetFlow={handleResetFlow}
-            onAutoLayout={() => {
-              handleAutoLayout();
-              emitTutorialSignal("auto-layout");
-            }}
-            onLayoutSelectedVertical={() =>
-              handleLayoutSelected("TB", selectedNodeIds)
-            }
-            onLayoutSelectedHorizontal={() =>
-              handleLayoutSelected("LR", selectedNodeIds)
-            }
-            onCenterSelectedVertical={() =>
-              handleCenterSelected("x", selectedNodeIds)
-            }
-            onCenterSelectedHorizontal={() =>
-              handleCenterSelected("y", selectedNodeIds)
-            }
+            onAutoLayout={handleAutoLayout}
+            onLayoutSelected={handleLayoutSelected}
+            onCenterSelected={handleCenterSelected}
             onScreenshot={takeScreenshot}
-            onValidate={() => {
-              handleValidate();
-              emitTutorialSignal("validation-run");
-            }}
-            onStraightenEdge={handleStraightenEdge}
-            onToggleSnap={() => setSnapEnabled((current) => !current)}
-            onToggleAlwaysShowAccent={() =>
-              setAlwaysShowAccent((current) => !current)
-            }
-            onToggleBackgroundDots={() =>
-              setShowBackgroundDots((current) => !current)
-            }
-            onToggleNodeDescriptions={() =>
-              setShowNodeDescriptions((current) => !current)
-            }
-            onOpenHelp={() => setHelpDialogOpen(true)}
+            onValidate={handleValidate}
           />
         </ReactFlow>
         </EdgeRelationConfirmationProvider>
