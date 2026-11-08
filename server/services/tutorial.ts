@@ -1,3 +1,4 @@
+import type { HandleSide } from "@shared/relationships";
 import { randomUUID } from "node:crypto";
 import type { Project } from "@shared/schema";
 import {
@@ -20,10 +21,13 @@ export interface CreatedTutorial {
  * Connection points for a relationship: side by side elements connect right
  * to left; elements above each other use the default bottom/top points.
  */
-function handlesFor(source: { x: number; y: number }, target: { x: number; y: number }) {
+function handlesFor(
+  source: { x: number; y: number },
+  target: { x: number; y: number },
+): { sourceHandle: HandleSide; targetHandle: HandleSide } {
   return Math.abs(target.x - source.x) >= Math.abs(target.y - source.y)
     ? { sourceHandle: "right", targetHandle: "left" }
-    : { sourceHandle: null, targetHandle: null };
+    : { sourceHandle: "bottom", targetHandle: "top" };
 }
 
 function buildView(

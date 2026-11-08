@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { normalizeRelationship } from "@shared/relationships";
 import { db } from "../db";
 import { edges, nodes, nodeViews, views } from "@shared/schema";
 import type {
@@ -52,14 +54,14 @@ export async function createPattern(
 
     if (pattern.edges.length > 0) {
       await tx.insert(edges).values(
-        pattern.edges.map((edge, index) => ({
-          id: `pattern_edge_${created.id}_${now}_${index}`,
+        pattern.edges.map((edge) => ({
+          // Keeps the relationship type: patterns used to save every
+          // relationship as an association.
+          ...normalizeRelationship(edge),
+          id: `edge_${randomUUID()}`,
           viewId: created.id,
           source: idMap.get(edge.source) ?? edge.source,
           target: idMap.get(edge.target) ?? edge.target,
-          sourceHandle: edge.sourceHandle ?? null,
-          targetHandle: edge.targetHandle ?? null,
-          data: edge.data ?? null,
         })),
       );
     }

@@ -81,9 +81,10 @@ test("associates starter nodes, node views, and edges with the created view", ()
       source: "alpha",
       target: "beta",
       edgeType: "association",
-      sourceHandle: null,
-      targetHandle: null,
-      data: { label: "contains" },
+      // Stored in canonical form (shared/relationships.ts).
+      sourceHandle: "bottom",
+      targetHandle: "top",
+      data: { label: "contains", edgeType: "association" },
       viewId: 601,
     },
   ]);
@@ -369,7 +370,7 @@ test("recovers a corrupted saved view without losing valid nodes or relationship
           id: validEdgeId,
           source: validNodeIds[0],
           target: validNodeIds[1],
-          data: { label: "valid relationship" },
+          data: { label: "valid relationship", edgeType: "association" },
         },
       ],
     );

@@ -1,3 +1,4 @@
+import { normalizeRelationship } from "@shared/relationships";
 import { randomUUID } from "node:crypto";
 import { db } from "../db";
 import {
@@ -116,7 +117,7 @@ export function buildStarterViewRecords(
       parentId: node.parentId ?? null,
     })),
     edges: starterView.edges.map((edge) => ({
-      ...edge,
+      ...normalizeRelationship(edge),
       viewId,
     })),
   };
@@ -388,7 +389,7 @@ export async function syncFlow(
     }
 
     if (newEdges.length > 0) {
-      const edgesWithView = newEdges.map((edge) => ({ ...edge, viewId }));
+      const edgesWithView = newEdges.map((edge) => ({ ...normalizeRelationship(edge), viewId }));
       await tx.insert(edges).values(edgesWithView);
     }
 
@@ -519,14 +520,16 @@ export async function insertPatternIntoView(
           const source = idMap.get(edge.source) ?? edge.source;
           const target = idMap.get(edge.target) ?? edge.target;
           return {
+            ...normalizeRelationship({
+              edgeType: edge.edgeType,
+              sourceHandle: edge.sourceHandle,
+              targetHandle: edge.targetHandle,
+              data: edge.data,
+            }),
             id: `edge_${randomUUID()}`,
             viewId,
             source,
             target,
-            edgeType: edge.edgeType,
-            sourceHandle: edge.sourceHandle ?? null,
-            targetHandle: edge.targetHandle ?? null,
-            data: edge.data ?? null,
           };
         }),
       );

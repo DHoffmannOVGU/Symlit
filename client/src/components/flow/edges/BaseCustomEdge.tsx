@@ -108,14 +108,11 @@ export const BaseCustomEdge = ({
     targetPosition: anchoredTargetPosition,
   });
 
-  const finalStrokeWidth =
-    edgeData?.ruleStrokeWidth ?? edgeData?.strokeWidth ?? (selected ? 3 : 2);
+  const finalStrokeWidth = edgeData?.strokeWidth ?? (selected ? 3 : 2);
   const finalStrokeColor =
-    edgeData?.ruleStrokeColor ||
-    edgeData?.strokeColor ||
-    (selected ? "hsl(var(--primary))" : DEFAULT_EDGE_STROKE_COLOR);
-  const finalLineStyle = edgeData?.ruleLineStyle ?? edgeData?.lineStyle;
-  const finalAnimated = edgeData?.ruleAnimated ?? edgeData?.animated;
+    edgeData?.strokeColor || (selected ? "hsl(var(--primary))" : DEFAULT_EDGE_STROKE_COLOR);
+  const finalLineStyle = edgeData?.lineStyle;
+  const finalAnimated = edgeData?.animated;
   const showToolbar = selected && !isManipulating;
   const isMostlyHorizontal =
     Math.abs(anchoredTarget.x - anchoredSource.x) >=

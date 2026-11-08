@@ -22,9 +22,6 @@ commit that fixed them.
 
 ### Server
 
-- **Relationship data is still unchecked.** Edge `data` is `z.any()` because the same schema
-  parses stored relationships on load; tightening it needs a check of what older diagrams contain.
-
 ### Client
 - **Option: re-attach relationships to facing sides during Auto Layout.** Measured on the sample
   diagrams it makes every relationship's handles face each other and shortens lines by 20–27 %
@@ -95,3 +92,7 @@ commit that fixed them.
 - The browser bundled the ORM (`drizzle-orm`, `drizzle-zod`) because the shared API contract used table-generated input schemas. Those, the model-rule schemas and the enums now live in `shared/contracts.ts` without database imports, checked against the tables by `contracts.test.ts`. First load: 258 → 221 kB.
 - Auto Layout's engine (dagre) loads on first use (42 kB); the editor chunk is 498 kB.
 - The model rules panel and AI assistant read the diagram store and model instead of receiving the graph as props.
+- Relationship data was unchecked (`z.any()`). It now has one shared definition (`shared/relationships.ts`): saving requires a known type, side handles and correctly typed known fields; the server stores the canonical form on every write path (diagram save, starter/tutorial projects, patterns). Migration 0005 normalised stored relationships (unknown types → association, old handle ids → sides, `data.edgeType` mirrors the column, wrongly typed fields dropped) and a test checks every cleaned row passes the save checks.
+- Saved patterns lost their relationship types: the client did not send them and the server stored every pattern relationship as an association. Fixed, with a test.
+- Pattern elements' data was accepted unchecked; it uses the same schema as diagram elements now.
+- Relationships read model-rule style fields (`ruleStrokeWidth` etc.) that nothing ever wrote; removed.

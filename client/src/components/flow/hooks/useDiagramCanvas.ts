@@ -1,4 +1,5 @@
 import { normalizeHandleId } from "../utils/edge-utils";
+import { normalizeRelationship } from "@shared/relationships";
 import { newNodeId } from "@/lib/ids";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -424,21 +425,19 @@ export function useDiagramCanvas(
         };
       }) as InsertFlowNode[];
 
-      const edgesToSave: InsertFlowEdge[] = filteredEdges.map((e) => {
-        const edgeType =
-          e.type ||
-          e.data?.edgeType ||
-          "association";
-        return {
+      // The server stores relationships in this canonical form (known type,
+      // side handles, type mirrored in data); see shared/relationships.ts.
+      const edgesToSave = filteredEdges.map((e) =>
+        normalizeRelationship({
           id: e.id,
           source: e.source,
           target: e.target,
-          edgeType,
-          sourceHandle: e.sourceHandle || null,
-          targetHandle: e.targetHandle || null,
-          data: e.data || { edgeType },
-        };
-      });
+          edgeType: e.type || e.data?.edgeType,
+          sourceHandle: e.sourceHandle,
+          targetHandle: e.targetHandle,
+          data: e.data,
+        }),
+      ) as InsertFlowEdge[];
 
       return { nodesToSave, edgesToSave };
     },
