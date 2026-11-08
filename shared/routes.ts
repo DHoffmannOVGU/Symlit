@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { insertProjectSchema, insertViewSchema } from './contracts';
+import { magicRelationTypeEnum } from './metamodel-setup';
+import { handleInputSchema, relationshipDataSchema } from './relationships';
 import type { projects, views, nodes, users } from './schema';
 import { aiMetamodelProposalSchema, aiMetamodelRequestSchema } from './ai-metamodel';
 
@@ -35,6 +37,10 @@ export const flowNodeInputSchema = z.object({
   parentId: nonBlankString.nullable().optional(),
 });
 
+/**
+ * A relationship as stored and returned. Reading stays lenient so a diagram
+ * with unexpected stored data still opens; writes use `flowEdgeInputSchema`.
+ */
 export const flowEdgeSchema = z.object({
   id: nonBlankString,
   source: nonBlankString,
@@ -43,6 +49,17 @@ export const flowEdgeSchema = z.object({
   sourceHandle: z.string().nullable().optional(),
   targetHandle: z.string().nullable().optional(),
   data: z.any().nullable().optional(),
+});
+
+/** A relationship as saved by clients (see shared/relationships.ts). */
+export const flowEdgeInputSchema = z.object({
+  id: nonBlankString,
+  source: nonBlankString,
+  target: nonBlankString,
+  edgeType: z.enum(magicRelationTypeEnum).optional(),
+  sourceHandle: handleInputSchema,
+  targetHandle: handleInputSchema,
+  data: relationshipDataSchema.nullable().optional(),
 });
 
 const validateFlowIdentity = <
@@ -95,7 +112,7 @@ const validateFlowIdentity = <
 export const flowSyncInputSchema = z
   .object({
     nodes: z.array(flowNodeInputSchema),
-    edges: z.array(flowEdgeSchema),
+    edges: z.array(flowEdgeInputSchema),
   })
   .superRefine(validateFlowIdentity);
 
@@ -154,7 +171,7 @@ const starterViewSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   nodes: z.array(flowNodeInputSchema),
-  edges: z.array(flowEdgeSchema),
+  edges: z.array(flowEdgeInputSchema),
 });
 
 const createStarterProjectSchema = insertProjectSchema.extend({
@@ -420,14 +437,15 @@ export const api = {
           nodeId: z.string().min(1),
           type: z.string().min(1),
           position: z.object({ x: z.number(), y: z.number() }),
-          data: z.any(),
+          data: flowNodeDataSchema,
         })),
         edges: z.array(z.object({
           source: z.string().min(1),
           target: z.string().min(1),
-          sourceHandle: z.string().nullable().optional(),
-          targetHandle: z.string().nullable().optional(),
-          data: z.any().optional(),
+          edgeType: z.enum(magicRelationTypeEnum).optional(),
+          sourceHandle: handleInputSchema,
+          targetHandle: handleInputSchema,
+          data: relationshipDataSchema.nullable().optional(),
         })),
       }),
       responses: {

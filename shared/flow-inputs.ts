@@ -1,6 +1,8 @@
-import type { InsertFlowEdge } from "./schema";
+import type { z } from "zod";
+import type { flowEdgeInputSchema } from "./routes";
 
-export type FlowEdgeInput = Omit<InsertFlowEdge, "viewId">;
+/** A relationship as saved by clients (validated by `flowEdgeInputSchema`). */
+export type FlowEdgeInput = z.input<typeof flowEdgeInputSchema>;
 
 /**
  * Shape accepted by `syncFlow` over the wire and inside the storage/service
@@ -38,6 +40,7 @@ export type PatternNodeInput = {
 export type PatternEdgeInput = {
   source: string;
   target: string;
+  edgeType?: string;
   sourceHandle?: string | null;
   targetHandle?: string | null;
   data?: unknown;

@@ -526,7 +526,7 @@ describe("guided tutorial", () => {
     }
     // Side-by-side elements connect right to left, stacked ones bottom to top.
     const handles = model.edges.map((edge: { sourceHandle: string | null; targetHandle: string | null }) => `${edge.sourceHandle}->${edge.targetHandle}`).sort();
-    assert.deepEqual(handles, ["null->null", "right->left"]);
+    assert.deepEqual(handles, ["bottom->top", "right->left"]);
   });
 
   test("a second tutorial gets its own elements, and removing deletes all tutorial projects", async () => {
@@ -571,5 +571,68 @@ describe("demo seed connection points", () => {
     const flow = await storage.getFlow(view.id);
     assert.equal(flow.edges[0].sourceHandle, "right");
     assert.equal(flow.edges[0].targetHandle, "left");
+  });
+});
+
+describe("relationship data", () => {
+  test("rejects relationships with an unknown type, handle or wrongly typed data", async () => {
+    const project = await createProject();
+    const view = await createView(project.id);
+    const flow = sampleFlow(`rel${project.id}`);
+    const withEdge = (patch: Record<string, unknown>) => ({ ...flow, edges: [{ ...flow.edges[0], ...patch }] });
+
+    for (const patch of [
+      { edgeType: "flows-into" },
+      { sourceHandle: "middle" },
+      { data: "just text" },
+      { data: [1, 2] },
+      { data: { label: 42 } },
+      { data: { lineStyle: "wavy" } },
+      { data: { strokeWidth: -1 } },
+      { data: { sourceAnchor: { side: "top", offset: 2 } } },
+    ]) {
+      const res = await request("POST", `/api/views/${view.id}/sync`, withEdge(patch));
+      assert.equal(res.status, 400, `${JSON.stringify(patch)} -> ${res.status}`);
+    }
+  });
+
+  test("stores relationships in canonical form and keeps open-ended fields", async () => {
+    const project = await createProject();
+    const view = await createView(project.id);
+    const flow = sampleFlow(`canon${project.id}`);
+    const res = await request("POST", `/api/views/${view.id}/sync`, {
+      ...flow,
+      edges: [
+        { ...flow.edges[0], edgeType: "composition", sourceHandle: "top-source", targetHandle: null, data: { label: "has", custom: { x: 1 } } },
+      ],
+    });
+    assert.ok(res.status < 300, res.text);
+    const [edge] = (await request("GET", `/api/views/${view.id}/flow`)).json.edges;
+    assert.equal(edge.edgeType, "composition");
+    assert.deepEqual([edge.sourceHandle, edge.targetHandle], ["top", "top"]);
+    assert.deepEqual(edge.data, { label: "has", custom: { x: 1 }, edgeType: "composition" });
+  });
+
+  test("patterns keep their relationship types when saved and inserted", async () => {
+    const project = await createProject();
+    const view = await createView(project.id);
+    const flow = sampleFlow(`pk${project.id}`);
+    const created = await request("POST", `/api/projects/${project.id}/patterns`, {
+      name: "Assembly",
+      nodes: flow.nodes.map(({ id, type, position, data }) => ({ nodeId: id, type, position, data })),
+      edges: [{ source: flow.nodes[0].id, target: flow.nodes[1].id, edgeType: "composition", sourceHandle: "right", targetHandle: "left", data: { label: "contains" } }],
+    });
+    assert.ok(created.status < 300, created.text);
+    const [pattern] = (await request("GET", `/api/projects/${project.id}/patterns`)).json;
+    const stored = (await request("GET", `/api/views/${pattern.id}/flow`)).json.edges[0];
+    assert.equal(stored.edgeType, "composition");
+
+    const inserted = await request("POST", `/api/views/${view.id}/patterns/${pattern.id}/insert`, { position: { x: 0, y: 0 } });
+    assert.ok(inserted.status < 300, inserted.text);
+    const [edge] = (await request("GET", `/api/views/${view.id}/flow`)).json.edges;
+    assert.equal(edge.edgeType, "composition");
+    assert.equal(edge.data.edgeType, "composition");
+    assert.equal(edge.data.label, "contains");
+    assert.deepEqual([edge.sourceHandle, edge.targetHandle], ["right", "left"]);
   });
 });

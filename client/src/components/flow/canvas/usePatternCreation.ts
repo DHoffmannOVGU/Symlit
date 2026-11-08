@@ -1,3 +1,4 @@
+import { normalizeRelationship } from "@shared/relationships";
 import { useQueryClient } from "@tanstack/react-query";
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
@@ -61,13 +62,16 @@ export function usePatternCreation({
       data: node.data,
     }));
 
-    const patternEdgesPayload = patternSnapshot.edges.map((edge) => ({
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: edge.sourceHandle ?? null,
-      targetHandle: edge.targetHandle ?? null,
-      data: edge.data,
-    }));
+    const patternEdgesPayload = patternSnapshot.edges.map((edge) => {
+      const { id: _id, ...relationship } = normalizeRelationship({
+        id: edge.id,
+        edgeType: edge.type || edge.data?.edgeType,
+        sourceHandle: edge.sourceHandle,
+        targetHandle: edge.targetHandle,
+        data: edge.data,
+      });
+      return { ...relationship, source: edge.source, target: edge.target };
+    });
 
     const url = buildUrl(api.patterns.create.path, { projectId });
     await apiRequest(api.patterns.create.method, url, {

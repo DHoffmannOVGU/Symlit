@@ -53,6 +53,7 @@ export interface NodeData {
   [key: string]: unknown;
 }
 
+/** Relationship data in the editor; the stored form is `RelationshipData` (shared/relationships.ts). */
 export interface CustomEdgeData {
   // Keep this open for relationships created by older/custom metamodels.
   // Known magic relationship types are described in shared/metamodel-setup.
@@ -69,10 +70,6 @@ export interface CustomEdgeData {
   targetArrow?: "none" | "arrow" | "arrowclosed";
   pathType?: "default" | "straight" | "step" | "smoothstep";
   animated?: boolean;
-  ruleStrokeWidth?: number;
-  ruleStrokeColor?: string;
-  ruleLineStyle?: "solid" | "dashed" | "dotted";
-  ruleAnimated?: boolean;
   sourceAnchor?: EdgeAnchor;
   targetAnchor?: EdgeAnchor;
   [key: string]: unknown;

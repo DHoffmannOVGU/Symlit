@@ -1,3 +1,5 @@
+import type { MagicRelationType } from "./metamodel-setup";
+import type { RelationshipData } from "./relationships";
 /**
  * The guided tutorial: lesson definitions (shared by client and server) and
  * the content of the two tutorial projects.
@@ -264,8 +266,8 @@ export interface TutorialSeedEdge {
   key: string;
   source: string;
   target: string;
-  edgeType: string;
-  data?: Record<string, unknown>;
+  edgeType: MagicRelationType;
+  data?: RelationshipData;
 }
 
 export interface TutorialSeedProject {

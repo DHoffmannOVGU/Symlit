@@ -161,12 +161,8 @@ export const getSnapSide = (
   return bestDistance <= threshold ? bestSide : null;
 };
 
-/**
- * Every element has one handle per side, named after the side. Handles work in
- * both directions (React Flow "loose" connection mode).
- */
-export const HANDLE_SIDES = ["top", "right", "bottom", "left"] as const;
-export type HandleSide = (typeof HANDLE_SIDES)[number];
+export { HANDLE_SIDES, normalizeHandleId, type HandleSide } from "@shared/relationships";
+import type { HandleSide } from "@shared/relationships";
 
 /** The side facing a given side, e.g. a new element dropped to the right connects on its left. */
 export const OPPOSITE_SIDE: Record<HandleSide, HandleSide> = {
@@ -181,23 +177,6 @@ export const getHandleIdForSide = (
   side: AnchorSide,
 ): HandleSide => side;
 
-/**
- * Maps stored handle ids to the side handles. Older diagrams used separate
- * source and target handles per side ("top-source", "right-target", …) and
- * `null` for the default handles (bottom for sources, top for targets).
- */
-export const normalizeHandleId = (
-  kind: "source" | "target",
-  handleId: string | null | undefined,
-): HandleSide => {
-  if (!handleId) return kind === "source" ? "bottom" : "top";
-  const side = handleId.replace(/-(source|target)$/, "");
-  return (HANDLE_SIDES as readonly string[]).includes(side)
-    ? (side as HandleSide)
-    : kind === "source"
-      ? "bottom"
-      : "top";
-};
 
 export const getClosestAnchor = (
   rect: NodeRect,

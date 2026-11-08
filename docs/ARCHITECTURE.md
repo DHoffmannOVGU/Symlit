@@ -76,6 +76,13 @@ Defined in `shared/schema.ts`:
 
 Patterns are stored as views with `viewType = "pattern"` plus normal nodes and edges.
 
+Relationships (`edges`) are defined in `shared/relationships.ts`. Every server write goes through
+`normalizeRelationship()`, so stored relationships always have one of the six known types in
+`edge_type`, the same type in `data.edgeType`, a side handle (`top`/`right`/`bottom`/`left`) at each
+end, and an object as `data`. Saving checks `data` with `relationshipDataSchema`: known fields must
+have the right type, other fields are kept. Reading stays lenient (`flowEdgeSchema`) so unexpected
+stored data never stops a diagram from opening; migration 0005 cleaned existing data to this form.
+
 Metamodel vocabulary: built-in node types (Object, Behavior, Concern, Performer, Requirement,
 Event, Capability) and relation types (Association, Aggregation, Composition,
 Generalization, Dependency, Realization) live in `shared/metamodel-setup.ts`. Projects without
