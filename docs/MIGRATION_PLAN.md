@@ -1,6 +1,6 @@
 # Symlit: Replit → GitHub migration plan
 
-Status: **local edition complete and stable on `main`** (PRs #1–#12), ready to tag `v0.1.0`. Hosted edition deferred.
+Status: **local edition complete and stable on `main`** (PRs #1–#12), `v0.1.0` follows the templates discussion. Hosted edition deferred.
 Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc7732`, 217 commits).
 
 ### Decisions taken
@@ -50,7 +50,7 @@ Based on an analysis of the Replit export (`Symlit.zip`, last Replit commit `bdc
 | Relationship data: shared definition, strict writes, migration 0005 cleaned stored data | done |
 | `no-explicit-any` on; server-controlled project fields (`templateId`, kind) | done |
 | `docker compose up --build` verified on a machine with Docker | **open – needs the owner** |
-| First release: tag `v0.1.0` + GitHub release (notes in `CHANGELOG.md`) | **open – needs the owner** (this session cannot push tags) |
+| First release: tag `v0.1.0` + GitHub release (notes in `CHANGELOG.md`) | **after the templates discussion**; the owner tags (this session cannot push tags) |
 | Templates (incl. reusing an element in two diagrams), SysML v2 export, packaged executable | open / parked, see [`BACKLOG.md`](BACKLOG.md) |
 | Hosted edition (Phases 4 and 6) | deferred; decide D1 (same repo vs private repo) first |
 
