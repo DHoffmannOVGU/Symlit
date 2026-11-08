@@ -1,10 +1,11 @@
+import { useReactFlow } from "@xyflow/react";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
+import { useDiagramModel } from "../state/DiagramModelProvider";
 import { newEdgeId, newNodeId } from "@/lib/ids";
 import { normalizeHandleId, OPPOSITE_SIDE } from "../utils/edge-utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
 import type { Connection } from "@xyflow/react";
 import { addEdge } from "@xyflow/react";
-import type { CustomEdgeData } from "../edges/CustomEdges";
 import { getEdgeMarkers } from "../edges/CustomEdges";
 import type {
   DiagramEdge,
@@ -18,7 +19,6 @@ import {
 } from "../utils/edge-create";
 import { getTypeAncestors } from "@shared/metamodel-inheritance";
 import { inferFlowTypeFromNodes } from "../utils/flow-type";
-import type { ProjectType } from "@shared/schema";
 import type { MagicRelationType } from "@shared/metamodel-setup";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import type {
@@ -27,53 +27,23 @@ import type {
 } from "../edges/EdgeRelationConfirmation";
 
 export function useEdgeCreation({
-  viewId,
-  projectType,
   allowedEdgeTypes,
-  nodes,
-  edges,
-  setNodes,
-  setEdges,
-  takeSnapshot,
-  availablePartDefEdges,
-  typeMetaById,
-  parentMap,
-  screenToFlowPosition,
   canCreateConnection,
   onInvalidConnection,
   onEdgeCreated,
 }: {
-  viewId: number;
-  projectType: ProjectType;
   allowedEdgeTypes?: MagicRelationType[];
-  nodes: Node[];
-  edges: DiagramEdge[];
-  setNodes: Dispatch<SetStateAction<Node[]>>;
-  setEdges: Dispatch<SetStateAction<DiagramEdge[]>>;
-  takeSnapshot: (nodes: Node[], edges: DiagramEdge[]) => void;
-  availablePartDefEdges: Array<{
-    id: string;
-    edgeType: CustomEdgeData["edgeType"];
-    flowType?: CustomEdgeData["flowType"];
-    label?: string;
-    sourceTypeId: string;
-    targetTypeId: string;
-  }>;
-  typeMetaById: Map<
-    string,
-    {
-      referenceTypeId: string;
-      originTypeId?: string;
-      originProjectId?: number;
-      label: string;
-    }
-  >;
-  parentMap: Map<string, Set<string>>;
-  screenToFlowPosition: (point: { x: number; y: number }) => { x: number; y: number };
   canCreateConnection?: (connection: Connection) => boolean;
   onInvalidConnection?: (connection: Connection) => void;
   onEdgeCreated?: (confirmation: PendingEdgeRelationConfirmation | null) => void;
 }) {
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
+  const setNodes = useDiagramStore((state) => state.setNodes);
+  const setEdges = useDiagramStore((state) => state.setEdges);
+  const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
+  const { viewId, projectType, availablePartDefEdges, typeMetaById, parentMap } = useDiagramModel();
+  const { screenToFlowPosition } = useReactFlow();
   const [connectingFromNodeId, setConnectingFromNodeId] = useState<string | null>(
     null,
   );

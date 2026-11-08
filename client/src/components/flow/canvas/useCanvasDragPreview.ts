@@ -1,3 +1,5 @@
+import { useReactFlow } from "@xyflow/react";
+import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useCallback, useEffect, useState, type DragEvent } from "react";
 import type { DiagramNode as Node } from "../types";
 import {
@@ -10,13 +12,6 @@ import {
   type SidebarNodeTransfer,
 } from "./diagramCanvasTypes";
 
-interface UseCanvasDragPreviewArgs {
-  viewId: number;
-  screenToFlowPosition: (pos: { x: number; y: number }) => {
-    x: number;
-    y: number;
-  };
-}
 
 const NODE_TYPE_DEFAULT_LABEL: Record<DragPreviewState["nodeType"], string> = {
   partdef: "Object",
@@ -58,10 +53,9 @@ function buildDragPreviewNode(dragPreview: DragPreviewState): Node {
  * dragged over the diagram canvas. Owns the ghost state, the dragover handler
  * that updates it, and the global dragend/drop cleanup listeners.
  */
-export function useCanvasDragPreview({
-  viewId,
-  screenToFlowPosition,
-}: UseCanvasDragPreviewArgs) {
+export function useCanvasDragPreview() {
+  const { viewId } = useDiagramModel();
+  const { screenToFlowPosition } = useReactFlow();
   const [dragPreview, setDragPreview] = useState<DragPreviewState | null>(null);
 
   const handleCanvasDragOver = useCallback(

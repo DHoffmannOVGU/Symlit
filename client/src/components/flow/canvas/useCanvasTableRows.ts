@@ -1,23 +1,21 @@
-import type { DiagramEdge, DiagramNode } from "../types";
+import { useDiagramModel } from "../state/DiagramModelProvider";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useMemo } from "react";
 import type { NodeData } from "../types";
 import { type CustomEdgeData } from "../edges/CustomEdges";
 
 export interface UseCanvasTableRowsParams {
-  nodes: DiagramNode[];
-  isExternalNode: (nodeId: string) => boolean;
-  edges: DiagramEdge[];
   nodeTableFilter: string;
   edgeTableFilter: string;
 }
 
 export function useCanvasTableRows({
-  nodes,
-  isExternalNode,
-  edges,
   nodeTableFilter,
   edgeTableFilter,
 }: UseCanvasTableRowsParams) {
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
+  const { isExternalNode } = useDiagramModel();
   const nodeTableRows = useMemo(
     () =>
       nodes.map((node) => {

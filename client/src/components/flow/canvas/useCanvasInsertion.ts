@@ -1,33 +1,23 @@
-import type { XYPosition } from "@xyflow/react";
-import type { QueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useReactFlow } from "@xyflow/react";
+import { useDiagramModel } from "../state/DiagramModelProvider";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useCallback, useEffect, useRef } from "react";
-import type { DiagramNode as Node } from "../types";
 import { api, buildUrl } from "@shared/routes";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { subscribeDiagramEvent } from "@/lib/diagram-events";
 
-export interface UseCanvasInsertionParams {
-  nodes: Node[];
-  screenToFlowPosition: (clientPosition: XYPosition, options?: { snapToGrid: boolean; }) => XYPosition;
-  viewId: number;
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
-  setSelectedEdgeId: React.Dispatch<React.SetStateAction<string | null>>;
-  setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>;
-  toast: ReturnType<typeof useToast>["toast"];
-  queryClient: QueryClient;
-}
 
-export function useCanvasInsertion({
-  nodes,
-  screenToFlowPosition,
-  viewId,
-  setNodes,
-  setSelectedEdgeId,
-  setSelectedNodeId,
-  toast,
-  queryClient,
-}: UseCanvasInsertionParams) {
+export function useCanvasInsertion() {
+  const nodes = useDiagramStore((state) => state.nodes);
+  const setNodes = useDiagramStore((state) => state.setNodes);
+  const setSelectedEdgeId = useDiagramStore((state) => state.setSelectedEdgeId);
+  const setSelectedNodeId = useDiagramStore((state) => state.setSelectedNodeId);
+  const { viewId } = useDiagramModel();
+  const { screenToFlowPosition } = useReactFlow();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const pendingSelectionRef = useRef<{
     beforeIds: Set<string>;
     mode: "single" | "pattern";

@@ -1,6 +1,7 @@
+import { useQueryClient } from "@tanstack/react-query";
+import { useDiagramModel } from "../state/DiagramModelProvider";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { emitTutorialSignal } from "@/lib/tutorial-signals";
-import type { QueryClient } from "@tanstack/react-query";
-import type { DiagramEdge } from "../types";
 import { useCallback, useState } from "react";
 import type { DiagramNode as Node } from "../types";
 import { api, buildUrl } from "@shared/routes";
@@ -8,21 +9,18 @@ import { apiRequest } from "@/lib/queryClient";
 
 export interface UsePatternCreationParams {
   selectedNodes: Node[];
-  edges: DiagramEdge[];
   canSavePattern: boolean;
   selectedNodeIds: string[];
-  projectId: number;
-  queryClient: QueryClient;
 }
 
 export function usePatternCreation({
   selectedNodes,
-  edges,
   canSavePattern,
   selectedNodeIds,
-  projectId,
-  queryClient,
 }: UsePatternCreationParams) {
+  const edges = useDiagramStore((state) => state.edges);
+  const { projectId } = useDiagramModel();
+  const queryClient = useQueryClient();
   const [patternDialogOpen, setPatternDialogOpen] = useState(false);
   const [patternName, setPatternName] = useState("");
   const [patternDescription, setPatternDescription] = useState("");

@@ -1,51 +1,31 @@
+import { useDiagramModel } from "../state/DiagramModelProvider";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useCallback, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
-import type { Node } from "@xyflow/react";
 
 import type { CustomEdgeData } from "../edges/CustomEdges";
 import type {
-  DiagramEdge,
-  DiagramNode,
   NodeData,
 } from "../types";
 import { validateInstanceModel, type ValidationIssue } from "@shared/model-validation";
-import type { ModelRule, ProjectType } from "@shared/schema";
+import type { ModelRule } from "@shared/schema";
 import { evaluateModelRules } from "../rules/model-rules";
 
 export type { ValidationIssue };
 
-interface RelationEdge {
-  sourceTypeId?: string;
-  targetTypeId?: string;
-  edgeType?: string;
-  label?: string;
-}
-
 interface UseDiagramValidationParams {
-  projectType: ProjectType;
-  nodes: DiagramNode[];
-  edges: DiagramEdge[];
-  availablePartDefNodes: Node[];
-  relationEdges: RelationEdge[];
-  parentMap: Map<string, Set<string>>;
-  setNodes: Dispatch<SetStateAction<DiagramNode[]>>;
-  setEdges: Dispatch<SetStateAction<DiagramEdge[]>>;
   modelRules?: ModelRule[];
   inheritedModelRuleIds?: Set<string>;
 }
 
 export function useDiagramValidation({
-  projectType,
-  nodes,
-  edges,
-  availablePartDefNodes,
-  relationEdges,
-  parentMap,
-  setNodes,
-  setEdges,
   modelRules = [],
   inheritedModelRuleIds = new Set(),
 }: UseDiagramValidationParams) {
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
+  const setNodes = useDiagramStore((state) => state.setNodes);
+  const setEdges = useDiagramStore((state) => state.setEdges);
+  const { projectType, availablePartDefNodes, relationEdges, parentMap } = useDiagramModel();
   const [validationOpen, setValidationOpen] = useState(false);
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>(
     [],

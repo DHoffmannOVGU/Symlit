@@ -1,10 +1,9 @@
-import type { ProjectType } from "@shared/schema";
-import type { ReactFlowInstance } from "@xyflow/react";
-import type { DiagramEdge } from "../types";
+import { useReactFlow } from "@xyflow/react";
+import { useDiagramModel } from "../state/DiagramModelProvider";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { randomId } from "@/lib/ids";
 import { useCallback, useEffect } from "react";
 import { AI_ASSISTANT_ENABLED } from "@/lib/feature-flags";
-import type { DiagramNode as Node } from "../types";
 import {
   buildMetamodelProposalElements,
   chooseMetamodelProposalLayoutDirection,
@@ -15,30 +14,20 @@ import { useToast } from "@/hooks/use-toast";
 import { subscribeDiagramEvent } from "@/lib/diagram-events";
 
 export interface UseCanvasAiProposalParams {
-  viewId: number;
-  projectType: ProjectType;
   toggleAiAssistant: () => void;
-  nodes: Node[];
-  edges: DiagramEdge[];
-  toast: ReturnType<typeof useToast>["toast"];
-  takeSnapshot: (nodes: Node[], edges: DiagramEdge[]) => void;
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
-  setEdges: React.Dispatch<React.SetStateAction<DiagramEdge[]>>;
-  fitView: ReactFlowInstance["fitView"];
 }
 
 export function useCanvasAiProposal({
-  viewId,
-  projectType,
   toggleAiAssistant,
-  nodes,
-  edges,
-  toast,
-  takeSnapshot,
-  setNodes,
-  setEdges,
-  fitView,
 }: UseCanvasAiProposalParams) {
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
+  const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
+  const setNodes = useDiagramStore((state) => state.setNodes);
+  const setEdges = useDiagramStore((state) => state.setEdges);
+  const { viewId, projectType } = useDiagramModel();
+  const { fitView } = useReactFlow();
+  const { toast } = useToast();
   useEffect(
     () => subscribeDiagramEvent("metamodel-ai-assistant-toggle-request", (detail) => {
       if (AI_ASSISTANT_ENABLED && detail.viewId === viewId && projectType === "metamodel") toggleAiAssistant();

@@ -1,7 +1,6 @@
+import { useDiagramModel } from "../state/DiagramModelProvider";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { emitTutorialSignal } from "@/lib/tutorial-signals";
-import type { ProjectType } from "@shared/schema";
-import type { PartTypeOption } from "../hooks/useMetamodelParts";
-import type { DiagramEdge } from "../types";
 import { newNodeId } from "@/lib/ids";
 import { useCallback, useMemo } from "react";
 import type { DiagramNode as Node, NodeData } from "../types";
@@ -9,38 +8,21 @@ import { getEdgeSemanticDefaults, getEdgeMarkers, type CustomEdgeData } from "..
 import { useDiagramClipboard } from "./useDiagramClipboard";
 
 export interface UseCanvasElementActionsParams {
-  isExternalNode: (nodeId: string) => boolean;
-  takeSnapshot: (nodes: Node[], edges: DiagramEdge[]) => void;
-  nodes: Node[];
-  edges: DiagramEdge[];
-  partDefStyleById: Map<string, { icon: string; color: string; }>;
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
-  setEdges: React.Dispatch<React.SetStateAction<DiagramEdge[]>>;
-  partTypeOptions: PartTypeOption[];
-  projectType: ProjectType;
-  setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>;
   selectedNodes: Node[];
-  setSelectedEdgeId: React.Dispatch<React.SetStateAction<string | null>>;
-  requestDelete: (payload: { nodeIds: string[]; edgeIds: string[]; label?: string; }) => void;
-  edgeTypeCycle: ("association" | "aggregation" | "composition" | "generalization" | "dependency" | "realization")[];
 }
 
 export function useCanvasElementActions({
-  isExternalNode,
-  takeSnapshot,
-  nodes,
-  edges,
-  partDefStyleById,
-  setNodes,
-  setEdges,
-  partTypeOptions,
-  projectType,
-  setSelectedNodeId,
   selectedNodes,
-  setSelectedEdgeId,
-  requestDelete,
-  edgeTypeCycle,
 }: UseCanvasElementActionsParams) {
+  const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
+  const setNodes = useDiagramStore((state) => state.setNodes);
+  const setEdges = useDiagramStore((state) => state.setEdges);
+  const setSelectedNodeId = useDiagramStore((state) => state.setSelectedNodeId);
+  const setSelectedEdgeId = useDiagramStore((state) => state.setSelectedEdgeId);
+  const requestDelete = useDiagramStore((state) => state.requestDelete);
+  const { isExternalNode, partDefStyleById, partTypeOptions, projectType, edgeTypeCycle } = useDiagramModel();
   const handleSaveNodeData = useCallback(
     (nodeId: string, data: NodeData) => {
       if (isExternalNode(nodeId)) return;

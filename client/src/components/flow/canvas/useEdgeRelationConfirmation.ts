@@ -1,17 +1,13 @@
-import type { DiagramEdge } from "../types";
+import { useDiagramModel } from "../state/DiagramModelProvider";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getEdgeSemanticDefaults, getEdgeMarkers, type CustomEdgeData } from "../edges/CustomEdges";
 import { type PendingEdgeRelationConfirmation } from "../edges/EdgeRelationConfirmation";
 
-export interface UseEdgeRelationConfirmationParams {
-  viewId: number;
-  setEdges: React.Dispatch<React.SetStateAction<DiagramEdge[]>>;
-}
 
-export function useEdgeRelationConfirmation({
-  viewId,
-  setEdges,
-}: UseEdgeRelationConfirmationParams) {
+export function useEdgeRelationConfirmation() {
+  const setEdges = useDiagramStore((state) => state.setEdges);
+  const { viewId } = useDiagramModel();
   const [pendingEdgeRelation, setPendingEdgeRelation] =
     useState<PendingEdgeRelationConfirmation | null>(null);
   useEffect(() => {

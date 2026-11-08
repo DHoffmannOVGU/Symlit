@@ -30,7 +30,6 @@ import {
   ConnectionLineType,
   ConnectionMode,
   useConnection,
-  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 
@@ -65,9 +64,8 @@ import { getTypeAncestors } from "@shared/metamodel-inheritance";
 import { api } from "@shared/routes";
 import type { FlowRecoveryResponse } from "@shared/routes";
 import type { FlowEdgeInput, SyncFlowNodeInput } from "@shared/flow-inputs";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { apiCall } from "@/lib/api-client";
-import { useToast } from "@/hooks/use-toast";
 import {
   dispatchDiagramEvent,
   subscribeDiagramEvent,
@@ -147,7 +145,6 @@ function FlowInner({
     canUndo,
     canRedo,
 
-    takeSnapshot,
 
     handleAddNode,
     handleAutoLayout,
@@ -161,9 +158,6 @@ function FlowInner({
     isDirty,
   } = useDiagramCanvas(viewId, projectType, suspendFlowLoad);
 
-  const { screenToFlowPosition, getViewport, setViewport, fitView } = useReactFlow();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   const openRecovery = useCallback(() => {
     setSuspendFlowLoad(true);
@@ -201,11 +195,9 @@ function FlowInner({
   const selectedNodeId = useDiagramStore((state) => state.selectedNodeId);
   const selectedEdgeId = useDiagramStore((state) => state.selectedEdgeId);
   const setSelectedNodeId = useDiagramStore((state) => state.setSelectedNodeId);
-  const setSelectedEdgeId = useDiagramStore((state) => state.setSelectedEdgeId);
   const isNodePanelOpen = useDiagramStore((state) => state.nodePanelOpen);
   const isEdgePanelOpen = useDiagramStore((state) => state.edgePanelOpen);
   const pendingDelete = useDiagramStore((state) => state.pendingDelete);
-  const requestDelete = useDiagramStore((state) => state.requestDelete);
   const cancelDelete = useDiagramStore((state) => state.cancelDelete);
   const deleteDialogOpen = pendingDelete !== null;
   const [isCanvasReady, setIsCanvasReady] = useState(false);
@@ -233,7 +225,7 @@ function FlowInner({
     dragPreviewNode,
     handleCanvasDragOver,
     clearDragPreview,
-  } = useCanvasDragPreview({ viewId, screenToFlowPosition });
+  } = useCanvasDragPreview();
   const {
     draggingNodeId,
     alignmentGuides,
@@ -241,17 +233,12 @@ function FlowInner({
     handleNodeDragStart,
     handleNodeDragStop,
   } = useCanvasNodeSnapping({
-    nodes,
-    edges,
     snapNodesEnabled,
-    setNodes,
-    takeSnapshot,
   });
 
   const {
     isFlowMode,
     metamodelDefaultType,
-    isExternalNode,
     availablePartDefs,
     availablePartDefNodes,
     availablePartDefEdges,
@@ -259,11 +246,9 @@ function FlowInner({
     partTypeOptions,
     activeModelRules,
     inheritedModelRuleIds,
-    typeMetaById,
     parentMap,
     relationEdges,
     configuredRelationTypes,
-    edgeTypeCycle,
     localModelRules,
     referencedModelRules,
     metamodelSetup,
@@ -289,16 +274,7 @@ function FlowInner({
   }, [selectedNodeId, viewId]);
   const {
     insertNodeIntoView,
-  } = useCanvasInsertion({
-    nodes,
-    screenToFlowPosition,
-    viewId,
-    setNodes,
-    setSelectedEdgeId,
-    setSelectedNodeId,
-    toast,
-    queryClient,
-  });
+  } = useCanvasInsertion();
 
   const {
     toggleModelRules,
@@ -310,24 +286,12 @@ function FlowInner({
     closeModelRules,
     setModelRulesPanelHeight,
   } = useCanvasSidePanels({
-    projectType,
     canvasShellRef,
-    getViewport,
-    setViewport,
   });
   const {
     handleApplyAiProposal,
   } = useCanvasAiProposal({
-    viewId,
-    projectType,
     toggleAiAssistant,
-    nodes,
-    edges,
-    toast,
-    takeSnapshot,
-    setNodes,
-    setEdges,
-    fitView,
   });
   useEffect(
     () =>
@@ -340,12 +304,7 @@ function FlowInner({
   const {
     handleCanvasDrop,
   } = useCanvasDropInsertion({
-    availablePartDefNodes,
-    partDefStyleById,
-    screenToFlowPosition,
     handleAddNode,
-    viewId,
-    projectType,
     insertNodeIntoView,
     toggleModelRules,
     clearDragPreview,
@@ -368,14 +327,7 @@ function FlowInner({
     handleStepForward,
     handleStopFlow,
     isFlowRunning,
-  } = useFlowPlayback({
-    isFlowMode,
-    nodes,
-    edges,
-    selectedNodeId,
-    setNodes,
-    toast,
-  });
+  } = useFlowPlayback();
 
   const {
     applyIssueHighlights,
@@ -386,24 +338,13 @@ function FlowInner({
     validationOpen,
     setValidationOpen,
   } = useDiagramValidation({
-    projectType,
-    nodes,
-    edges,
-    availablePartDefNodes,
-    relationEdges,
-    parentMap,
-    setNodes,
-    setEdges,
     modelRules: activeModelRules,
     inheritedModelRuleIds,
   });
   const {
     handleCanvasEdgeCreated,
     edgeRelationConfirmationValue,
-  } = useEdgeRelationConfirmation({
-    viewId,
-    setEdges,
-  });
+  } = useEdgeRelationConfirmation();
 
   const {
     connectingFromNodeId,
@@ -415,17 +356,6 @@ function FlowInner({
     closeEdgeCreateMenu,
     finalizeEdgeCreateNode,
   } = useEdgeCreation({
-    viewId,
-    projectType,
-    nodes,
-    edges,
-    setNodes,
-    setEdges,
-    takeSnapshot,
-    availablePartDefEdges,
-    typeMetaById,
-    parentMap,
-    screenToFlowPosition,
     onEdgeCreated: handleCanvasEdgeCreated,
     allowedEdgeTypes: configuredRelationTypes,
   });
@@ -453,10 +383,7 @@ function FlowInner({
     displayNodes,
     displayEdges,
   } = useCanvasDisplayGraph({
-    isFlowMode,
-    nodes,
     connectingFromNodeId,
-    isExternalNode,
     draggingNodeId,
     alwaysShowAccent,
     showNodeDescriptions,
@@ -464,10 +391,6 @@ function FlowInner({
     flowSchedule,
     isFlowRunning,
     flowCompleted,
-    projectType,
-    activeModelRules,
-    edges,
-    inheritedModelRuleIds,
     dragPreviewNode,
   });
 
@@ -560,11 +483,8 @@ function FlowInner({
     handleCreatePattern,
   } = usePatternCreation({
     selectedNodes,
-    edges,
     canSavePattern,
     selectedNodeIds,
-    projectId,
-    queryClient,
   });
 
   useEffect(() => {
@@ -678,20 +598,7 @@ function FlowInner({
     handleSaveNodeData,
     handleSaveEdgeData,
   } = useCanvasElementActions({
-    isExternalNode,
-    takeSnapshot,
-    nodes,
-    edges,
-    partDefStyleById,
-    setNodes,
-    setEdges,
-    partTypeOptions,
-    projectType,
-    setSelectedNodeId,
     selectedNodes,
-    setSelectedEdgeId,
-    requestDelete,
-    edgeTypeCycle,
   });
   useCanvasActionRequests({
     handleOpenNodePanelForNode: openNodePanel,
@@ -706,11 +613,8 @@ function FlowInner({
   const handleConfirmDelete = useDiagramStore((state) => state.confirmDelete);
 
   useCanvasKeyboardShortcuts({
-    nodes,
-    edges,
     deleteDialogOpen,
     onSave: handleSave,
-    requestDelete,
   });
   const {
     nodeTableRows,
@@ -718,9 +622,6 @@ function FlowInner({
     edgeTableRows,
     filteredEdgeTableRows,
   } = useCanvasTableRows({
-    nodes,
-    isExternalNode,
-    edges,
     nodeTableFilter,
     edgeTableFilter,
   });

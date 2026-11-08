@@ -1,15 +1,11 @@
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useCallback, useRef, useState } from "react";
 import type {
-  DiagramEdge,
   DiagramNode as Node,
 } from "../types";
 
 interface UseCanvasNodeSnappingArgs {
-  nodes: Node[];
-  edges: DiagramEdge[];
   snapNodesEnabled: boolean;
-  setNodes: (updater: (current: Node[]) => Node[]) => void;
-  takeSnapshot: (nodes: Node[], edges: DiagramEdge[]) => void;
 }
 
 interface AlignmentGuides {
@@ -39,12 +35,12 @@ const getNodeCenter = (node: Node) => {
  * the canvas.
  */
 export function useCanvasNodeSnapping({
-  nodes,
-  edges,
   snapNodesEnabled,
-  setNodes,
-  takeSnapshot,
 }: UseCanvasNodeSnappingArgs) {
+  const nodes = useDiagramStore((state) => state.nodes);
+  const edges = useDiagramStore((state) => state.edges);
+  const setNodes = useDiagramStore((state) => state.setNodes);
+  const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
   const [draggingNodeId, setDraggingNodeId] = useState<string | null>(null);
   const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuides>({
     x: null,

@@ -1,7 +1,7 @@
-import type { ProjectType } from "@shared/schema";
-import type { XYPosition } from "@xyflow/react";
+import { useReactFlow } from "@xyflow/react";
+import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useCallback, useEffect, type DragEvent } from "react";
-import type { DiagramNode as Node, NodeData } from "../types";
+import type { NodeData } from "../types";
 import { supportsModelRules } from "../rules/model-rules";
 import { subscribeDiagramEvent } from "@/lib/diagram-events";
 import {
@@ -11,28 +11,20 @@ import {
 } from "./diagramCanvasTypes";
 
 export interface UseCanvasDropInsertionParams {
-  availablePartDefNodes: Node[];
-  partDefStyleById: Map<string, { icon: string; color: string; }>;
-  screenToFlowPosition: (clientPosition: XYPosition, options?: { snapToGrid: boolean; }) => XYPosition;
   handleAddNode: (options?: { nodeType?: "partdef" | "actiondef" | "concerndef" | "agentdef" | "requirementdef" | "eventdef" | "capabilitydef"; typeId?: string; typeLabel?: string; icon?: string; color?: string; position?: { x: number; y: number; }; }) => void;
-  viewId: number;
-  projectType: ProjectType;
   insertNodeIntoView: (nodeId: string, position?: { x: number; y: number; }) => Promise<void>;
   toggleModelRules: () => void;
   clearDragPreview: () => void;
 }
 
 export function useCanvasDropInsertion({
-  availablePartDefNodes,
-  partDefStyleById,
-  screenToFlowPosition,
   handleAddNode,
-  viewId,
-  projectType,
   insertNodeIntoView,
   toggleModelRules,
   clearDragPreview,
 }: UseCanvasDropInsertionParams) {
+  const { availablePartDefNodes, partDefStyleById, viewId, projectType } = useDiagramModel();
+  const { screenToFlowPosition } = useReactFlow();
   const createNodeFromTypeAtPosition = useCallback(
     (
       typeId: string,
