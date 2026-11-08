@@ -104,7 +104,17 @@ export const positionToAnchor = (position?: Position): EdgeAnchor => {
   }
 };
 
-export const getNodeRect = (node: any): NodeRect | null => {
+/** The parts of a React Flow node (or internal node) needed to know its rectangle. */
+type NodeRectSource = {
+  measured?: { width?: number | null; height?: number | null };
+  width?: number | null;
+  height?: number | null;
+  internals?: { bounds?: { width?: number | null; height?: number | null }; positionAbsolute?: { x: number; y: number } };
+  positionAbsolute?: { x: number; y: number };
+  position?: { x: number; y: number };
+};
+
+export const getNodeRect = (node: NodeRectSource | null | undefined): NodeRect | null => {
   if (!node) return null;
   const width =
     node.measured?.width ?? node.width ?? node.internals?.bounds?.width ?? 0;

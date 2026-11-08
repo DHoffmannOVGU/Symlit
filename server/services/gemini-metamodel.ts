@@ -1,3 +1,4 @@
+import { z } from "zod";
 import {
   aiMetamodelNodeKindEnum,
   aiMetamodelProposalSchema,
@@ -5,6 +6,13 @@ import {
   type AiMetamodelProposal,
 } from "@shared/ai-metamodel";
 import { magicRelationTypeEnum } from "@shared/metamodel-setup";
+
+/** The part of Gemini's generateContent response the assistant reads. */
+const geminiResponseSchema = z.object({
+  candidates: z
+    .array(z.object({ content: z.object({ parts: z.array(z.object({ text: z.string().optional() })).optional() }).optional() }))
+    .optional(),
+});
 
 export class GeminiMetamodelError extends Error {
   constructor(message: string, public readonly status = 502) {
@@ -135,8 +143,12 @@ export async function proposeMetamodel(input: AiMetamodelRequest): Promise<AiMet
     if (response.status === 404) throw new GeminiMetamodelError(`None of the Gemini models (${models.join(", ")}) is available for this API key. Set GEMINI_MODEL to a model your key can use.`);
     throw new GeminiMetamodelError(`Gemini could not create a proposal (${response.status}).`);
   }
-  const payload = await response.json() as any;
-  const text = payload?.candidates?.[0]?.content?.parts?.map((part: any) => part?.text ?? "").join("");
+  let body: unknown;
+  try { body = await response.json(); } catch { throw new GeminiMetamodelError("Gemini returned an unreadable response."); }
+  const envelope = geminiResponseSchema.safeParse(body);
+  const text = envelope.success
+    ? envelope.data.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("")
+    : undefined;
   if (!text) throw new GeminiMetamodelError("Gemini returned no proposal.");
   let json: unknown;
   try { json = JSON.parse(text); } catch { throw new GeminiMetamodelError("Gemini returned malformed JSON."); }

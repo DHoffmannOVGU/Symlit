@@ -1,7 +1,7 @@
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useMemo } from "react";
-import type { DiagramNode as Node, NodeData } from "../types";
+import type { DiagramNode as Node } from "../types";
 import { type CustomEdgeData } from "../edges/CustomEdges";
 import { evaluateModelRuleResults, supportsModelRules } from "../rules/model-rules";
 
@@ -42,7 +42,7 @@ export function useCanvasDisplayGraph({
               className: `${node.className ?? ""} is-connection-source`.trim(),
             }
           : node;
-      const rawData = nextNode.data as unknown as NodeData | undefined;
+      const rawData = nextNode.data;
       const data = rawData;
       const isEditableNode = !isExternalNode(node.id);
       const isConnectableNode = isEditableNode;

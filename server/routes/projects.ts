@@ -65,6 +65,7 @@ export function registerProjectRoutes(app: Express) {
     try {
       const input = api.projects.createStarter.input.parse(req.body);
       const { views: starterViews, ...projectData } = input;
+      await assertValidMetamodelReferences(req.workspaceUser!, null, projectData.referencedMetamodels);
       const result = await storage.createStarterProject(
         { ...projectData, userId: req.workspaceUser!.id },
         starterViews,
@@ -73,6 +74,9 @@ export function registerProjectRoutes(app: Express) {
     } catch (err) {
       if (err instanceof z.ZodError) {
         return res.status(400).json({ message: err.errors[0].message });
+      }
+      if (err instanceof InvalidReferenceError) {
+        return res.status(400).json({ message: err.message });
       }
       console.error("Failed to create starter project:", err);
       const errorCode =

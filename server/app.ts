@@ -45,12 +45,17 @@ export async function createApp(
 
   await registerRoutes(httpServer, app, config);
 
-  app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
+  app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+    const details = (typeof err === "object" && err !== null ? err : {}) as {
+      status?: number;
+      statusCode?: number;
+      message?: string;
+    };
+    const status = details.status || details.statusCode || 500;
     if (status >= 500) console.error(err);
     if (res.headersSent) return next(err);
     res.status(status).json({
-      message: status >= 500 ? "Internal Server Error" : err.message || "Request failed",
+      message: status >= 500 ? "Internal Server Error" : details.message || "Request failed",
     });
   });
 

@@ -22,8 +22,7 @@ export default tseslint.config(
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" },
       ],
-      // Widespread in the imported code; tightened step by step (see docs/BACKLOG.md).
-      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-explicit-any": "error",
     },
   },
   {
@@ -33,6 +32,13 @@ export default tseslint.config(
       "react-hooks/exhaustive-deps": "off",
       "@typescript-eslint/no-empty-object-type": "off",
       "@typescript-eslint/no-unused-vars": "off",
+    },
+  },
+  {
+    // Tests read loosely shaped JSON responses; `any` keeps them readable.
+    files: ["**/*.test.ts", "e2e/**"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 );

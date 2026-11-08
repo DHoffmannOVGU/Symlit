@@ -29,7 +29,7 @@ test("turns a validated AI proposal into canvas-native metamodel elements", () =
     ["node_0", "partdef", "Sensor"],
     ["node_1", "concerndef", "Privacy"],
   ]);
-  assert.equal((result.nodes[0]?.data.attributes as any[])[0]?.unit, "%");
+  assert.equal((result.nodes[0]?.data.attributes as Array<{ unit?: string }>)[0]?.unit, "%");
   assert.deepEqual([result.edges[0]?.source, result.edges[0]?.target, result.edges[0]?.type], ["node_0", "node_1", "association"]);
 });
 

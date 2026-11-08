@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Edge, Node } from "@xyflow/react";
+import type { Edge } from "@xyflow/react";
+import type { DiagramNode as Node } from "../types";
 import { apiRequest } from "@/lib/queryClient";
 import { PARTDEF_DEFAULT_ACCENT_COLOR } from "../nodes/PartDefNode";
 import { ACTIONDEF_DEFAULT_ACCENT_COLOR } from "../nodes/ActionDefNode";
@@ -171,7 +172,7 @@ export function useMetamodelParts({
         const internalPartDefs = internalPartDefNodes
           .map((n) => ({
             id: n.id,
-            label: (n.data as any).label as string | undefined,
+            label: n.data.label,
           }))
           .filter((def): def is { id: string; label: string } => !!def.label);
         const internalMetaEdges = edges
@@ -255,7 +256,7 @@ export function useMetamodelParts({
         const internalPartDefs = internalPartDefNodes
           .map((n) => ({
             id: n.id,
-            label: (n.data as any).label as string | undefined,
+            label: n.data.label,
           }))
           .filter((def): def is { id: string; label: string } => !!def.label);
         const internalMetaEdges = edges

@@ -4,7 +4,6 @@ import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { CustomEdgeData } from "../edges/CustomEdges";
-import type { NodeData } from "../types";
 import { inferFlowTypeFromNodes } from "../utils/flow-type";
 
 
@@ -35,14 +34,14 @@ export function useFlowPlayback() {
 
   const flowStartNodeId = useMemo(
     () =>
-      nodes.find((node) => (node.data as unknown as NodeData | undefined)?.flowStart)?.id ??
+      nodes.find((node) => (node.data)?.flowStart)?.id ??
       null,
     [nodes],
   );
 
   const flowEndNodeId = useMemo(
     () =>
-      nodes.find((node) => (node.data as unknown as NodeData | undefined)?.flowEnd)?.id ??
+      nodes.find((node) => (node.data)?.flowEnd)?.id ??
       null,
     [nodes],
   );
@@ -50,13 +49,13 @@ export function useFlowPlayback() {
   const flowStartLabel = useMemo(() => {
     if (!flowStartNodeId) return "";
     const node = nodes.find((candidate) => candidate.id === flowStartNodeId);
-    return ((node?.data as unknown as NodeData | undefined)?.label ?? flowStartNodeId);
+    return ((node?.data)?.label ?? flowStartNodeId);
   }, [flowStartNodeId, nodes]);
 
   const flowEndLabel = useMemo(() => {
     if (!flowEndNodeId) return "";
     const node = nodes.find((candidate) => candidate.id === flowEndNodeId);
-    return ((node?.data as unknown as NodeData | undefined)?.label ?? flowEndNodeId);
+    return ((node?.data)?.label ?? flowEndNodeId);
   }, [flowEndNodeId, nodes]);
 
   useEffect(() => {
@@ -218,7 +217,7 @@ export function useFlowPlayback() {
 
     setNodes((current) =>
       current.map((node) => {
-        const data = (node.data ?? {}) as unknown as NodeData;
+        const data = (node.data ?? {});
         if (node.id === selectedNodeId) {
           if (data.flowEnd) {
             toast({
@@ -243,7 +242,7 @@ export function useFlowPlayback() {
 
     setNodes((current) =>
       current.map((node) => {
-        const data = (node.data ?? {}) as unknown as NodeData;
+        const data = (node.data ?? {});
         if (node.id === selectedNodeId) {
           if (data.flowStart) {
             toast({
@@ -318,7 +317,7 @@ export function useFlowPlayback() {
   const handleResetFlow = useCallback(() => {
     setNodes((current) =>
       current.map((node) => {
-        const data = (node.data ?? {}) as unknown as NodeData;
+        const data = (node.data ?? {});
         if (!data.flowStart && !data.flowEnd) return node;
         return {
           ...node,

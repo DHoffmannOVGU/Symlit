@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 
 import type { CustomEdgeData } from "../edges/CustomEdges";
 import type {
-  NodeData,
 } from "../types";
 import { validateInstanceModel, type ValidationIssue } from "@shared/model-validation";
 import type { ModelRule } from "@shared/schema";
@@ -95,7 +94,7 @@ export function useDiagramValidation({
       }),
     );
     const typeNodes = availablePartDefNodes.map((node) => {
-      const data = node.data as unknown as NodeData | undefined;
+      const data = node.data;
       return { id: node.id, label: data?.label || node.id };
     });
     const structuralIssues = validateInstanceModel(
@@ -103,7 +102,7 @@ export function useDiagramValidation({
         nodes: nodes.map((node) => ({
           id: node.id,
           type: node.type,
-          data: node.data as unknown as NodeData | undefined,
+          data: node.data,
         })),
         edges: edges.map((edge) => {
           const edgeData = edge.data as CustomEdgeData | undefined;

@@ -1,7 +1,6 @@
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useMemo } from "react";
-import type { NodeData } from "../types";
 import { type CustomEdgeData } from "../edges/CustomEdges";
 
 export interface UseCanvasTableRowsParams {
@@ -19,7 +18,7 @@ export function useCanvasTableRows({
   const nodeTableRows = useMemo(
     () =>
       nodes.map((node) => {
-        const data = node.data as unknown as NodeData | undefined;
+        const data = node.data;
         return {
           id: node.id,
           name: data?.label || "",

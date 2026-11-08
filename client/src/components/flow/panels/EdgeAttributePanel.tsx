@@ -459,7 +459,7 @@ export function EdgeAttributePanel({
 
               <div className="space-y-2">
                 <Label>Line Style</Label>
-                <Select value={lineStyle} onValueChange={(v) => setLineStyle(v as any)}>
+                <Select value={lineStyle} onValueChange={(v) => setLineStyle(v as typeof lineStyle)}>
                   <SelectTrigger data-testid="select-edge-style">
                     <SelectValue placeholder="Select style" />
                   </SelectTrigger>
@@ -476,7 +476,7 @@ export function EdgeAttributePanel({
                 <Label>Start Arrow</Label>
                 <Select 
                   value={sourceArrow || "none"} 
-                  onValueChange={(v) => setSourceArrow(v as any)}
+                  onValueChange={(v) => setSourceArrow(v as typeof sourceArrow)}
                 >
                   <SelectTrigger data-testid="select-edge-source-arrow">
                     <SelectValue />
@@ -492,7 +492,7 @@ export function EdgeAttributePanel({
                 <Label>End Arrow</Label>
                 <Select 
                   value={targetArrow || "none"} 
-                  onValueChange={(v) => setTargetArrow(v as any)}
+                  onValueChange={(v) => setTargetArrow(v as typeof targetArrow)}
                 >
                   <SelectTrigger data-testid="select-edge-target-arrow">
                     <SelectValue />
@@ -511,7 +511,7 @@ export function EdgeAttributePanel({
                 <Label>Path Type</Label>
                 <Select 
                   value={pathType} 
-                  onValueChange={(v) => setPathType(v as any)}
+                  onValueChange={(v) => setPathType(v as typeof pathType)}
                 >
                   <SelectTrigger data-testid="select-edge-path-type">
                     <SelectValue />

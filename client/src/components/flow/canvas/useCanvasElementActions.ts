@@ -166,7 +166,7 @@ export function useCanvasElementActions({
       if (!node) return;
       if (isExternalNode(nodeId)) return;
 
-      const existingData = (node.data as unknown as NodeData | undefined) ?? {
+      const existingData = (node.data) ?? {
         label: "",
         type: node.type || "Object",
       };

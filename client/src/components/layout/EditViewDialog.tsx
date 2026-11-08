@@ -88,10 +88,10 @@ export function EditViewDialog({ view, open, onOpenChange }: EditViewDialogProps
         description: "The diagram view has been updated successfully.",
       });
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Update failed",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     }
@@ -108,10 +108,10 @@ export function EditViewDialog({ view, open, onOpenChange }: EditViewDialogProps
       onOpenChange(false);
       // If we are currently on this view's page, redirect to project overview
       setLocation(`/project/${view.projectId}`);
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Delete failed",
-        description: error.message,
+        description: error instanceof Error ? error.message : String(error),
         variant: "destructive",
       });
     }
