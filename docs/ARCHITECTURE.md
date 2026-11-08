@@ -113,9 +113,11 @@ presets, the renderers/editors, and this document together.
     `useDiagramModel()`. New editor state belongs in the store, not in `DiagramCanvas` props
     (see `docs/decisions/diagram-editor-state-and-libraries.md`).
   - `canvas/DiagramCanvas.tsx` (~500 lines) sets up the providers and lays out the canvas. Hooks next
-    to it each handle one concern and read the store/model themselves: `useDiagramCanvas` (load,
-    save, layout), `useCanvasDisplayGraph` (what React Flow renders), `useCanvasElementActions`
-    (edit, copy, delete, re-type, reverse), `useEdgeCreation`, `useCanvasInsertion` and
+    to it each handle one concern and read the store/model themselves: `useDiagramLoading`,
+    `useDiagramSaving` (conversion in `hooks/diagram-serialization.ts`), `useLayoutActions`,
+    `useAddElement`, `useCanvasDisplayGraph` (what React Flow renders), `useCanvasElementActions`
+    (edit, copy, delete, re-type, reverse), `useEdgeCreation` (= `useConnectElements` +
+    `useDropOnCanvas`, defaults in `utils/relationship-defaults.ts`), `useCanvasInsertion` and
     `useCanvasDropInsertion` (sidebar inserts and drops), `usePatternCreation`,
     `useCanvasSidePanels` (model rules / AI panels), `useCanvasAiProposal`,
     `useEdgeRelationConfirmation`, `useCanvasActionRequests` (actions requested from the sidebar),
