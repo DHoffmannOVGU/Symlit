@@ -23,8 +23,8 @@ const edge = (
   source: "node-1",
   target: "node-2",
   edgeType,
-  sourceHandle: "source",
-  targetHandle: "target",
+  sourceHandle: "right",
+  targetHandle: "left",
   data: {
     edgeType,
     label: "relationship",
@@ -128,8 +128,8 @@ test("normalizes malformed persisted data instead of throwing", () => {
           source: "node-1",
           target: "node-2",
           edgeType: "association",
-          sourceHandle: "source",
-          targetHandle: "target",
+          sourceHandle: "right",
+          targetHandle: "left",
           data: { edgeType: "association" },
         },
         {
@@ -137,8 +137,8 @@ test("normalizes malformed persisted data instead of throwing", () => {
           source: "node-1",
           target: "node-2",
           edgeType: "association",
-          sourceHandle: "source",
-          targetHandle: "target",
+          sourceHandle: "right",
+          targetHandle: "left",
           data: { edgeType: "association" },
         },
       ],
@@ -178,8 +178,8 @@ test("preserves association, aggregation, and generalization edge metadata", () 
       {
         id: "aggregation-1",
         edgeType: "aggregation",
-        sourceHandle: "source",
-        targetHandle: "target",
+        sourceHandle: "right",
+        targetHandle: "left",
         data: {
           edgeType: "aggregation",
           label: "relationship",
@@ -190,8 +190,8 @@ test("preserves association, aggregation, and generalization edge metadata", () 
       {
         id: "association-1",
         edgeType: "association",
-        sourceHandle: "source",
-        targetHandle: "target",
+        sourceHandle: "right",
+        targetHandle: "left",
         data: {
           edgeType: "association",
           label: "relationship",
@@ -202,8 +202,8 @@ test("preserves association, aggregation, and generalization edge metadata", () 
       {
         id: "generalization-1",
         edgeType: "generalization",
-        sourceHandle: "source",
-        targetHandle: "target",
+        sourceHandle: "right",
+        targetHandle: "left",
         data: {
           edgeType: "generalization",
           label: "relationship",

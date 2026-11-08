@@ -56,13 +56,6 @@ interface NodeAttributePanelProps {
   allNodes?: Node[];
   allEdges?: DiagramEdge[];
   parentNodes?: Node[];
-  debugInfo?: {
-    nodeId: string;
-    viewId?: number;
-    projectId?: number;
-    createdAt?: unknown;
-    type?: string;
-  };
 }
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

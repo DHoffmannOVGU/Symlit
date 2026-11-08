@@ -1,4 +1,4 @@
-import type { Project } from "@shared/schema";
+import type { FlowQuery, NodeMeta, ReferencedViewGroup } from "./types";
 import type { ProjectType } from "@shared/schema";
 import type { View } from "@shared/schema";
 import type { UseQueryResult } from "@tanstack/react-query";
@@ -27,8 +27,8 @@ export interface SidebarTabsContentProps {
   views: View[];
   orderedViews: View[];
   currentViewId: number | undefined;
-  flowByViewId: Map<number, UseQueryResult<{ nodes: { id: string; type: string; projectId: number; position: { x: number; y: number; }; data?: unknown; createdAt?: unknown; parentId?: string | null | undefined; }[]; edges: { id: string; source: string; target: string; data?: any; edgeType?: string | undefined; sourceHandle?: string | null | undefined; targetHandle?: string | null | undefined; }[]; } | null, Error>>;
-  getNodeMeta: (node: FlowNode) => { label: string; typeLabel: string; iconName: string; color: string; };
+  flowByViewId: Map<number, FlowQuery>;
+  getNodeMeta: (node: FlowNode) => NodeMeta;
   renderViewNodeList: (args: SidebarViewNodeListArgs) => React.JSX.Element;
   onCreateView: () => void;
   projectId: number;
@@ -39,8 +39,8 @@ export interface SidebarTabsContentProps {
   hasReferencedMetamodels: boolean;
   includeReferencedMetamodelViews: boolean;
   setIncludeReferencedMetamodelViews: React.Dispatch<React.SetStateAction<boolean>>;
-  referencedViews: { project: Project; views: View[]; isLoading: boolean; isError: boolean; }[];
-  referencedFlowByViewId: Map<number, UseQueryResult<{ nodes: { id: string; type: string; projectId: number; position: { x: number; y: number; }; data?: unknown; createdAt?: unknown; parentId?: string | null | undefined; }[]; edges: { id: string; source: string; target: string; data?: any; edgeType?: string | undefined; sourceHandle?: string | null | undefined; targetHandle?: string | null | undefined; }[]; } | null, Error>>;
+  referencedViews: ReferencedViewGroup[];
+  referencedFlowByViewId: Map<number, FlowQuery>;
   renderMetamodelCreatePalette: () => React.JSX.Element;
 }
 

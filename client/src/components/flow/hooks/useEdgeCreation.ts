@@ -1,4 +1,5 @@
 import { newEdgeId, newNodeId } from "@/lib/ids";
+import { normalizeHandleId, OPPOSITE_SIDE } from "../utils/edge-utils";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { Connection } from "@xyflow/react";
@@ -135,6 +136,7 @@ export function useEdgeCreation({
           const nextEdges = addEdge<DiagramEdge>(
             {
               ...params,
+              id: newEdgeId(),
               type: normalizedData.edgeType,
               data: normalizedData,
               markerStart,
@@ -347,10 +349,9 @@ export function useEdgeCreation({
           {
             id: edgeId,
             source: connectionSource.nodeId,
-            sourceHandle: connectionSource.handleId ?? null,
+            sourceHandle: normalizeHandleId("source", connectionSource.handleId),
             target: ghostId,
-            targetHandle:
-              connectionSource.handleId === "right" ? "left" : null,
+            targetHandle: OPPOSITE_SIDE[normalizeHandleId("source", connectionSource.handleId)],
             type: normalizedData.edgeType,
             data: normalizedData,
             markerStart,

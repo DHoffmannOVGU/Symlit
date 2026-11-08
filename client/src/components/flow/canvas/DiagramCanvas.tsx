@@ -28,6 +28,7 @@ import {
   type NodeMouseHandler,
   type EdgeMouseHandler,
   ConnectionLineType,
+  ConnectionMode,
   useConnection,
   useReactFlow,
 } from "@xyflow/react";
@@ -172,7 +173,7 @@ function FlowInner({
     handleSaveRecovered,
 
     isSaving,
-    debugInfoById,
+    projectIdById,
     isDirty,
   } = useDiagramCanvas(viewId, projectType, suspendFlowLoad);
 
@@ -281,12 +282,12 @@ function FlowInner({
       new Set(
         nodes
           .filter((node) => {
-            const debug = debugInfoById.get(node.id);
-            return !!debug && debug.projectId !== projectId;
+            const owner = projectIdById.get(node.id);
+            return owner !== undefined && owner !== projectId;
           })
           .map((node) => node.id),
       ),
-    [debugInfoById, nodes, projectId],
+    [projectIdById, nodes, projectId],
   );
   const isExternalNode = useCallback(
     (nodeId: string) => externalNodeIds.has(nodeId),
@@ -666,9 +667,6 @@ function FlowInner({
   const selectedNode = selectedNodeId
     ? nodes.find((n) => n.id === selectedNodeId) || null
     : null;
-  const selectedNodeDebug = selectedNode
-    ? debugInfoById.get(selectedNode.id)
-    : undefined;
   const selectedEdge = selectedEdgeId
     ? edges.find((e) => e.id === selectedEdgeId) || null
     : null;
@@ -1032,6 +1030,8 @@ function FlowInner({
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           connectionLineType={ConnectionLineType.Straight}
+          connectionMode={ConnectionMode.Loose}
+          connectionRadius={30}
           connectionLineComponent={ConnectionPreviewLine}
           minZoom={0.1}
           deleteKeyCode={null}
@@ -1198,7 +1198,6 @@ function FlowInner({
       />
 
       <CanvasInspectorPanels
-        viewId={viewId}
         node={selectedNode}
         edge={selectedEdge}
         nodes={nodes}
@@ -1210,7 +1209,6 @@ function FlowInner({
         availablePartDefEdges={availablePartDefEdges}
         parentNodes={parentNodesForSelected}
         referencedMetamodels={referencedMetamodels}
-        selectedNodeDebug={selectedNodeDebug}
         allowedEdgeTypes={configuredRelationTypes}
         onCloseNodePanel={handleCloseNodePanel}
         onCloseEdgePanel={handleCloseEdgePanel}

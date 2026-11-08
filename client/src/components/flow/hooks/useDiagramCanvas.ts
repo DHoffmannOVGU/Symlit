@@ -1,3 +1,4 @@
+import { normalizeHandleId } from "../utils/edge-utils";
 import { newNodeId } from "@/lib/ids";
 // src/diagram/hooks/useDiagramCanvas.ts
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -94,8 +95,8 @@ export const normalizeFlow = (
         source: edge.source,
         target: edge.target,
         edgeType,
-        sourceHandle: edge.sourceHandle ?? null,
-        targetHandle: edge.targetHandle ?? null,
+        sourceHandle: normalizeHandleId("source", edge.sourceHandle),
+        targetHandle: normalizeHandleId("target", edge.targetHandle),
         data: { ...data, edgeType },
       };
     })
@@ -165,8 +166,8 @@ export function useDiagramCanvas(
         id: e.id,
         source: e.source,
         target: e.target,
-        sourceHandle: e.sourceHandle ?? undefined,
-        targetHandle: e.targetHandle ?? undefined,
+        sourceHandle: normalizeHandleId("source", e.sourceHandle),
+        targetHandle: normalizeHandleId("target", e.targetHandle),
         type: edgeType,
         data: normalizedData,
         markerStart,
@@ -219,21 +220,11 @@ export function useDiagramCanvas(
     [setEdges],
   );
 
-  const debugInfoById = useMemo(() => {
-    if (!flowData?.nodes) {
-      return new Map<string, { projectId: number; createdAt: unknown; type: string }>();
-    }
-    return new Map(
-      flowData.nodes.map((node) => [
-        node.id,
-        {
-          projectId: node.projectId,
-          createdAt: node.createdAt,
-          type: node.type,
-        },
-      ]),
-    );
-  }, [flowData]);
+  /** Owning project of each loaded element (elements from referenced projects differ). */
+  const projectIdById = useMemo(
+    () => new Map((flowData?.nodes ?? []).map((node) => [node.id, node.projectId])),
+    [flowData],
+  );
 
   const handleAddNode = useCallback(
     (
@@ -576,7 +567,7 @@ export function useDiagramCanvas(
     handleSaveRecovered,
 
     isSaving: syncMutation.isPending,
-    debugInfoById,
+    projectIdById,
     isDirty,
   };
 }

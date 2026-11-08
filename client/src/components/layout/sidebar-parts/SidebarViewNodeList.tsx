@@ -1,3 +1,4 @@
+import type { NodeMeta, ViewDropTarget, InsertNodeOptions } from "./types";
 import { type DragEvent, type MouseEvent } from "react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
@@ -31,21 +32,21 @@ export interface SidebarViewNodeListContext {
   expandedViews: Set<number>;
   toggleExpanded: (viewId: number, nextOpen?: boolean) => void;
   draggedViewId: number | null;
-  setViewDropTarget: React.Dispatch<React.SetStateAction<{ id: number; position: "before" | "after"; } | null>>;
+  setViewDropTarget: React.Dispatch<React.SetStateAction<ViewDropTarget | null>>;
   finishViewReorder: (targetViewId: number, position: "before" | "after") => void;
-  viewDropTarget: { id: number; position: "before" | "after"; } | null;
+  viewDropTarget: ViewDropTarget | null;
   projectId: number;
   handleLinkClick: (event?: MouseEvent, href?: string) => void;
   setDraggedViewId: React.Dispatch<React.SetStateAction<number | null>>;
   setEditingView: React.Dispatch<React.SetStateAction<View | null>>;
-  getNodeMeta: (node: FlowNode) => { label: string; typeLabel: string; iconName: string; color: string; };
+  getNodeMeta: (node: FlowNode) => NodeMeta;
   currentViewId: number | undefined;
   currentViewNodeIds: Set<string>;
   selectedNodeByViewId: Map<number, string | null>;
   currentSelectedNodeId: string | null;
   getCanonicalTypeId: (node: FlowNode) => string;
   handleMetamodelNodeDragStart: (event: DragEvent<HTMLElement>, payload: SidebarNodeTransfer) => void;
-  handleInsertNode: (nodeId: string, options?: { mode?: SidebarNodeInsertMode; typeId?: string; typeLabel?: string; icon?: string; color?: string; }) => Promise<void>;
+  handleInsertNode: (nodeId: string, options?: InsertNodeOptions) => Promise<void>;
 }
 
 export function SidebarViewNodeList({

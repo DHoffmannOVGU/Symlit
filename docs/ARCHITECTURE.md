@@ -117,6 +117,11 @@ presets, the renderers/editors, and this document together.
 
 Frontend notes:
 
+- Every element has four handles, one per side, with the side as id (`top`, `right`, `bottom`,
+  `left`). React Flow runs in loose connection mode, so any handle can start or end a relationship;
+  its direction is where the drag started. Diagrams saved with the older ids (`top-source`,
+  `right-target`, `null`, …) are mapped by `normalizeHandleId()` (`flow/utils/edge-utils.ts`) on load.
+
 - React Flow needs an explicitly sized container. `DiagramCanvas` owns that layout.
 - Registering a renderer erases custom node/edge data types, so normalise data at that
   boundary (see `docs/decisions/react-flow-custom-data-boundary.md`).

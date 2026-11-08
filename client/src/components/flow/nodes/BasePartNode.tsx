@@ -107,43 +107,19 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
     });
   };
 
-  const getArrowIcon = (type: "source" | "target", position: Position) => {
-    if (position === Position.Top) return type === "target" ? Icons.ArrowDown : Icons.ArrowUp;
-    if (position === Position.Bottom) return type === "target" ? Icons.ArrowUp : Icons.ArrowDown;
-    if (position === Position.Left) return type === "target" ? Icons.ArrowRight : Icons.ArrowLeft;
-    if (position === Position.Right) return type === "target" ? Icons.ArrowLeft : Icons.ArrowRight;
-    return Icons.ArrowDown;
-  };
-
-  const renderHandle = (type: "source" | "target", position: Position, id?: string) => {
-    const Arrow = getArrowIcon(type, position);
-    const isInput = type === "target";
-
-    return (
-      <Handle
-        type={type}
-        position={position}
-        id={id}
-        className={`
-          !w-5 !h-5 !bg-background !border-2 transition-all flex items-center justify-center !rounded-full
-          ${position === Position.Top ? "!top-0 !left-1/2 !-translate-x-1/2 !-translate-y-1/2" : ""}
-          ${position === Position.Bottom ? "!bottom-0 !left-1/2 !-translate-x-1/2 !translate-y-1/2" : ""}
-          ${position === Position.Left ? "!left-0 !top-1/2 !-translate-y-1/2 !-translate-x-1/2" : ""}
-          ${position === Position.Right ? "!right-0 !top-1/2 !-translate-y-1/2 !translate-x-1/2" : ""}
-          hover:!scale-110 ${config.hoverBorderClass}
-        `}
-        style={{ borderColor: accentColor }}
-        title={isInput ? "Input" : "Output"}
-      >
-        <Arrow
-          size={10}
-          className="flow-handle-icon"
-          style={{ color: accentColor }}
-          strokeWidth={3}
-        />
-      </Handle>
-    );
-  };
+  // One handle per side. Connections can start and end at any of them
+  // (ReactFlow runs in loose connection mode), so the direction of a
+  // relationship comes from where the user starts dragging.
+  const renderHandle = (position: Position) => (
+    <Handle
+      type="source"
+      position={position}
+      id={position}
+      className="flow-side-handle !w-4 !h-4 !bg-background !border-2 !rounded-full"
+      style={{ borderColor: accentColor }}
+      title="Drag to connect"
+    />
+  );
 
   return (
     <>
@@ -358,14 +334,10 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
         )}
 
         {/* Handles */}
-        {renderHandle("source", Position.Bottom)}
-        {renderHandle("target", Position.Top)}
-        {renderHandle("source", Position.Top, "top-source")}
-        {renderHandle("target", Position.Left, "left")}
-        {renderHandle("source", Position.Left, "left-source")}
-        {renderHandle("target", Position.Bottom, "bottom-target")}
-        {renderHandle("source", Position.Right, "right")}
-        {renderHandle("target", Position.Right, "right-target")}
+        {renderHandle(Position.Top)}
+        {renderHandle(Position.Right)}
+        {renderHandle(Position.Bottom)}
+        {renderHandle(Position.Left)}
       </div>
     </>
   );
