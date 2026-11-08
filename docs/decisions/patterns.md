@@ -54,7 +54,7 @@ Inserting
 - **I4** Types must be known (see above); type definitions cannot be put in
   patterns. Patterns are inserted into instance models only.
 
-## Not done yet
+## Not done yet (planned for v0.2)
 - **Authoring patterns inside a metamodel.** The server accepts them; the
   editor has no instance-level pattern diagram in metamodels yet, so "Save
   Pattern" is only offered in instance projects.

@@ -16,7 +16,7 @@ commit that fixed them.
   the same node id in several views, although the data model supports it.
 
 ### Features
-- **Patterns, next steps:** authoring instance-level patterns inside a metamodel (server ready, no editor yet), re-applying a pattern to its copies, importing exported patterns. Then the starter-project issues (rename `project-templates`/`templateId`; reuse one element in two views).
+- **Patterns, next steps (v0.2):** authoring instance-level patterns inside a metamodel (server ready, no editor yet), re-applying a pattern to its copies, importing exported patterns. Then the starter-project issues (rename `project-templates`/`templateId`; reuse one element in two views).
 - **SysML v2 textual export (later import).** The vocabulary already follows SysML v2; export
   makes models diffable and usable in SysML v2 tools. See
   `docs/decisions/diagram-editor-state-and-libraries.md`.
