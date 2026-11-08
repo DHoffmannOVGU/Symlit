@@ -26,12 +26,17 @@ commit that fixed them.
   parses stored relationships on load; tightening it needs a check of what older diagrams contain.
 
 ### Client
-- **Auto Layout with ELK (`elkjs`).** Port side constraints match the four side handles and edges
-  get orthogonal routing; could replace `dagre`, `entitree-flex` and the row rule. Lazy-load it
-  (~1.5 MB). See `docs/decisions/diagram-editor-state-and-libraries.md`.
-- **The diagram editor chunk is still 1.1 MB.** Pages are lazy-loaded now, but React Flow, the
-  panels and layout engines (`dagre`, `entitree-flex`) load as one chunk. The panels and layout
-  code could be split further once `DiagramCanvas.tsx` is decomposed.
+- **Option: re-attach relationships to facing sides during Auto Layout.** Measured on the sample
+  diagrams it makes every relationship's handles face each other and shortens lines by 20–27 %
+  while keeping rows (see the ELK section in `docs/decisions/diagram-editor-state-and-libraries.md`).
+  It changes the sides users drew, so decide whether it is automatic, a toggle, or a separate
+  "Tidy connections" action.
+- **The first page load includes `drizzle-orm` and `drizzle-zod` (~70 kB).** `shared/routes.ts`
+  uses the insert schemas from `shared/schema.ts`, which are built with `drizzle-zod`, so the
+  client bundles the ORM. Hand-written Zod schemas for the four inputs (checked against the
+  tables in a test) would remove it.
+- **The diagram editor chunk is 542 kB (gzip ~170 kB).** What remains is mostly React Flow,
+  the canvas, the sidebar, dagre and Radix; dagre could be loaded on first Auto Layout.
 - **`useDiagramCanvas` and `useEdgeCreation` are still large (~590 and ~540 lines).** Loading,
   saving and layout could be separate hooks, and the "drag onto empty canvas" placeholder flow could
   become store actions.
@@ -91,3 +96,5 @@ commit that fixed them.
 - On an empty diagram, React Flow's fit-to-view zoomed onto the first element dropped in, so a second element dropped quickly could land off-screen. The canvas now only fits on mount when the diagram already has elements.
 - Undo after creating an element from the "drag a relationship onto empty canvas" menu brought back the temporary placeholder element.
 - The tutorial browser test failed locally in the full suite (CI's retries hid it): skipping a step that navigates briefly hid the skip button and ended the loop early.
+- The diagram editor chunk was 1,155 kB: `import * as Icons from "lucide-react"` (to look icons up by name) bundled every icon. A registry (`client/src/lib/node-icons.ts`) holds the names elements can use, with a test; the attribute panels, model rules panel, AI assistant, edit-view dialog and screenshot library load on first use. It is 542 kB now.
+- ELK was evaluated for Auto Layout and not adopted; see the decision record.
