@@ -8,7 +8,6 @@ import {
   buildMetamodelProposalElements,
   chooseMetamodelProposalLayoutDirection,
 } from "../utils/ai-metamodel-apply";
-import { layoutSelectedNodesWithDagre } from "../utils/dagre-layout";
 import type { AiMetamodelProposal } from "@shared/ai-metamodel";
 import { useToast } from "@/hooks/use-toast";
 import { subscribeDiagramEvent } from "@/lib/diagram-events";
@@ -35,7 +34,7 @@ export function useCanvasAiProposal({
     [projectType, toggleAiAssistant, viewId],
   );
 
-  const handleApplyAiProposal = useCallback((proposal: AiMetamodelProposal) => {
+  const handleApplyAiProposal = useCallback(async (proposal: AiMetamodelProposal) => {
     const additions = buildMetamodelProposalElements(
       proposal,
       nodes,
@@ -53,6 +52,7 @@ export function useCanvasAiProposal({
     }
     const layoutDirection = chooseMetamodelProposalLayoutDirection(proposal);
     const nextEdges = [...edges, ...additions.edges];
+    const { layoutSelectedNodesWithDagre } = await import("../utils/dagre-layout");
     const nextNodes = layoutSelectedNodesWithDagre(
       [...nodes, ...additions.nodes],
       nextEdges,

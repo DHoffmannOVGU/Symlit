@@ -83,7 +83,6 @@ const MetamodelAiAssistant = lazyNamed(() => import("../panels/MetamodelAiAssist
 
 function FlowInner({
   viewId,
-  projectId,
   projectType,
   displayMode = "graph",
   onDisplayModeChange,
@@ -95,8 +94,6 @@ function FlowInner({
     isLoading,
     isError,
     reload: reloadDiagram,
-    nodes,
-    edges,
     handleAddNode,
     handleAutoLayout,
     handleLayoutSelected,
@@ -150,9 +147,6 @@ function FlowInner({
     activeModelRules,
     inheritedModelRuleIds,
     configuredRelationTypes,
-    localModelRules,
-    referencedModelRules,
-    metamodelSetup,
   } = useDiagramModel();
   const isTableMode = displayMode === "table";
   const helpContent = useDiagramHelpContent(projectType, isFlowMode);
@@ -469,11 +463,6 @@ function FlowInner({
       <MetamodelAiAssistant
         open={aiAssistantOpen && projectType === "metamodel"}
         onClose={() => setAiAssistantOpen(false)}
-        projectId={projectId}
-        viewId={viewId}
-        nodes={nodes}
-        edges={edges}
-        metamodelSetup={metamodelSetup}
         onApply={handleApplyAiProposal}
       />
       </MountWhenOpened>
@@ -482,15 +471,8 @@ function FlowInner({
       <ModelRulesPanel
         open={modelRulesPanelVisible}
         onClose={closeModelRules}
-        viewId={viewId}
-        projectId={projectId}
-        initialRules={localModelRules}
-        inheritedRules={projectType === "instance" ? referencedModelRules : []}
-        projectType={projectType}
         height={modelRulesPanelHeight}
         onHeightChange={setModelRulesPanelHeight}
-        nodes={nodes}
-        edges={edges}
       />
       </MountWhenOpened>
 

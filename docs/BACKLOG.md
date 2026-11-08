@@ -31,17 +31,11 @@ commit that fixed them.
   while keeping rows (see the ELK section in `docs/decisions/diagram-editor-state-and-libraries.md`).
   It changes the sides users drew, so decide whether it is automatic, a toggle, or a separate
   "Tidy connections" action.
-- **The first page load includes `drizzle-orm` and `drizzle-zod` (~70 kB).** `shared/routes.ts`
-  uses the insert schemas from `shared/schema.ts`, which are built with `drizzle-zod`, so the
-  client bundles the ORM. Hand-written Zod schemas for the four inputs (checked against the
-  tables in a test) would remove it.
-- **The diagram editor chunk is 542 kB (gzip ~170 kB).** What remains is mostly React Flow,
-  the canvas, the sidebar, dagre and Radix; dagre could be loaded on first Auto Layout.
+- **The diagram editor chunk is 498 kB (gzip ~160 kB).** What remains is mostly React Flow,
+  the canvas, the sidebar and Radix.
 - **`useDiagramCanvas` and `useEdgeCreation` are still large (~590 and ~540 lines).** Loading,
   saving and layout could be separate hooks, and the "drag onto empty canvas" placeholder flow could
   become store actions.
-- **`MetamodelAiAssistant` and `ModelRulesPanel` still receive `nodes`/`edges` as props**; they
-  could read the diagram store like the inspector does.
 - **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
 
 ## Done
@@ -98,3 +92,6 @@ commit that fixed them.
 - The tutorial browser test failed locally in the full suite (CI's retries hid it): skipping a step that navigates briefly hid the skip button and ended the loop early.
 - The diagram editor chunk was 1,155 kB: `import * as Icons from "lucide-react"` (to look icons up by name) bundled every icon. A registry (`client/src/lib/node-icons.ts`) holds the names elements can use, with a test; the attribute panels, model rules panel, AI assistant, edit-view dialog and screenshot library load on first use. It is 542 kB now.
 - ELK was evaluated for Auto Layout and not adopted; see the decision record.
+- The browser bundled the ORM (`drizzle-orm`, `drizzle-zod`) because the shared API contract used table-generated input schemas. Those, the model-rule schemas and the enums now live in `shared/contracts.ts` without database imports, checked against the tables by `contracts.test.ts`. First load: 258 → 221 kB.
+- Auto Layout's engine (dagre) loads on first use (42 kB); the editor chunk is 498 kB.
+- The model rules panel and AI assistant read the diagram store and model instead of receiving the graph as props.

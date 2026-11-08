@@ -14,7 +14,9 @@ shared/   Database schema, API contract and domain logic used by both sides
   Tailwind CSS + shadcn/ui + Radix, `@xyflow/react` (diagram canvas), Framer Motion.
 - **Server:** Express 4, Drizzle ORM, PostgreSQL. The `pg` driver is used with `DATABASE_URL`,
   otherwise embedded PGlite.
-- **Shared:** Zod schemas for validation and typed contracts.
+- **Shared:** Zod schemas for validation and typed contracts. `shared/contracts.ts` holds the parts
+  the browser needs and must not import the database layer (it would bundle the ORM); `shared/schema.ts`
+  defines the tables and re-exports the contracts.
 
 ## Startup
 

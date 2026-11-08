@@ -1,6 +1,6 @@
 import dagre from "@dagrejs/dagre";
 import type { Edge, Node } from "@xyflow/react";
-import { NODE_HEIGHT, NODE_WIDTH } from "./autolayout";
+import { NODE_HEIGHT, NODE_WIDTH } from "./node-size";
 
 type Direction = "TB" | "LR";
 
