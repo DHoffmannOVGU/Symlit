@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import type { NodeData } from "../types";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
 
@@ -17,7 +16,7 @@ export function useInheritedTypeStyles() {
       let hasChanges = false;
       const next = current.map((node) => {
         if (node.type !== "part") return node;
-        const data = node.data as unknown as NodeData | undefined;
+        const data = node.data;
         if (!data?.typeId) return node;
         const style = partDefStyleById.get(data.typeId);
         if (!style) return node;

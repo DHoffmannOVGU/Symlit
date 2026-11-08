@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Save, X } from "lucide-react";
 import { nodeColors, sanitizeAttributeOptions } from "./node-attribute/style-presets";
-import { Node } from "@xyflow/react";
+import type { DiagramNode as Node } from "../types";
 import { PARTDEF_DEFAULT_ACCENT_COLOR } from "../nodes/PartDefNode";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
@@ -99,7 +99,7 @@ export function NodeAttributePanel({
 
   useEffect(() => {
     if (node) {
-      const data = node.data as unknown as NodeData;
+      const data = node.data;
       const nextAttributes = (data?.attributes || []).map(normalizeAttribute);
       setLabel(String(data?.label || ""));
       setDescription(String(data?.description || ""));
@@ -147,7 +147,7 @@ export function NodeAttributePanel({
     if (nodeTypeId) {
       const parent = availablePartDefNodes.find((candidate) => candidate.id === nodeTypeId);
       if (!parent) return [];
-      const data = parent.data as unknown as NodeData | undefined;
+      const data = parent.data;
       return [
         {
           id: parent.id,
@@ -158,7 +158,7 @@ export function NodeAttributePanel({
     }
 
     return parentNodes.map((parent) => {
-      const data = parent.data as unknown as NodeData | undefined;
+      const data = parent.data;
       return {
         id: parent.id,
         label: data?.label || parent.id,
@@ -170,7 +170,7 @@ export function NodeAttributePanel({
   const inheritedStyle = useMemo(() => {
     if (!nodeTypeId) return null;
     const parent = availablePartDefNodes.find((candidate) => candidate.id === nodeTypeId);
-    const data = parent?.data as unknown as NodeData | undefined;
+    const data = parent?.data;
     return {
       icon: data?.icon || "Box",
       color: data?.color || PARTDEF_DEFAULT_ACCENT_COLOR,

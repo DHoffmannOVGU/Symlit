@@ -174,7 +174,23 @@ const starterViewSchema = z.object({
   edges: z.array(flowEdgeInputSchema),
 });
 
-const createStarterProjectSchema = insertProjectSchema.extend({
+/**
+ * What clients may set when creating a project. The owner is always the
+ * current user and `templateId` is set by the server only (the tutorial uses
+ * it to find, and remove, its own projects).
+ */
+const projectCreateInputSchema = insertProjectSchema.omit({ userId: true, templateId: true });
+
+/**
+ * What clients may change on a project. Its kind (metamodel or instance) is
+ * fixed at creation: models typed by a metamodel would break otherwise.
+ */
+const projectUpdateInputSchema = projectCreateInputSchema
+  .pick({ name: true, description: true, metamodelSetup: true })
+  .partial()
+  .extend({ referencedMetamodels: z.array(z.number().int().positive()).optional() });
+
+const createStarterProjectSchema = projectCreateInputSchema.extend({
   views: z.array(starterViewSchema),
 });
 
@@ -273,8 +289,7 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/projects',
-      // The owner is always the current user; a submitted userId is ignored.
-      input: insertProjectSchema.omit({ userId: true }),
+      input: projectCreateInputSchema,
       responses: {
         201: z.custom<typeof projects.$inferSelect>(),
         400: errorSchemas.validation,
@@ -304,10 +319,7 @@ export const api = {
     update: {
       method: 'PATCH' as const,
       path: '/api/projects/:id',
-      // Ownership cannot be changed through an update.
-      input: insertProjectSchema.omit({ userId: true }).partial().extend({
-        referencedMetamodels: z.array(z.number().int().positive()).optional(),
-      }),
+      input: projectUpdateInputSchema,
       responses: {
         200: z.custom<typeof projects.$inferSelect>(),
         400: errorSchemas.validation,

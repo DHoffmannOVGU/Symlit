@@ -30,7 +30,6 @@ commit that fixed them.
   "Tidy connections" action.
 - **The diagram editor chunk is 498 kB (gzip ~160 kB).** What remains is mostly React Flow,
   the canvas, the sidebar and Radix.
-- **`no-explicit-any` is switched off** in ESLint because the imported code uses `any` widely.
 
 ## Done
 - Element ids were `node_${Date.now()}`, and template ids were fixed strings: creating a template
@@ -96,3 +95,6 @@ commit that fixed them.
 - `useDiagramCanvas` (585 lines) was split into pure load/save conversion (`diagram-serialization.ts`, with a round-trip test) and `useDiagramLoading`, `useDiagramSaving`, `useLayoutActions`, `useAddElement`; three unused exports were removed.
 - `useEdgeCreation` (509 lines) was split into pure helpers (`relationship-defaults.ts`, tested), `useConnectElements` and `useDropOnCanvas`. Two unused parameters were removed.
 - Drawing a relationship in a metamodel recorded no undo step, so it could not be undone. Fixed; the relationship browser test now undoes and redoes one.
+- `no-explicit-any` was off. It is on now (tests excepted). The 18 remaining `any`s were replaced with real types, and 20 `node.data as unknown as NodeData` double casts were removed by typing the attribute panel and metamodel parts with `DiagramNode`. The Gemini response is parsed with a schema (an unreadable response now gives a clear error instead of a 500).
+- Project create/update/starter accepted `templateId` from clients, so any project could be marked as a tutorial project (and then deleted by "Remove tutorial"); updates could also switch a project between metamodel and instance. Both are server-controlled now.
+- Starter projects skipped the referenced-metamodel check that normal project creation does, so they could reference another user's project or an instance model. They are checked now.

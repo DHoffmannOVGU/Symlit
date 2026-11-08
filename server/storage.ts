@@ -238,13 +238,9 @@ export class DatabaseStorage implements IStorage {
     id: number,
     update: Partial<InsertProject> & { referencedMetamodels?: number[] },
   ): Promise<Project> {
-    const updateData: any = { ...update };
-    if (update.referencedMetamodels !== undefined) {
-      updateData.referencedMetamodels = update.referencedMetamodels;
-    }
     const [project] = await db
       .update(projects)
-      .set(updateData)
+      .set(update)
       .where(eq(projects.id, id))
       .returning();
     if (!project) throw new Error("Project not found");

@@ -636,3 +636,50 @@ describe("relationship data", () => {
     assert.deepEqual([edge.sourceHandle, edge.targetHandle], ["right", "left"]);
   });
 });
+
+describe("server-controlled project fields", () => {
+  test("clients cannot set templateId or change a project's kind", async () => {
+    const created = await request("POST", "/api/projects", {
+      name: "Not a tutorial",
+      projectType: "metamodel",
+      templateId: "tutorial-metamodel",
+    });
+    assert.equal(created.status, 201, created.text);
+    assert.equal(created.json.templateId, null, "templateId is ignored on create");
+
+    const patched = await request("PATCH", `/api/projects/${created.json.id}`, {
+      name: "Renamed",
+      projectType: "instance",
+      templateId: "tutorial-metamodel",
+    });
+    assert.equal(patched.status, 200, patched.text);
+    assert.equal(patched.json.name, "Renamed");
+    assert.equal(patched.json.projectType, "metamodel", "the kind is fixed at creation");
+    assert.equal(patched.json.templateId, null);
+
+    // Removing the tutorial therefore never touches this project.
+    await request("DELETE", "/api/tutorial");
+    assert.equal((await request("GET", `/api/projects/${created.json.id}`)).status, 200);
+  });
+
+  test("starter projects can only reference the user's own metamodels", async () => {
+    const stranger = await storage.getOrCreateUser("starter-reference-stranger");
+    const foreign = await storage.createProject({ userId: stranger.id, name: "Foreign MM", projectType: "metamodel" });
+    const res = await request("POST", "/api/projects/starter", {
+      name: "Sneaky",
+      projectType: "instance",
+      referencedMetamodels: [foreign.id],
+      views: [],
+    });
+    assert.equal(res.status, 400, res.text);
+
+    const own = await createProject({ name: "Own MM", projectType: "metamodel" });
+    const ok = await request("POST", "/api/projects/starter", {
+      name: "Fine",
+      projectType: "instance",
+      referencedMetamodels: [own.id],
+      views: [],
+    });
+    assert.equal(ok.status, 201, ok.text);
+  });
+});
