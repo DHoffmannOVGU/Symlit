@@ -90,6 +90,13 @@ One word per concept in everything a user reads (labels, tooltips, help, tutoria
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- O1: fitting the diagram never zooms in beyond 100% (`utils/fit-options.ts`), so a diagram with three elements shows
+  them at their real size instead of filling the screen. The Controls fit button uses the same options.
+- O3: every fit keeps the tutorial coach clear (extra padding on the side it covers), and the canvas re-fits when the coach
+  appears or is minimised, unless the user has moved the view. The coach is shorter: the lesson's "why" is cut to two lines
+  with More.
+- O10: step text in the normal text colour at a size between the lesson text and the title; "This happens in …" is a
+  neutral pointer ("In Delivery drone: Show me opens it.") instead of an orange warning.
 - O4, O5: one vocabulary (above) across the sidebar, the element editor ("Edit element" / "Edit type"), element
   buttons, table view, help, dialogs, toasts and tutorial text.
 - O8: covered by F7 (attributes show their names; the Inherit button is gone for typed elements).

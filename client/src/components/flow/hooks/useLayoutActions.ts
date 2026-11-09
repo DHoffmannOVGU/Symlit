@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { NODE_HEIGHT, NODE_WIDTH } from "../utils/node-size";
+import { canvasFitOptions } from "../utils/fit-options";
 
 /** Auto Layout, laying out the selection and aligning selected elements; all undoable. */
 export function useLayoutActions() {
@@ -22,7 +23,7 @@ export function useLayoutActions() {
     setEdges(result.edges);
     // Fit after the new positions have rendered.
     requestAnimationFrame(() => {
-      fitView({ duration: 800 });
+      fitView(canvasFitOptions(800));
     });
   }, [diagramStore, fitView, setEdges, setNodes, takeSnapshot]);
 

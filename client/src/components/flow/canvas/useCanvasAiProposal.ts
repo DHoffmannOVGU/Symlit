@@ -11,6 +11,7 @@ import {
 import type { AiMetamodelProposal } from "@shared/ai-metamodel";
 import { useToast } from "@/hooks/use-toast";
 import { subscribeDiagramEvent } from "@/lib/diagram-events";
+import { canvasFitOptions } from "../utils/fit-options";
 
 export interface UseCanvasAiProposalParams {
   toggleAiAssistant: () => void;
@@ -71,7 +72,7 @@ export function useCanvasAiProposal({
           : "",
       ].filter(Boolean).join(" "),
     });
-    window.requestAnimationFrame(() => { void fitView({ duration: 600 }); });
+    window.requestAnimationFrame(() => { void fitView(canvasFitOptions(600)); });
   }, [edges, fitView, nodes, setEdges, setNodes, takeSnapshot, toast]);
 
   return {

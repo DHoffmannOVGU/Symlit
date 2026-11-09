@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  ArrowRight,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -16,6 +17,7 @@ import {
 import { TUTORIAL_LESSONS, TUTORIAL_STEPS, type TutorialStep } from "@shared/tutorial";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { announceCanvasOverlayChange } from "@/components/flow/utils/fit-options";
 import {
   countDone,
   currentLessonIndex,
@@ -60,12 +62,19 @@ export function TutorialCoach({
   const activeLesson = currentLessonIndex(progress);
   const [viewedLesson, setViewedLesson] = useState(activeLesson);
   const [showHint, setShowHint] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const previousDone = useRef(done);
 
   // Follow the learner: jump to the lesson they are in when it changes.
   useEffect(() => setViewedLesson(activeLesson), [activeLesson]);
+  // The canvas keeps its diagram clear of the coach; tell it when the coach
+  // appears or changes between open and minimised.
+  useEffect(() => {
+    announceCanvasOverlayChange();
+  }, [progress.collapsed, finished]);
   useEffect(() => setShowHint(false), [activeStep?.id]);
+  useEffect(() => setWhyOpen(false), [viewedLesson]);
   useEffect(() => {
     if (done > previousDone.current) {
       const justDone = TUTORIAL_STEPS.find(
@@ -114,7 +123,7 @@ export function TutorialCoach({
   return (
     <section
       aria-label="Guided tutorial"
-      className="fixed bottom-4 right-4 z-40 flex max-h-[min(560px,calc(100vh-6rem))] w-[360px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
+      className="fixed bottom-4 right-4 z-40 flex max-h-[min(500px,calc(100vh-7rem))] w-[340px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
       data-testid="tutorial-coach"
     >
       <header className="border-b bg-primary/[0.04] px-4 pb-3 pt-3.5">
@@ -207,7 +216,16 @@ export function TutorialCoach({
             <h2 className="mt-1 text-base font-semibold" data-testid="tutorial-lesson-title">
               {lesson.title}
             </h2>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">{lesson.why}</p>
+            <button
+              type="button"
+              className="mt-1 block text-left text-xs leading-5 text-muted-foreground"
+              onClick={() => setWhyOpen((open) => !open)}
+              aria-expanded={whyOpen}
+              data-testid="tutorial-lesson-why"
+            >
+              <span className={cn(!whyOpen && "line-clamp-2")}>{lesson.why}</span>
+              <span className="text-primary">{whyOpen ? " Less" : " More"}</span>
+            </button>
 
             <ol className="mt-2.5 space-y-1">
               {lesson.steps.map((step) => {
@@ -239,10 +257,11 @@ export function TutorialCoach({
                         </p>
                         {isCurrent && (
                           <>
-                            <p className="mt-1 text-sm leading-6 text-muted-foreground">{step.instruction}</p>
+                            <p className="mt-1 text-[13px] leading-5 text-foreground/90">{step.instruction}</p>
                             {step.scope !== scope && (
-                              <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                                This happens in {projectLabel(step.scope)}. Show me takes you there.
+                              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                In {projectLabel(step.scope)}: Show me opens it.
                               </p>
                             )}
                             {step.hint && showHint && (

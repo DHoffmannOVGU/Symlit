@@ -15,6 +15,20 @@ test("the guided tutorial starts from the project list and follows the learner",
   // Lands in the metamodel; opening it completes the first step.
   await expect(page.getByTestId("tutorial-coach")).toBeVisible();
   await expect(page.locator(".react-flow__node")).toHaveCount(3);
+  // The diagram is fitted clear of the coach, and not zoomed in beyond 100%.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const coach = document.querySelector('[data-testid="tutorial-coach"]')!.getBoundingClientRect();
+        return [...document.querySelectorAll(".react-flow__node")].filter((node) => {
+          const box = node.getBoundingClientRect();
+          return box.right > coach.left && box.bottom > coach.top && box.top < coach.bottom;
+        }).length;
+      }),
+    )
+    .toBe(0);
+  const zoom = await page.locator(".react-flow__viewport").evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).a);
+  expect(zoom).toBeLessThanOrEqual(1);
   await expect.poll(() => stepState(page, "open-metamodel")).toBe("done");
   await expect(page.getByTestId("tutorial-progress-count")).toContainText(`1 of ${TUTORIAL_STEPS.length}`);
   // A freshly opened tutorial diagram has no unsaved changes, so "Show me" can navigate freely.
