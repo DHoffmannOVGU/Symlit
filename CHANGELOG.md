@@ -39,6 +39,10 @@ DATABASE_URL. No account, no external requests.
 - Diagram editor: one bidirectional handle per element side, Auto Layout,
   table view, undo/redo, screenshots, AI metamodel assistant (optional,
   Gemini key).
+- Clearer editor: one vocabulary (element, type, relationship, diagram),
+  a labelled canvas toolbar, a searchable palette of all types, element
+  styling (icon, colour, shape, border), attributes with a unit catalog,
+  and a Save button with its state beside it (Ctrl+S saves).
 - Patterns: reusable snippets of model elements; metamodels can ship
   pattern libraries for the models that use them.
 - Project templates: start from an example; a template can bring its
