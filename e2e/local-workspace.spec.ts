@@ -15,6 +15,8 @@ test("opens straight into the local workspace without a login", async ({ page })
   await expect(page.getByTestId("button-new-project")).toBeVisible();
   await expect(page.getByText("Local workspace")).toBeVisible();
   await expect(page).toHaveTitle("Symlit");
+  // Greets without the internal login name ("local") or the default display name.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Good to see you.");
   expect(external).toEqual([]);
 });
 
@@ -150,10 +152,10 @@ test("auto layout spreads out overlapping elements and can be undone", async ({ 
   const before = await positions();
   expect(new Set(before).size).toBe(1);
 
-  await page.getByTitle("Auto Layout").click();
+  await page.getByTestId("button-toolbar-auto-layout").click();
   await expect.poll(async () => new Set(await positions()).size).toBe(3);
   await expect(page.getByTestId("button-save-diagram-header")).toBeEnabled();
 
-  await page.getByTitle("Undo").click();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect.poll(positions).toEqual(before);
 });

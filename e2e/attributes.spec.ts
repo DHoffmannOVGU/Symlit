@@ -1,0 +1,218 @@
+import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { createProjectWithViews } from "./support/create-project";
+
+// Full-stack: defining attributes on a type in a metamodel, and how they reach
+// the elements of an instance model typed by it.
+
+async function createProjects(request: APIRequestContext, suffix: string) {
+  const metamodel = await createProjectWithViews(request, {
+      name: `Drone parts ${suffix}`,
+      projectType: "metamodel",
+      views: [
+        {
+          name: "Types",
+          nodes: [
+            {
+              id: "battery",
+              type: "partdef",
+              position: { x: 80, y: 80 },
+              data: { label: "Battery", type: "Object", attributes: [] },
+            },
+          ],
+          edges: [],
+        },
+      ],
+  });
+  const { project: meta, firstViewId: metaViewId } = await metamodel.json();
+  const flow = await (await request.get(`/api/views/${metaViewId}/flow`)).json();
+  const batteryTypeId = `mm:${meta.id}:${flow.nodes[0].id}`;
+
+  const instance = await createProjectWithViews(request, {
+      name: `Drone ${suffix}`,
+      projectType: "instance",
+      referencedMetamodels: [meta.id],
+      views: [
+        {
+          name: "Drone",
+          nodes: [
+            {
+              id: "old",
+              type: "part",
+              position: { x: 80, y: 80 },
+              // Created before the type had attributes.
+              data: { label: "Old pack", type: "Battery", typeId: batteryTypeId, inheritStyle: true, attributes: [] },
+            },
+          ],
+          edges: [],
+        },
+      ],
+  });
+  const { project: inst, firstViewId: instViewId } = await instance.json();
+  return {
+    batteryTypeId,
+    metamodelUrl: `/project/${meta.id}/view/${metaViewId}`,
+    instanceUrl: `/project/${inst.id}/view/${instViewId}`,
+  };
+}
+
+// Right after loading, the canvas may still re-render elements (it applies type
+// styles), which can swallow a double-click; try again until the panel opens.
+const openElement = async (page: Page, label: string) => {
+  await expect(async () => {
+    await page.locator(".react-flow__node", { hasText: label }).first().dblclick();
+    await expect(page.getByTestId("node-attribute-panel")).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
+};
+
+const dialog = (page: Page) => page.getByTestId("attribute-editor-dialog");
+
+async function saveElementAndDiagram(page: Page) {
+  await page.getByTestId("button-save-attributes").click();
+  await page.getByTestId("button-save-diagram-header").click();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+}
+
+test("an attribute is defined in its own editor and shown in short form", async ({ page, request }) => {
+  const { metamodelUrl } = await createProjects(request, "define");
+  await page.goto(metamodelUrl);
+  await openElement(page, "Battery");
+
+  // A new attribute opens the editor with the name ready to type.
+  await page.getByTestId("button-add-attribute").click();
+  await expect(dialog(page)).toBeVisible();
+  await expect(page.getByTestId("input-attr-name-0")).toBeFocused();
+  await expect(page.getByTestId("button-attribute-done")).toBeDisabled();
+  await page.keyboard.type("capacity");
+  await page.getByTestId("input-attr-description-0").fill("Usable energy of a full charge");
+
+  // Units come from the catalog, searchable by quantity.
+  await page.getByTestId("input-attr-unit-0").click();
+  await page.getByTestId("input-attr-unit-0-search").fill("energy");
+  await page.getByTestId("input-attr-unit-0-option-Wh").click();
+  await expect(page.getByTestId("input-attr-unit-0")).toContainText("watt-hour · Energy");
+  await page.getByTestId("button-attribute-done").click();
+  await expect(dialog(page)).toBeHidden();
+
+  // The short form reads well: name, type, description, default value.
+  const row = page.getByTestId("attribute-summary-0");
+  await expect(row.getByTestId("attribute-name-0")).toHaveText("capacity");
+  await expect(row).toContainText("Number");
+  await expect(row.getByTestId("attribute-description-0")).toHaveText("Usable energy of a full charge");
+
+  // A custom unit is allowed and marked as custom.
+  await row.getByTestId("button-attr-edit-0").click();
+  await page.getByTestId("input-attr-unit-0").click();
+  await page.getByTestId("input-attr-unit-0-search").fill("cycles");
+  await page.getByTestId("input-attr-unit-0-custom").click();
+  await expect(page.getByTestId("input-attr-unit-0")).toContainText("custom unit");
+  // Cancel puts the attribute back as it was.
+  await page.getByTestId("button-attribute-cancel").click();
+  await row.getByTestId("button-attr-edit-0").click();
+  await expect(page.getByTestId("input-attr-unit-0")).toContainText("Wh");
+  await page.getByTestId("button-attribute-cancel").click();
+
+  // Cancelling a new attribute leaves nothing behind.
+  await page.getByTestId("button-add-attribute").click();
+  await page.keyboard.type("temporary");
+  await page.getByTestId("button-attribute-cancel").click();
+  await expect(page.getByTestId("attribute-summary-1")).toHaveCount(0);
+});
+
+test("new typed elements get copies of their type's attributes; older ones are offered the missing ones", async ({ page, request }) => {
+  const { metamodelUrl, instanceUrl, batteryTypeId } = await createProjects(request, "copy");
+
+  // Give the Battery type an attribute with a unit and a default value.
+  await page.goto(metamodelUrl);
+  await openElement(page, "Battery");
+  await page.getByTestId("button-add-attribute").click();
+  await page.keyboard.type("capacity");
+  await page.getByTestId("input-attr-unit-0").click();
+  await page.getByTestId("input-attr-unit-0-search").fill("Wh");
+  await page.getByTestId("input-attr-unit-0-option-Wh").click();
+  await page.getByTestId("input-attr-value-0").fill("160");
+  await page.getByTestId("button-attribute-done").click();
+  await saveElementAndDiagram(page);
+
+  // The element created before the type had attributes is offered them.
+  await page.goto(instanceUrl);
+  await openElement(page, "Old pack");
+  await expect(page.getByTestId("attributes-missing-from-type")).toContainText("capacity");
+  await page.getByTestId("button-add-missing-attributes").click();
+  await expect(page.getByTestId("attributes-missing-from-type")).toHaveCount(0);
+  await expect(page.getByTestId("attribute-name-0")).toHaveText("capacity");
+  await page.getByTestId("button-cancel-attributes").click();
+  await expect(page.getByTestId("node-attribute-panel")).toBeHidden();
+
+  // A Battery added to the instance model now comes with that attribute.
+  await page.getByTestId(`button-insert-referenced-class-${batteryTypeId}`).click();
+  await expect(page.locator(".react-flow__node")).toHaveCount(2);
+  await openElement(page, "New Battery");
+  const row = page.getByTestId("attribute-summary-0");
+  await expect(row.getByTestId("attribute-name-0")).toHaveText("capacity");
+  // Values are set right in the list; the unit is shown next to it.
+  await expect(row.getByTestId("input-attr-value-0")).toHaveValue("160");
+  await expect(row).toContainText("Wh");
+  await row.getByTestId("input-attr-value-0").fill("180");
+  await saveElementAndDiagram(page);
+  await page.reload();
+  await openElement(page, "New Battery");
+  await expect(page.getByTestId("input-attr-value-0")).toHaveValue("180");
+
+});
+
+test("clicking a type in the Metamodels palette places an element of it, like in metamodels", async ({ page, request }) => {
+  const { instanceUrl, batteryTypeId } = await createProjects(request, "click");
+  await page.goto(instanceUrl);
+  await expect(page.locator(".react-flow__node")).toHaveCount(1);
+
+  const paletteItem = page.getByTestId(`button-insert-referenced-class-${batteryTypeId}`);
+  await paletteItem.click();
+  await expect(page.locator(".react-flow__node")).toHaveCount(2);
+  await expect(page.locator(".react-flow__node", { hasText: "New Battery" })).toBeInViewport();
+  // It does not cover the element that was already in the middle.
+  const boxes = await page.locator(".react-flow__node").evaluateAll((els) =>
+    els.map((el) => el.getBoundingClientRect()).map((r) => ({ x: r.x, y: r.y, w: r.width, h: r.height })),
+  );
+  const [a, b] = boxes;
+  expect(a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y).toBe(false);
+
+  // The keyboard works too.
+  await paletteItem.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".react-flow__node")).toHaveCount(3);
+
+  // Placing is undoable like any other edit.
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.locator(".react-flow__node")).toHaveCount(2);
+});
+
+test("the instance palette lists all types without dropdowns, with search and built-in kinds", async ({ page, request }) => {
+  const { instanceUrl, batteryTypeId } = await createProjects(request, "palette");
+  await page.goto(instanceUrl);
+
+  // The metamodel's types are listed right away, under its name.
+  await expect(page.getByTestId(`button-insert-referenced-class-${batteryTypeId}`)).toBeVisible();
+  await expect(page.locator('[data-testid^="palette-group-"]').first()).toContainText("Drone parts palette");
+  // Built-in kinds are there, but folded away while a metamodel provides types.
+  await expect(page.getByTestId("button-insert-base-class-__default_part__")).toHaveCount(0);
+
+  // Search filters across groups; built-in kinds show up when they match.
+  const search = page.getByTestId("input-palette-search");
+  await search.fill("behav");
+  await expect(page.getByTestId(`button-insert-referenced-class-${batteryTypeId}`)).toHaveCount(0);
+  await expect(page.getByTestId("button-insert-base-class-__default_action__")).toBeVisible();
+  await search.fill("zzz");
+  await expect(page.getByTestId("palette-nothing-found")).toBeVisible();
+  await search.press("Escape");
+  await expect(page.getByTestId(`button-insert-referenced-class-${batteryTypeId}`)).toBeVisible();
+});
+
+test("an instance model without a metamodel offers the built-in kinds", async ({ page, request }) => {
+  const created = await createProjectWithViews(request, { name: "No metamodel", projectType: "instance", views: [{ name: "Main", nodes: [], edges: [] }] });
+  const { project, firstViewId } = await created.json();
+  await page.goto(`/project/${project.id}/view/${firstViewId}`);
+  const object = page.getByTestId("button-insert-base-class-__default_part__");
+  await expect(object).toBeVisible();
+  await object.click();
+  await expect(page.locator(".react-flow__node")).toHaveCount(1);
+});

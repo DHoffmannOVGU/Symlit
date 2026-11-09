@@ -95,3 +95,19 @@ test("project persistence accepts configured setup and keeps setup optional for 
   });
   assert.equal(legacyProject.metamodelSetup, undefined);
 });
+test("the built-in Requirement kind is called Need; old diagrams are read with the new name", async () => {
+  const { currentKindLabel, isNeedKindLabel, magicNodeTypeCatalog } = await import("@shared/metamodel-setup");
+  assert.equal(magicNodeTypeCatalog.find((kind) => kind.id === "requirementdef")?.label, "Need");
+  // A metamodel element of the kind, and an untyped instance element.
+  assert.equal(currentKindLabel("Requirement", { nodeType: "requirementdef" }), "Need");
+  assert.equal(currentKindLabel("Requirement", { nodeType: "part" }), "Need");
+  // An instance element typed by someone's own "Requirement" type keeps it.
+  assert.equal(currentKindLabel("Requirement", { nodeType: "part", typeId: "mm:2:req" }), "Requirement");
+  // A metamodel element of another kind that someone labelled "Requirement" keeps it.
+  assert.equal(currentKindLabel("Requirement", { nodeType: "partdef" }), "Requirement");
+  // Earlier renames are unchanged.
+  assert.equal(currentKindLabel("Part", { nodeType: "part", typeId: "x" }), "Object");
+  assert.equal(currentKindLabel("Sensor", { nodeType: "part" }), "Sensor");
+  assert.equal(isNeedKindLabel("Requirement"), true);
+  assert.equal(isNeedKindLabel("Need"), true);
+});

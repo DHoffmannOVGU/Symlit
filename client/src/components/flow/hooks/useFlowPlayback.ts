@@ -187,14 +187,14 @@ export function useFlowPlayback() {
     if (result.limitHit) {
       toast({
         title: "Flow truncated",
-        description: "A node hit 5 ticks. The mock run stops at that limit.",
+        description: "An element hit 5 ticks. The mock run stops at that limit.",
       });
     }
 
     const endTicks = result.schedule.get(flowEndNodeId) ?? [];
     if (endTicks.length === 0) {
       toast({
-        title: "End node unreachable",
+        title: "End element unreachable",
         description: "No flow path from start to end using flow edges.",
       });
       return null;
@@ -222,7 +222,7 @@ export function useFlowPlayback() {
           if (data.flowEnd) {
             toast({
               title: "Start and end must be different",
-              description: "Choose a different node for the flow start.",
+              description: "Choose a different element for the flow start.",
             });
             return node;
           }
@@ -247,7 +247,7 @@ export function useFlowPlayback() {
           if (data.flowStart) {
             toast({
               title: "Start and end must be different",
-              description: "Choose a different node for the flow end.",
+              description: "Choose a different element for the flow end.",
             });
             return node;
           }

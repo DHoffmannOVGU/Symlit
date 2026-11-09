@@ -1,8 +1,13 @@
-import React from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
+
+/** Space the canvas toolbar takes at the top of the canvas, plus the bar itself. */
+const ACTION_BAR_CLEARANCE = 110;
 import { Handle, Position, NodeProps, NodeResizer } from "@xyflow/react";
 import { getNodeIcon } from "@/lib/node-icons";
 import { AlertTriangle as AlertTriangleIcon, BadgeAlert as BadgeAlertIcon, BadgeCheck as BadgeCheckIcon, Copy as CopyIcon, Pencil as PencilIcon, Trash2 as Trash2Icon } from "lucide-react";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
+import { elementCardAppearance, pickElementStyle, showsDescription } from "@/lib/element-style";
+import { useFitText } from "@/lib/fit-text";
 
 interface PartNodeData {
   label: string;
@@ -29,6 +34,7 @@ interface PartNodeData {
   isReadOnly?: boolean;
   suppressActionToolbar?: boolean;
   showDescription?: boolean;
+  hasFixedSize?: boolean;
 }
 
 export interface BasePartNodeConfig {
@@ -49,7 +55,10 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
   const IconComponent = getNodeIcon(nodeData.icon);
   const accentColor =
     nodeData.ruleAccentColor || nodeData.color || config.defaultAccentColor;
-  const iconBg = nodeData.color ? `${accentColor}25` : config.defaultIconBg;
+  const appearance = elementCardAppearance(pickElementStyle(nodeData), nodeData.color || config.defaultAccentColor);
+
+  const onSolid = appearance.onSolid;
+  const iconBg = onSolid ? "rgba(255,255,255,0.22)" : nodeData.color ? `${accentColor}25` : config.defaultIconBg;
   const typeLabel = nodeData.type || config.defaultTypeLabel;
   const isDraft = Boolean(nodeData.isDraft);
   const isFlowStart = Boolean(nodeData.flowStart);
@@ -92,9 +101,29 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
   const showActionToolbar = Boolean(nodeData.showActionToolbar);
   const isReadOnly = Boolean(nodeData.isReadOnly);
   const suppressActionToolbar = Boolean(nodeData.suppressActionToolbar);
-  const showDescription = nodeData.showDescription !== false;
+  const elementStyle = pickElementStyle(nodeData);
   const description = nodeData.description?.trim();
-  const hasVisibleDescription = showDescription && Boolean(description);
+  const hasVisibleDescription =
+    showsDescription(elementStyle, nodeData.showDescription !== false) && Boolean(description);
+  // Resized by hand: the text has to fit the box. Otherwise the card grows,
+  // up to a few lines; in both cases text that is still too long gets smaller, then cut.
+  const fixedSize = Boolean(nodeData.hasFixedSize);
+  const labelRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  // The edit/duplicate/delete bar sits above the element, unless that would put
+  // it under the canvas toolbar at the top: then it goes below.
+  const [actionBarBelow, setActionBarBelow] = useState(false);
+  const actionBarVisible = Boolean(nodeData.showActionToolbar) && !nodeData.suppressActionToolbar;
+  useLayoutEffect(() => {
+    if (!actionBarVisible || !cardRef.current) return;
+    const canvas = cardRef.current.closest(".react-flow")?.getBoundingClientRect();
+    if (!canvas) return;
+    setActionBarBelow(cardRef.current.getBoundingClientRect().top - canvas.top < ACTION_BAR_CLEARANCE);
+  }, [actionBarVisible, nodeData.label]);
+  const descriptionRef = useRef<HTMLDivElement>(null);
+  const labelMax = hasVisibleDescription ? 14 : 18;
+  useFitText(labelRef, `${nodeData.label}|${fixedSize}|${hasVisibleDescription}`, { maxSize: labelMax, minSize: 11, lineHeight: 1.25 });
+  useFitText(descriptionRef, `${description}|${fixedSize}`, { maxSize: 12, minSize: 9, lineHeight: 1.35 }, hasVisibleDescription);
 
   const handleAction = (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -136,12 +165,21 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
       <div
         className={`
           ${config.containerClassName}
-          min-h-[110px]
+          min-h-[110px] flex flex-col
+          ${fixedSize ? "" : "max-w-[300px]"}
           ${selected ? config.selectedClassName : alwaysShowAccent ? "" : "border-border"}
           ${isDraft ? "border-dashed opacity-80" : ""}
           ${isFlowActive ? "ring-2 ring-emerald-400/70 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]" : ""}
         `}
+        ref={cardRef}
+        data-testid="element-card"
+        data-fixed-size={fixedSize ? "true" : "false"}
         style={{
+          borderWidth: appearance.borderWidth,
+          borderStyle: isDraft ? "dashed" : appearance.borderStyle,
+          borderRadius: appearance.borderRadius,
+          backgroundColor: appearance.backgroundColor,
+          ...(appearance.borderRadius > 100 ? { paddingLeft: 28, paddingRight: 28 } : {}),
           borderColor: selected
             ? accentColor
             : alwaysShowAccent
@@ -165,24 +203,31 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 mb-2 pb-2 border-b border-border/50">
+        <div className={`flex items-center justify-between gap-3 mb-2 pb-2 border-b ${onSolid ? "border-white/25" : "border-border/50"}`}>
           <div
             className="p-1.5 rounded"
-            style={{ backgroundColor: iconBg, color: accentColor }}
+            style={{ backgroundColor: iconBg, color: onSolid ? "#ffffff" : accentColor }}
           >
             <IconComponent className="w-4 h-4" />
           </div>
 
-          <div
-            className="text-xs font-mono text-muted-foreground uppercase tracking-wider truncate max-w-[100px]"
-            title={typeLabel}
-          >
-            {typeLabel}
-          </div>
+          {appearance.showTypeLabel ? (
+            <div
+              className={`text-xs font-mono uppercase tracking-wider truncate max-w-[100px] ${onSolid ? "text-white/80" : "text-muted-foreground"}`}
+              title={typeLabel}
+              data-testid="element-type-label"
+            >
+              {typeLabel}
+            </div>
+          ) : null}
         </div>
 
         {showActionToolbar && !suppressActionToolbar && (
-          <div className="absolute right-[-3.75rem] top-0 -translate-y-[calc(100%+8px)]">
+          <div
+            className={`absolute right-[-3.75rem] ${actionBarBelow ? "bottom-0 translate-y-[calc(100%+8px)]" : "top-0 -translate-y-[calc(100%+8px)]"}`}
+            data-testid="element-action-bar"
+            data-placement={actionBarBelow ? "below" : "above"}
+          >
             <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white/96 p-1 shadow-lg backdrop-blur">
                   <button
                     type="button"
@@ -190,7 +235,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
                       inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-slate-700 transition-colors
                       ${isReadOnly ? "cursor-not-allowed opacity-40" : "hover:bg-slate-100"}
                     `}
-                    title={isReadOnly ? "Referenced nodes are read-only" : "Edit node"}
+                    title={isReadOnly ? "Types from a referenced metamodel are read-only" : "Edit"}
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       if (isReadOnly) return;
@@ -203,7 +248,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
                   <button
                     type="button"
                     className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-slate-700 transition-colors hover:bg-slate-100"
-                    title="Copy node"
+                    title="Duplicate"
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => handleAction(event, "copy")}
                   >
@@ -215,7 +260,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
                       inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-rose-600 transition-colors
                       ${isReadOnly ? "cursor-not-allowed opacity-40" : "hover:bg-rose-50"}
                     `}
-                    title={isReadOnly ? "Referenced nodes cannot be deleted" : "Delete node"}
+                    title={isReadOnly ? "Types from a referenced metamodel cannot be deleted here" : "Delete"}
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       if (isReadOnly) return;
@@ -289,28 +334,34 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
         ) : null}
 
         <div
-          className={`${
-            hasVisibleDescription
-              ? ""
-              : "flex min-h-[42px] items-center"
-          }`}
+          className={`flex min-h-0 flex-1 flex-col ${hasVisibleDescription ? "" : "justify-center min-h-[42px]"}`}
         >
           <div
-            className={`font-semibold text-foreground ${
-              hasVisibleDescription
-                ? "text-sm"
-                : "text-lg leading-tight"
-            }`}
+            ref={labelRef}
+            className={`shrink-0 overflow-hidden break-words font-semibold ${onSolid ? "text-white" : "text-foreground"}`}
+            style={{
+              maxHeight: fixedSize && !hasVisibleDescription
+                ? "100%"
+                // With a description, the name gets at most two lines so the description keeps room.
+                : `${(hasVisibleDescription ? 2 : 3) * labelMax * 1.25}px`,
+            }}
+            title={nodeData.label}
+            data-testid="element-label"
           >
             {nodeData.label}
           </div>
+          {hasVisibleDescription ? (
+            <div
+              ref={descriptionRef}
+              className={`mt-1 overflow-hidden whitespace-pre-line break-words ${fixedSize ? "min-h-0 flex-1" : ""} ${onSolid ? "text-white/80" : "text-muted-foreground"}`}
+              style={fixedSize ? undefined : { maxHeight: `${8 * 12 * 1.35}px` }}
+              title={description}
+              data-testid="element-description"
+            >
+              {description}
+            </div>
+          ) : null}
         </div>
-
-        {hasVisibleDescription ? (
-          <div className="text-xs text-muted-foreground mt-1 truncate max-w-[150px]">
-            {description}
-          </div>
-        ) : null}
 
         {(isFlowStart || isFlowEnd) && (
           <div className="absolute left-0 top-0 -translate-y-[calc(100%+4px)] -translate-x-1 flex flex-col items-start gap-1 pointer-events-none">

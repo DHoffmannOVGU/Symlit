@@ -18,7 +18,7 @@ const NODE_TYPE_DEFAULT_LABEL: Record<DragPreviewState["nodeType"], string> = {
   actiondef: "Behavior",
   concerndef: "Concern",
   agentdef: "Performer",
-  requirementdef: "Requirement",
+  requirementdef: "Need",
   eventdef: "Event",
   capabilitydef: "Capability",
 };

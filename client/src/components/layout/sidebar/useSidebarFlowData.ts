@@ -4,22 +4,17 @@ import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { apiCall } from "@/lib/api-client";
-import { BASE_METAMODEL_ID } from "./SidebarConstants";
 
 export interface UseSidebarFlowDataParams {
   views: View[];
   expandedViews: Set<number>;
   referencedProjects: Project[];
-  selectedReferencedProjectId: string;
-  selectedReferencedViewId: string;
 }
 
 export function useSidebarFlowData({
   views,
   expandedViews,
   referencedProjects,
-  selectedReferencedProjectId,
-  selectedReferencedViewId,
 }: UseSidebarFlowDataParams) {
   const flowQueries = useQueries({
     queries: views.map((view) => ({
@@ -78,27 +73,13 @@ export function useSidebarFlowData({
       ids.add(viewId);
     }
 
-    if (selectedReferencedProjectId === BASE_METAMODEL_ID) {
-      return ids;
-    }
-
-    for (const { project, view } of referencedViewEntries) {
-      if (String(project.id) !== selectedReferencedProjectId) continue;
-      if (
-        selectedReferencedViewId !== "all" &&
-        String(view.id) !== selectedReferencedViewId
-      ) {
-        continue;
-      }
-      ids.add(view.id);
-    }
+    // The palette lists the types of every referenced metamodel at once.
+    for (const { view } of referencedViewEntries) ids.add(view.id);
 
     return ids;
   }, [
     expandedViews,
     referencedViewEntries,
-    selectedReferencedProjectId,
-    selectedReferencedViewId,
   ]);
 
   const referencedFlowQueries = useQueries({

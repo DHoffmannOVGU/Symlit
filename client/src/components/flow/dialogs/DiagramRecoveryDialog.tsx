@@ -259,12 +259,12 @@ export function DiagramRecoveryDialog({
                   <div>
                     <h3 className="font-medium">Nodes ({draft.nodes.length})</h3>
                     <p className="text-sm text-muted-foreground">
-                      Repair invalid coordinates or remove a node and its connected relationships.
+                      Repair invalid coordinates or remove an element and its relationships.
                     </p>
                   </div>
                   {draft.nodes.length === 0 ? (
                     <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                      No nodes remain. Add at least one node or remove all relationships before saving.
+                      No elements remain. Add at least one element or remove all relationships before saving.
                     </p>
                   ) : (
                     draft.nodes.map((node) => {

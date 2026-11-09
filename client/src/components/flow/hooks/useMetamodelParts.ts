@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { typeStyle, type ElementStyle } from "@/lib/element-style";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Edge } from "@xyflow/react";
 import type { DiagramNode as Node } from "../types";
 import { apiRequest } from "@/lib/queryClient";
@@ -81,7 +82,7 @@ const DEFAULT_INSTANCE_TYPE_NODES: Node[] = [
     id: "__default_requirement__",
     type: "requirementdef",
     position: { x: 0, y: 0 },
-    data: { label: "Requirement", type: "Requirement", icon: "BadgeCheck", color: REQUIREMENTDEF_DEFAULT_ACCENT_COLOR },
+    data: { label: "Need", type: "Need", icon: "BadgeCheck", color: REQUIREMENTDEF_DEFAULT_ACCENT_COLOR },
   },
   {
     id: "__default_event__",
@@ -97,7 +98,8 @@ const DEFAULT_INSTANCE_TYPE_NODES: Node[] = [
   },
 ];
 
-const getDefaultStyleForType = (type: string | undefined) => {
+/** Icon and colour of an element kind (Object, Behavior, ...) when it has none of its own. */
+export const getDefaultStyleForType = (type: string | undefined) => {
   switch (type) {
     case "actiondef":
       return { icon: "Zap", color: ACTIONDEF_DEFAULT_ACCENT_COLOR };
@@ -147,15 +149,25 @@ export function useMetamodelParts({
     MagicRelationType[]
   >([]);
 
+  const loadedReferencesKey = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
 
+    // This runs again whenever the diagram or the selection changes. Keep the
+    // types from the last load meanwhile: clearing them each time left the
+    // model briefly without types, and an element placed then got neither its
+    // type's style nor its attributes. Only a different set of referenced
+    // metamodels clears them, so a removed metamodel's types do not linger.
+    const referencesKey = `${projectType}:${referencedMetamodelIds.join(",")}`;
     const fetchMetamodelNodes = async () => {
-      setAvailablePartDefs([]);
-      setAvailablePartDefNodes([]);
-      setAvailablePartDefEdges([]);
-      setReferencedModelRules([]);
-      setReferencedRelationTypes([]);
+      if (loadedReferencesKey.current !== referencesKey) {
+        loadedReferencesKey.current = referencesKey;
+        setAvailablePartDefs([]);
+        setAvailablePartDefNodes([]);
+        setAvailablePartDefEdges([]);
+        setReferencedModelRules([]);
+        setReferencedRelationTypes([]);
+      }
 
       const defaultPartDefs = DEFAULT_INSTANCE_TYPE_NODES.map((node) => ({
         id: node.id,
@@ -341,6 +353,7 @@ export function useMetamodelParts({
       } catch (err) {
         if (cancelled) return;
         console.error("Failed to fetch metamodel nodes:", err);
+        loadedReferencesKey.current = null;
         setAvailablePartDefs([]);
         setAvailablePartDefNodes([]);
         setAvailablePartDefEdges([]);
@@ -363,17 +376,9 @@ export function useMetamodelParts({
   ]);
 
   const partDefStyleById = useMemo(() => {
-    return new Map(
+    return new Map<string, ElementStyle>(
       availablePartDefNodes.map((node) => {
-        const data = node.data as NodeData | undefined;
-        const defaults = getDefaultStyleForType(node.type);
-        return [
-          node.id,
-          {
-            icon: data?.icon || defaults.icon,
-            color: data?.color || defaults.color,
-          },
-        ];
+        return [node.id, typeStyle(node.data, getDefaultStyleForType(node.type))];
       }),
     );
   }, [availablePartDefNodes]);

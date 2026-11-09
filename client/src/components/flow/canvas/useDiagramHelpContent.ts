@@ -22,25 +22,25 @@ export function useDiagramHelpContent(
       return {
         title: "Metamodel Editor Help",
         description:
-          "Use the metamodel editor to define the standard node types, and relationships that instance models can build on.",
+          "Use the metamodel editor to define types and relationships that instance models can build on.",
         shortcuts: [
           { key: "Ctrl/Cmd + S", description: "Save the current diagram." },
           {
             key: "Delete / Backspace",
-            description: "Delete the selected node or relationship.",
+            description: "Delete the selected element or relationship.",
           },
           {
             key: "Double-click node",
-            description: "Open the node edit sidebar.",
+            description: "Open the editor of the selected element.",
           },
           {
-            key: "Hover or click node action button",
-            description: "Expand the node action toolbar.",
+            key: "Select an element",
+            description: "Shows its edit, duplicate and delete buttons.",
           },
         ],
         functions: [
-          "Use the Node Types tab in the sidebar to create the seven standard metamodel node types.",
-          "Drag a node type from the sidebar onto the canvas to place it precisely.",
+          "Use the Add elements tab in the sidebar to place types of the seven built-in kinds.",
+          "Click a kind to place it in a free spot, or drag it onto the canvas to place it precisely.",
           "Create and validate relationships to define which structures are allowed in instance models.",
         ],
       };
@@ -55,11 +55,11 @@ export function useDiagramHelpContent(
           { key: "Ctrl/Cmd + S", description: "Save the current diagram." },
           {
             key: "Delete / Backspace",
-            description: "Delete the selected node or relationship.",
+            description: "Delete the selected element or relationship.",
           },
           {
             key: "Double-click node",
-            description: "Open the node edit sidebar.",
+            description: "Open the editor of the selected element.",
           },
           {
             key: "Esc",
@@ -69,7 +69,7 @@ export function useDiagramHelpContent(
         functions: [
           "Mark start and end nodes, then run or step through the flow from the canvas toolbar.",
           "Use the flow run card to monitor progress, current tick, and active endpoints.",
-          "Edit nodes and relationships while checking whether the instance still follows the metamodel.",
+          "Edit elements and relationships while checking whether the instance still follows the metamodel.",
         ],
       };
     }
@@ -82,11 +82,11 @@ export function useDiagramHelpContent(
         { key: "Ctrl/Cmd + S", description: "Save the current diagram." },
         {
           key: "Delete / Backspace",
-          description: "Delete the selected node or relationship.",
+          description: "Delete the selected element or relationship.",
         },
         {
           key: "Double-click node",
-          description: "Open the node edit sidebar.",
+          description: "Open the editor of the selected element.",
         },
         {
           key: "Esc",
@@ -96,7 +96,7 @@ export function useDiagramHelpContent(
       functions: [
         "Drag referenced metamodel types into the canvas to create typed instance nodes.",
         "Use patterns and alignment tools to assemble diagrams more quickly.",
-        "Validate the model to check whether nodes and relationships conform to the metamodel.",
+        "Validate the model to check whether elements and relationships conform to the metamodel.",
       ],
     };
   }, [isFlowMode, projectType]);

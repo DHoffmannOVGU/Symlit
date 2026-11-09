@@ -12,7 +12,7 @@ machine. It needs no accounts and no cloud services.
 ## Features
 
 - **Metamodel projects:** define node types (Object, Behavior, Concern, Performer,
-  Requirement, Event, Capability) and relationship types (Association, Aggregation,
+  Need, Event, Capability) and relationship types (Association, Aggregation,
   Composition, Generalization, Dependency, Realization), with attributes, units,
   derived formulas, styling and inheritance.
 - **Instance projects** that reference one or more metamodels, with typed elements,

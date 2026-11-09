@@ -67,10 +67,10 @@ test("relationships can be drawn from and to every side", async ({ page, request
   }
 
   // Each drawn relationship is its own undo step (also in metamodels).
-  await page.getByTitle("Undo").click();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(page.locator(".react-flow__edge")).toHaveCount(expected.length - 1);
   await expect(page.locator(".react-flow__node")).toHaveCount(5);
-  await page.getByTitle("Redo").click();
+  await page.getByRole("button", { name: "Redo", exact: true }).click();
   await expect(page.locator(".react-flow__edge")).toHaveCount(expected.length);
 
   await page.getByTestId("button-save-diagram-header").click();

@@ -411,3 +411,27 @@ test("loading and saving an unchanged diagram gives the same signature", () => {
   assert.equal((payload.edges[0].data as { edgeType?: string }).edgeType, "composition");
   assert.ok(flowSyncInputSchema.safeParse(payload).success, "the save payload passes the save checks");
 });
+
+test("copying a type's style onto matching elements after loading is not an unsaved change", async () => {
+  const { syncWithTypeStyle } = await import("@/lib/element-style");
+  const typeStyle = { icon: "Cpu", color: "#3b82f6", borderStyle: "dashed" as const };
+  // Stored without any style (e.g. created through the API, or before styles were copied).
+  const stored = [node({ data: { label: "Sensor 1", type: "Sensor", typeId: "mm:2:sensor" } })];
+  const loaded = stored.map((n) => ({ ...n, data: syncWithTypeStyle(n.data as Record<string, unknown>, typeStyle) }));
+  assert.equal(loaded[0].data.borderStyle, "dashed");
+  assert.equal(normalizeFlow(loaded, [], "instance"), normalizeFlow(stored, [], "instance"));
+});
+
+test("choosing an element's own style, or matching its type again, is an unsaved change", () => {
+  const matching = [node({ data: { label: "S", typeId: "mm:2:sensor", inheritStyle: true, icon: "Cpu", color: "#3b82f6" } })];
+  const own = [node({ data: { label: "S", typeId: "mm:2:sensor", inheritStyle: false, icon: "Cpu", color: "#3b82f6" } })];
+  const ownRecoloured = [node({ data: { label: "S", typeId: "mm:2:sensor", inheritStyle: false, icon: "Cpu", color: "#f43f5e" } })];
+  assert.notEqual(normalizeFlow(matching, [], "instance"), normalizeFlow(own, [], "instance"));
+  assert.notEqual(normalizeFlow(own, [], "instance"), normalizeFlow(ownRecoloured, [], "instance"));
+});
+
+test("style changes on types in a metamodel are always unsaved changes", () => {
+  const before = [node({ type: "partdef", data: { label: "Sensor", icon: "Cpu" } })];
+  const after = [node({ type: "partdef", data: { label: "Sensor", icon: "Cpu", fill: "tint" } })];
+  assert.notEqual(normalizeFlow(before, [], "metamodel"), normalizeFlow(after, [], "metamodel"));
+});

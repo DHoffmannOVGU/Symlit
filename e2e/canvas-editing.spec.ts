@@ -49,13 +49,13 @@ test("drag a relationship onto empty canvas, create the element, undo, and edit 
   const positions = () =>
     page.locator(".react-flow__node").evaluateAll((els) => els.map((el) => (el as HTMLElement).style.transform).join("|"));
   const beforeLayout = await positions();
-  await page.getByTitle("Auto Layout").click();
+  await page.getByTestId("button-toolbar-auto-layout").click();
   await expect.poll(positions).not.toBe(beforeLayout);
-  await page.getByTitle("Undo").click();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect.poll(positions).toBe(beforeLayout);
 
   // Undo again removes the new element and its relationship together.
-  await page.getByTitle("Undo").click();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(page.locator(".react-flow__node")).toHaveCount(1);
   await expect(page.locator(".react-flow__edge")).toHaveCount(0);
 
@@ -67,6 +67,6 @@ test("drag a relationship onto empty canvas, create the element, undo, and edit 
   await page.keyboard.press("Escape");
 
   // Table mode lists the element.
-  await page.getByTitle("Table View").click();
+  await page.getByTestId("button-toolbar-table").click();
   await expect(page.getByText("Start").or(page.getByText("Renamed start")).first()).toBeVisible();
 });

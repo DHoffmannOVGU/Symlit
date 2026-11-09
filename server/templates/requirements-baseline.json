@@ -46,7 +46,7 @@
           "type": "requirementdef",
           "data": {
             "icon": "BadgeCheck",
-            "type": "Requirement",
+            "type": "Need",
             "color": "#7c3aed",
             "label": "Stakeholder Need",
             "description": "A need expressed by a stakeholder"
@@ -63,7 +63,7 @@
           "type": "requirementdef",
           "data": {
             "icon": "FileCheck2",
-            "type": "Requirement",
+            "type": "Need",
             "color": "#2563eb",
             "label": "System Requirement",
             "description": "A measurable system-level requirement"

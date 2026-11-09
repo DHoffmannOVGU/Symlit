@@ -62,13 +62,13 @@ export function InheritAttributesDialog({
 
         {parentOptions.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            No parent node available for inheritance.
+            There is no general type to copy attributes from.
           </div>
         ) : (
           <div className="space-y-4">
             {parentOptions.length > 1 && (
               <div className="space-y-2">
-                <Label htmlFor="inherit-parent">Parent Node</Label>
+                <Label htmlFor="inherit-parent">Copy from</Label>
                 <Select
                   value={selectedParentId}
                   onValueChange={onSelectedParentChange}

@@ -1,3 +1,4 @@
+import { DEFAULT_LOCAL_USER_NAME } from "@shared/authorization";
 import { TutorialCard } from "@/components/tutorial/TutorialCard";
 import { WorkspaceUnavailable } from "@/components/WorkspaceUnavailable";
 import { useEffect, useState } from "react";
@@ -575,7 +576,9 @@ export default function ProjectList() {
                 Symlit workspace
               </div>
               <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                Good to see you{user.username ? `, ${user.username}` : ""}.
+                {/* Greet by the configured name (SYMLIT_USER_NAME), not the internal login; the default name is no name. */}
+                Good to see you
+                {user.displayName && user.displayName !== DEFAULT_LOCAL_USER_NAME ? `, ${user.displayName}` : ""}.
               </h1>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium capitalize text-primary">

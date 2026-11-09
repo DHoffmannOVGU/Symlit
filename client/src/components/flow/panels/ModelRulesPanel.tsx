@@ -67,7 +67,7 @@ function TargetSelect({ value, onChange, options, allLabel = "All object types" 
         </>}
         {options.viewTypes.length > 0 && <>
           <SelectSeparator />
-          <SelectGroup><SelectLabel>Types in this view</SelectLabel>
+          <SelectGroup><SelectLabel>Types in this diagram</SelectLabel>
             {options.viewTypes.map((type) => <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>)}
           </SelectGroup>
         </>}
@@ -242,7 +242,7 @@ export function ModelRulesPanel({ open, onClose, height: panelHeight, onHeightCh
       </div>
       <header className="flex items-center justify-between border-b px-5 py-3">
         <div>
-          <div className="flex items-center gap-2"><h2 className="font-semibold">{isInstanceEditor ? "Instance & Meta Rules" : "Model Rules"}</h2><Badge variant={issueCount ? "destructive" : "secondary"}>{issueCount ? `${issueCount} issue${issueCount === 1 ? "" : "s"}` : `${results.length} classification${results.length === 1 ? "" : "s"}`}</Badge></div>
+          <div className="flex items-center gap-2"><h2 className="font-semibold">{isInstanceEditor ? "Model rules (this model and its metamodels)" : "Model rules"}</h2><Badge variant={issueCount ? "destructive" : "secondary"}>{issueCount ? `${issueCount} issue${issueCount === 1 ? "" : "s"}` : `${results.length} classification${results.length === 1 ? "" : "s"}`}</Badge></div>
           <p className="text-xs text-muted-foreground">{isInstanceEditor ? "Meta rules are inherited read-only. Instance rules apply only to this view." : "Describe objects from their attributes and relationships, then add a tag or report an issue."}</p>
         </div>
         <div className="flex items-center gap-2">

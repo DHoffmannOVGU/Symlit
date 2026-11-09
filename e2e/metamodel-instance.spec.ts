@@ -351,10 +351,10 @@ test("shows a visible loading error instead of silently falling back", async ({
 
   await page.goto("/project/3/view/30");
   await expect(page.getByTestId("diagram-canvas-region")).toBeVisible();
-  await expect(
-    page.getByText("This referenced metamodel is unavailable."),
-  ).toBeVisible();
-  await expect(page.getByTestId("button-insert-base-class-Object")).toHaveCount(0);
+  await expect(page.getByText("Metamodel unavailable")).toBeVisible();
+  await expect(page.getByTestId("button-remove-unavailable-reference-999")).toBeVisible();
+  // The built-in kinds stay folded away instead of silently standing in for the missing types.
+  await expect(page.getByTestId("button-insert-base-class-__default_part__")).toHaveCount(0);
 });
 
 test("clears stale referenced classes after a failed replacement and recovers", async ({
@@ -394,7 +394,7 @@ test("clears stale referenced classes after a failed replacement and recovers", 
     .toEqual([2]);
 
   await expect(
-    page.getByText("Failed to load referenced classes."),
+    page.getByText(/Could not load the types of Device Metamodel/),
   ).toBeVisible();
   await expect(devicePaletteItem).toHaveCount(0);
   await expect(

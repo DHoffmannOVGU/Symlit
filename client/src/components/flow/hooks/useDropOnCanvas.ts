@@ -3,6 +3,8 @@ import { useReactFlow } from "@xyflow/react";
 import { normalizeHandleId } from "@shared/relationships";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { newEdgeId, newNodeId } from "@/lib/ids";
+import { applyTypeStyle, pickElementStyle } from "@/lib/element-style";
+import { attributesFromType } from "@/lib/type-attributes";
 import type { DiagramNode, NodeData } from "../types";
 import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
@@ -29,7 +31,7 @@ export function useDropOnCanvas() {
   const diagramStore = useDiagramStoreApi();
   const setNodes = useDiagramStore((state) => state.setNodes);
   const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
-  const { viewId, projectType, relationEdges, typeMetaById, parentMap } = useDiagramModel();
+  const { viewId, projectType, relationEdges, typeMetaById, parentMap, partDefStyleById, availablePartDefNodes } = useDiagramModel();
   const { screenToFlowPosition } = useReactFlow();
   const addRelationship = useAddRelationship();
 
@@ -162,20 +164,33 @@ export function useDropOnCanvas() {
         current.map((node) => {
           if (node.id !== ghostId) return node;
           const data = (node.data as NodeData | undefined) ?? {};
-          const typed = !!options?.typeId;
+          const typeId = options?.typeId;
+          const nextData: NodeData = {
+            ...data,
+            label: data.label || `New ${typeLabel}`,
+            type: projectType === "metamodel" || projectType === "instance" ? typeLabel : data.type,
+            typeId,
+            icon: projectType === "metamodel" ? options?.icon || data.icon : data.icon,
+            color: projectType === "metamodel" ? options?.color || data.color : data.color,
+            inheritStyle: undefined,
+            isDraft: false,
+          };
           return {
             ...node,
             type: projectType === "metamodel" ? "partdef" : node.type,
-            data: {
-              ...data,
-              label: data.label || `New ${typeLabel}`,
-              type: projectType === "metamodel" || projectType === "instance" ? typeLabel : data.type,
-              typeId: options?.typeId,
-              icon: projectType === "metamodel" ? options?.icon || data.icon : typed ? options?.icon : data.icon,
-              color: projectType === "metamodel" ? options?.color || data.color : typed ? options?.color : data.color,
-              inheritStyle: typed ? true : undefined,
-              isDraft: false,
-            },
+            // A typed element starts out matching its type's style, with copies of its attributes.
+            data: typeId
+              ? {
+                  ...applyTypeStyle(
+                    nextData,
+                    pickElementStyle(partDefStyleById.get(typeId) ?? { icon: options?.icon, color: options?.color }),
+                  ),
+                  attributes: attributesFromType(
+                    typeId,
+                    availablePartDefNodes.find((candidate) => candidate.id === typeId)?.data?.attributes,
+                  ),
+                }
+              : nextData,
           };
         }),
       );
@@ -196,7 +211,7 @@ export function useDropOnCanvas() {
       setMenu(null);
       setSource(null);
     },
-    [addRelationship, diagramStore, menu, parentMap, projectType, relationEdges, setNodes, takeSnapshot, typeMetaById, viewId],
+    [addRelationship, availablePartDefNodes, diagramStore, menu, parentMap, partDefStyleById, projectType, relationEdges, setNodes, takeSnapshot, typeMetaById, viewId],
   );
 
   return {
