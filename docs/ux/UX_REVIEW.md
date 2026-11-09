@@ -79,6 +79,8 @@ the summary above is from established, widely published material.*
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- O13: the type style the canvas copies onto matching instance elements after loading no longer counts as an unsaved
+  change (`normalizeFlow` leaves it out for elements that match their type); choosing an own style or matching again still does.
 - Placing an element by click (either palette) puts it at the nearest free spot around the middle instead of on top of
   another element (`utils/free-spot.ts`); a dropped element still goes where it is dropped.
 - Instance models reloaded their metamodel types on every diagram or selection change and cleared them meanwhile; an element

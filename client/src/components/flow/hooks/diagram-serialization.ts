@@ -1,3 +1,4 @@
+import { matchesTypeStyle, withoutElementStyle } from "@/lib/element-style";
 import { currentKindLabel } from "@shared/metamodel-setup";
 import type { FlowData } from "@/components/layout/sidebar-parts/types";
 import type { InsertFlowEdge, InsertFlowNode } from "@/hooks/use-flow";
@@ -45,7 +46,14 @@ export const normalizeFlow = (
       : "part";
   const normalizedNodes = nodes
     .map((node) => {
-      const data = isRecord(node.data) ? node.data : {};
+      const rawData = isRecord(node.data) ? node.data : {};
+      // An instance element that matches its type shows the type's style, which
+      // the canvas copies onto it after loading. That copy is not an edit, so
+      // the style is left out when comparing; matching or not still counts.
+      const data =
+        (node.type || defaultType) === "part" && matchesTypeStyle(rawData)
+          ? { ...withoutElementStyle(rawData), inheritStyle: true }
+          : rawData;
       return {
         id: node.id,
         type: node.type || defaultType,

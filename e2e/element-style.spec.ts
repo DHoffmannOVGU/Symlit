@@ -254,3 +254,20 @@ test("long text in a resized element gets smaller, then is cut with the full tex
   await expect(short).toHaveAttribute("data-fit-clamped", "false");
   await expect(short).toHaveCSS("font-size", "12px");
 });
+
+test("opening a diagram whose elements get their type's style on load leaves it unchanged", async ({ page, request }) => {
+  // "Matching sensor" is stored without any style; the canvas copies the type's onto it.
+  const { instanceUrl } = await createProjects(request, "clean-open");
+  await page.goto(instanceUrl);
+  await expect(card(page, "Matching sensor")).toBeVisible();
+  // Wait until the type's colour has been applied, then the diagram must still count as saved.
+  await expect(card(page, "Matching sensor").locator('[style*="color: rgb(59, 130, 246)"]').first()).toBeVisible();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+
+  // A real edit still enables saving.
+  await page.locator(".react-flow__node", { hasText: "Matching sensor" }).dblclick();
+  await page.getByRole("tab", { name: "Styling" }).click();
+  await page.getByTestId("choice-fill-tint").click();
+  await page.getByTestId("button-save-attributes").click();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeEnabled();
+});
