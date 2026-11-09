@@ -22,6 +22,10 @@ export type ElementShape = (typeof elementShapes)[number];
 export const elementFills = ["plain", "tint", "solid"] as const;
 export type ElementFill = (typeof elementFills)[number];
 
+export const descriptionModes = ["show", "hide"] as const;
+/** Per element; when unset the canvas-wide "Show node descriptions" decides. */
+export type DescriptionMode = (typeof descriptionModes)[number];
+
 export interface ElementStyle {
   icon?: string;
   /** Accent colour (#rrggbb). Empty or missing means the kind's default colour. */
@@ -32,6 +36,8 @@ export interface ElementStyle {
   fill?: ElementFill;
   /** Show the type name in the card's header. Default: shown. */
   showTypeLabel?: boolean;
+  /** Show or hide the description on the card regardless of the canvas setting. */
+  descriptionOnCard?: DescriptionMode;
 }
 
 /** Every key that belongs to an element's style, in display order. */
@@ -43,16 +49,17 @@ export const ELEMENT_STYLE_KEYS = [
   "shape",
   "fill",
   "showTypeLabel",
+  "descriptionOnCard",
 ] as const satisfies ReadonlyArray<keyof ElementStyle>;
 
 /** What an element looks like when a setting is not given. */
-export const DEFAULT_ELEMENT_STYLE = {
+export const DEFAULT_ELEMENT_STYLE: Omit<Required<ElementStyle>, "icon" | "color" | "descriptionOnCard"> = {
   borderWidth: 2,
   borderStyle: "solid",
   shape: "rounded",
   fill: "plain",
   showTypeLabel: true,
-} as const satisfies Omit<Required<ElementStyle>, "icon" | "color">;
+};
 
 const isOneOf = <T extends string | number>(values: readonly T[], value: unknown): value is T =>
   (values as readonly unknown[]).includes(value);
@@ -75,6 +82,7 @@ export function pickElementStyle(source: object | undefined | null): ElementStyl
   if (isOneOf(elementShapes, data.shape)) style.shape = data.shape;
   if (isOneOf(elementFills, data.fill)) style.fill = data.fill;
   if (typeof data.showTypeLabel === "boolean") style.showTypeLabel = data.showTypeLabel;
+  if (isOneOf(descriptionModes, data.descriptionOnCard)) style.descriptionOnCard = data.descriptionOnCard;
   return style;
 }
 
@@ -137,6 +145,13 @@ export function syncWithTypeStyle<T extends Record<string, unknown>>(
   if (!style || !matchesTypeStyle(data)) return data;
   if (data.inheritStyle === true && sameElementStyle(pickElementStyle(data), style)) return data;
   return applyTypeStyle(data, style);
+}
+
+/** Whether the card shows the description: the element's own choice, else the canvas setting. */
+export function showsDescription(style: ElementStyle, canvasShowsDescriptions: boolean): boolean {
+  if (style.descriptionOnCard === "show") return true;
+  if (style.descriptionOnCard === "hide") return false;
+  return canvasShowsDescriptions;
 }
 
 /** CSS for an element card with the given style. */

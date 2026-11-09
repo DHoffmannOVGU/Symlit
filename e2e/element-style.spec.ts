@@ -164,3 +164,86 @@ test("the icon and colour pickers open from the current choice, and only under S
   await page.getByTestId("button-color-Emerald").click();
   await expect(panel.getByTestId("button-pick-color")).toContainText("Emerald");
 });
+
+const LONG_REQUIREMENT =
+  "The drone shall return to the depot autonomously when the remaining battery capacity falls below 20 % of the usable capacity, or when the link to the ground station is lost for more than 5 seconds.";
+
+test("a type can always show its elements' descriptions; an element can still hide its own", async ({ page, request }) => {
+  const { metamodelUrl, instanceUrl } = await createProjects(request, "descriptions");
+
+  // Show descriptions for every Sensor, whatever the canvas setting says.
+  await page.goto(metamodelUrl);
+  await openStyling(page, "Sensor");
+  await page.getByTestId("choice-description-show").click();
+  await page.getByTestId("button-save-attributes").click();
+  await saveDiagram(page);
+
+  await page.goto(instanceUrl);
+  for (const label of ["Matching sensor", "Custom sensor"]) {
+    await page.locator(".react-flow__node", { hasText: label }).dblclick();
+    await page.getByTestId("input-node-description").fill(`${label}: ${LONG_REQUIREMENT}`);
+    await page.getByTestId("button-save-attributes").click();
+  }
+  // The matching element follows its type; the one with its own style follows the canvas setting.
+  await expect(card(page, "Matching sensor").getByTestId("element-description")).toContainText("Matching sensor:");
+  await expect(card(page, "Custom sensor").getByTestId("element-description")).toHaveCount(0);
+
+  // Hiding it on one element overrides its type.
+  await openStyling(page, "Matching sensor");
+  await page.getByTestId("choice-description-hide").click();
+  await page.getByTestId("button-save-attributes").click();
+  await expect(card(page, "Matching sensor").getByTestId("element-description")).toHaveCount(0);
+});
+
+test("long text in a resized element gets smaller, then is cut with the full text on hover", async ({ page, request }) => {
+  const created = await request.post("/api/projects/starter", {
+    data: {
+      name: "Overflow",
+      projectType: "metamodel",
+      views: [
+        {
+          name: "Requirements",
+          nodes: [
+            {
+              id: "small",
+              type: "requirementdef",
+              position: { x: 80, y: 80 },
+              data: {
+                label: "REQ-1 Return to the depot when the battery runs low or the link is lost",
+                type: "Requirement",
+                description: LONG_REQUIREMENT,
+                descriptionOnCard: "show",
+                _nodeStyle: { width: 220, height: 150 },
+                attributes: [],
+              },
+            },
+            {
+              id: "auto",
+              type: "requirementdef",
+              position: { x: 480, y: 80 },
+              data: { label: "REQ-2", type: "Requirement", description: "Short text.", descriptionOnCard: "show", attributes: [] },
+            },
+          ],
+          edges: [],
+        },
+      ],
+    },
+  });
+  const { project, firstViewId } = await created.json();
+  await page.goto(`/project/${project.id}/view/${firstViewId}`);
+
+  const small = card(page, "REQ-1");
+  await expect(small).toHaveAttribute("data-fixed-size", "true");
+  const description = small.getByTestId("element-description");
+  await expect(description).toHaveAttribute("data-fit-clamped", "true");
+  await expect(description).toHaveAttribute("title", LONG_REQUIREMENT);
+  // Nothing spills out of the card.
+  const cardBox = await small.boundingBox();
+  const textBox = await description.boundingBox();
+  expect(textBox!.y + textBox!.height).toBeLessThanOrEqual(cardBox!.y + cardBox!.height);
+
+  // Short text keeps its full size.
+  const short = card(page, "REQ-2").getByTestId("element-description");
+  await expect(short).toHaveAttribute("data-fit-clamped", "false");
+  await expect(short).toHaveCSS("font-size", "12px");
+});

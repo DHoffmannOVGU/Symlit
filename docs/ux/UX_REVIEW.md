@@ -71,9 +71,15 @@ the summary above is from established, widely published material.*
 | F1 | Element editor | Clicking the Name field sometimes did not focus it, so the name could not be changed; later it worked. | Not reproduced (focus worked in 3 of 3 automated tries, opened by double-click). Watch for it; note what was open just before (a menu, the tutorial's Show me, table view). |
 | F2 | Element editor | Icon and colour appeared twice and took up much of the panel. | Fixed: the style section rendered under both tabs. |
 | F3 | Element editor | In the demo project the Type list showed every built-in type twice: "Object (Default)" and again as "Object". | Fixed: the built-ins were listed twice, with the same value. |
+| F5 | Element card | Requirements engineers need the description on the card as much as the name: show it per element/type, and handle long text. | Done (see below). |
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- F5: "Description" in the Styling tab (Canvas setting / Show / Hide) overrides the canvas-wide "Show node descriptions" per
+  element, and is part of the type's style, so a Requirement type can show the description on every requirement. Cards
+  show descriptions on several lines (up to 8, up to 300 px wide); in a resized card the text fits the box. Text that does not
+  fit gets smaller (name 18 to 11 px, description 12 to 9 px), then is cut after whole lines with "…"; the full text is the
+  tooltip (`client/src/lib/fit-text.ts`).
 - F4: the Styling tab shows a live preview, the current icon and colour as buttons that open their pickers, and new
   settings: border width and style, shape (square, rounded, pill), fill (plain, tint, solid) and the type label.
   "Match type styling" covers all of them. The rules live in one module, `client/src/lib/element-style.ts`

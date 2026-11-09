@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useRef } from "react";
 import { Handle, Position, NodeProps, NodeResizer } from "@xyflow/react";
 import { getNodeIcon } from "@/lib/node-icons";
 import { AlertTriangle as AlertTriangleIcon, BadgeAlert as BadgeAlertIcon, BadgeCheck as BadgeCheckIcon, Copy as CopyIcon, Pencil as PencilIcon, Trash2 as Trash2Icon } from "lucide-react";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
-import { elementCardAppearance, pickElementStyle } from "@/lib/element-style";
+import { elementCardAppearance, pickElementStyle, showsDescription } from "@/lib/element-style";
+import { useFitText } from "@/lib/fit-text";
 
 interface PartNodeData {
   label: string;
@@ -30,6 +31,7 @@ interface PartNodeData {
   isReadOnly?: boolean;
   suppressActionToolbar?: boolean;
   showDescription?: boolean;
+  hasFixedSize?: boolean;
 }
 
 export interface BasePartNodeConfig {
@@ -51,6 +53,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
   const accentColor =
     nodeData.ruleAccentColor || nodeData.color || config.defaultAccentColor;
   const appearance = elementCardAppearance(pickElementStyle(nodeData), nodeData.color || config.defaultAccentColor);
+
   const onSolid = appearance.onSolid;
   const iconBg = onSolid ? "rgba(255,255,255,0.22)" : nodeData.color ? `${accentColor}25` : config.defaultIconBg;
   const typeLabel = nodeData.type || config.defaultTypeLabel;
@@ -95,9 +98,18 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
   const showActionToolbar = Boolean(nodeData.showActionToolbar);
   const isReadOnly = Boolean(nodeData.isReadOnly);
   const suppressActionToolbar = Boolean(nodeData.suppressActionToolbar);
-  const showDescription = nodeData.showDescription !== false;
+  const elementStyle = pickElementStyle(nodeData);
   const description = nodeData.description?.trim();
-  const hasVisibleDescription = showDescription && Boolean(description);
+  const hasVisibleDescription =
+    showsDescription(elementStyle, nodeData.showDescription !== false) && Boolean(description);
+  // Resized by hand: the text has to fit the box. Otherwise the card grows,
+  // up to a few lines; in both cases text that is still too long gets smaller, then cut.
+  const fixedSize = Boolean(nodeData.hasFixedSize);
+  const labelRef = useRef<HTMLDivElement>(null);
+  const descriptionRef = useRef<HTMLDivElement>(null);
+  const labelMax = hasVisibleDescription ? 14 : 18;
+  useFitText(labelRef, `${nodeData.label}|${fixedSize}|${hasVisibleDescription}`, { maxSize: labelMax, minSize: 11, lineHeight: 1.25 });
+  useFitText(descriptionRef, `${description}|${fixedSize}`, { maxSize: 12, minSize: 9, lineHeight: 1.35 }, hasVisibleDescription);
 
   const handleAction = (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -139,12 +151,14 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
       <div
         className={`
           ${config.containerClassName}
-          min-h-[110px]
+          min-h-[110px] flex flex-col
+          ${fixedSize ? "" : "max-w-[300px]"}
           ${selected ? config.selectedClassName : alwaysShowAccent ? "" : "border-border"}
           ${isDraft ? "border-dashed opacity-80" : ""}
           ${isFlowActive ? "ring-2 ring-emerald-400/70 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]" : ""}
         `}
         data-testid="element-card"
+        data-fixed-size={fixedSize ? "true" : "false"}
         style={{
           borderWidth: appearance.borderWidth,
           borderStyle: isDraft ? "dashed" : appearance.borderStyle,
@@ -301,28 +315,34 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
         ) : null}
 
         <div
-          className={`${
-            hasVisibleDescription
-              ? ""
-              : "flex min-h-[42px] items-center"
-          }`}
+          className={`flex min-h-0 flex-1 flex-col ${hasVisibleDescription ? "" : "justify-center min-h-[42px]"}`}
         >
           <div
-            className={`font-semibold ${onSolid ? "text-white" : "text-foreground"} ${
-              hasVisibleDescription
-                ? "text-sm"
-                : "text-lg leading-tight"
-            }`}
+            ref={labelRef}
+            className={`shrink-0 overflow-hidden break-words font-semibold ${onSolid ? "text-white" : "text-foreground"}`}
+            style={{
+              maxHeight: fixedSize && !hasVisibleDescription
+                ? "100%"
+                // With a description, the name gets at most two lines so the description keeps room.
+                : `${(hasVisibleDescription ? 2 : 3) * labelMax * 1.25}px`,
+            }}
+            title={nodeData.label}
+            data-testid="element-label"
           >
             {nodeData.label}
           </div>
+          {hasVisibleDescription ? (
+            <div
+              ref={descriptionRef}
+              className={`mt-1 overflow-hidden whitespace-pre-line break-words ${fixedSize ? "min-h-0 flex-1" : ""} ${onSolid ? "text-white/80" : "text-muted-foreground"}`}
+              style={fixedSize ? undefined : { maxHeight: `${8 * 12 * 1.35}px` }}
+              title={description}
+              data-testid="element-description"
+            >
+              {description}
+            </div>
+          ) : null}
         </div>
-
-        {hasVisibleDescription ? (
-          <div className={`text-xs mt-1 truncate max-w-[150px] ${onSolid ? "text-white/80" : "text-muted-foreground"}`}>
-            {description}
-          </div>
-        ) : null}
 
         {(isFlowStart || isFlowEnd) && (
           <div className="absolute left-0 top-0 -translate-y-[calc(100%+4px)] -translate-x-1 flex flex-col items-start gap-1 pointer-events-none">

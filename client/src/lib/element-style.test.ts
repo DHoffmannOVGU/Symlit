@@ -5,6 +5,7 @@ import {
   elementCardAppearance,
   matchesTypeStyle,
   pickElementStyle,
+  showsDescription,
   syncWithTypeStyle,
   typeStyle,
   withElementStyle,
@@ -22,6 +23,7 @@ const cameraType = {
   shape: "pill",
   fill: "tint",
   showTypeLabel: false,
+  descriptionOnCard: "show",
 };
 const cameraStyle = typeStyle(cameraType, OBJECT_DEFAULTS);
 const newElement = { label: "Front camera", typeId: "camera", inheritStyle: true };
@@ -35,6 +37,7 @@ test("a type hands down every style setting, not only icon and colour", () => {
     shape: "pill",
     fill: "tint",
     showTypeLabel: false,
+    descriptionOnCard: "show",
   });
 });
 
@@ -122,4 +125,21 @@ test("card appearance: defaults look like before, solid fill uses the accent col
   assert.equal(solid.onSolid, true);
   assert.equal(solid.borderRadius, 4);
   assert.equal(elementCardAppearance({ fill: "tint" }, "#22c55e").backgroundColor, "#22c55e1A");
+});
+
+test("an element's description setting overrides the canvas setting; unset follows it", () => {
+  assert.equal(showsDescription({ descriptionOnCard: "show" }, false), true);
+  assert.equal(showsDescription({ descriptionOnCard: "hide" }, true), false);
+  assert.equal(showsDescription({}, true), true);
+  assert.equal(showsDescription({}, false), false);
+  assert.deepEqual(pickElementStyle({ descriptionOnCard: "always" }), {});
+});
+
+test("requirements typed by a type that shows descriptions show theirs, until they choose otherwise", () => {
+  const requirementType = typeStyle({ label: "Safety requirement", descriptionOnCard: "show" }, OBJECT_DEFAULTS);
+  const requirement = syncWithTypeStyle({ label: "REQ-1", typeId: "req" }, requirementType);
+  assert.equal(showsDescription(pickElementStyle(requirement), false), true);
+
+  const hidden = withElementStyle({ ...requirement, inheritStyle: false }, { ...requirementType, descriptionOnCard: "hide" });
+  assert.equal(showsDescription(pickElementStyle(syncWithTypeStyle(hidden, requirementType)), true), false);
 });

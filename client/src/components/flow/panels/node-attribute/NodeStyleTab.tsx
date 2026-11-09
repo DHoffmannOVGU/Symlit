@@ -35,6 +35,7 @@ const allIcons = [...quickNodeIcons, ...extendedNodeIcons];
 
 const shapeLabels = { square: "Square", rounded: "Rounded", pill: "Pill" } as const;
 const fillLabels = { plain: "Plain", tint: "Tint", solid: "Solid" } as const;
+const descriptionLabels = { canvas: "Canvas setting", show: "Show", hide: "Hide" } as const;
 const borderStyleLabels = { solid: "Solid", dashed: "Dashed", dotted: "Dotted" } as const;
 
 /** A small card that shows the style as it will look on the canvas. */
@@ -299,6 +300,23 @@ export function NodeStyleTab({
             label={(option) => fillLabels[option]}
             onChange={(fill) => onStyleChange({ fill })}
           />
+        </SettingRow>
+
+        <SettingRow label="Description">
+          <div className="space-y-1">
+            <Choice
+              testId="choice-description"
+              value={style.descriptionOnCard ?? "canvas"}
+              options={["canvas", "show", "hide"] as const}
+              label={(option) => descriptionLabels[option]}
+              onChange={(mode) => onStyleChange({ descriptionOnCard: mode === "canvas" ? undefined : mode })}
+            />
+            <p className="text-xs text-muted-foreground">
+              {style.descriptionOnCard
+                ? "Ignores the canvas setting \u201cShow node descriptions\u201d."
+                : "Follows the canvas setting \u201cShow node descriptions\u201d."}
+            </p>
+          </div>
         </SettingRow>
 
         <SettingRow label="Type label">
