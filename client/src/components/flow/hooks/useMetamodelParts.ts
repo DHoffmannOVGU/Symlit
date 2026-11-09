@@ -82,7 +82,7 @@ const DEFAULT_INSTANCE_TYPE_NODES: Node[] = [
     id: "__default_requirement__",
     type: "requirementdef",
     position: { x: 0, y: 0 },
-    data: { label: "Requirement", type: "Requirement", icon: "BadgeCheck", color: REQUIREMENTDEF_DEFAULT_ACCENT_COLOR },
+    data: { label: "Need", type: "Need", icon: "BadgeCheck", color: REQUIREMENTDEF_DEFAULT_ACCENT_COLOR },
   },
   {
     id: "__default_event__",

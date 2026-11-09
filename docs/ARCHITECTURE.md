@@ -83,7 +83,7 @@ end, and an object as `data`. Saving checks `data` with `relationshipDataSchema`
 have the right type, other fields are kept. Reading stays lenient (`flowEdgeSchema`) so unexpected
 stored data never stops a diagram from opening; migration 0005 cleaned existing data to this form.
 
-Metamodel vocabulary: built-in node types (Object, Behavior, Concern, Performer, Requirement,
+Metamodel vocabulary: built-in node types (Object, Behavior, Concern, Performer, Need,
 Event, Capability) and relation types (Association, Aggregation, Composition,
 Generalization, Dependency, Realization) live in `shared/metamodel-setup.ts`. Projects without
 setup metadata expose the full palette. Adding a type means updating that catalog, the recommendation

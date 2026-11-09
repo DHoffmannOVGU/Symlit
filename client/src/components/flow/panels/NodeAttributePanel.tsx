@@ -35,6 +35,7 @@ import {
 import { AttributeRowEditor } from "./node-attribute/AttributeRowEditor";
 import { InheritAttributesDialog } from "./node-attribute/InheritAttributesDialog";
 import { NodeStyleTab } from "./node-attribute/NodeStyleTab";
+import { isNeedKindLabel } from "@shared/metamodel-setup";
 import { ELEMENT_STYLE_KEYS, pickElementStyle, typeStyle, type ElementStyle } from "@/lib/element-style";
 import { getDefaultStyleForType } from "../hooks/useMetamodelParts";
 
@@ -132,7 +133,7 @@ export function NodeAttributePanel({
       nodeTypeLabel === "Behavior" ||
       nodeTypeLabel === "Concern" ||
       nodeTypeLabel === "Performer" ||
-      nodeTypeLabel === "Requirement" ||
+      isNeedKindLabel(nodeTypeLabel) ||
       nodeTypeLabel === "Event" ||
       nodeTypeLabel === "Capability"
     ) {
@@ -690,7 +691,7 @@ export function NodeAttributePanel({
                           ? concernTypeValue
                           : nodeTypeLabel === "Performer"
                             ? agentTypeValue
-                            : nodeTypeLabel === "Requirement"
+                            : isNeedKindLabel(nodeTypeLabel)
                               ? requirementTypeValue
                               : nodeTypeLabel === "Event"
                                 ? eventTypeValue
@@ -725,7 +726,7 @@ export function NodeAttributePanel({
                       return;
                     }
                     if (value === requirementTypeValue) {
-                      setNodeTypeLabel("Requirement");
+                      setNodeTypeLabel("Need");
                       setNodeTypeId(undefined);
                       setInheritStyle(false);
                       return;
@@ -757,7 +758,7 @@ export function NodeAttributePanel({
                     <SelectItem value={actionTypeValue}>Behavior (Default)</SelectItem>
                     <SelectItem value={concernTypeValue}>Concern (Default)</SelectItem>
                     <SelectItem value={agentTypeValue}>Performer (Default)</SelectItem>
-                    <SelectItem value={requirementTypeValue}>Requirement (Default)</SelectItem>
+                    <SelectItem value={requirementTypeValue}>Need (Default)</SelectItem>
                     <SelectItem value={eventTypeValue}>Event (Default)</SelectItem>
                     <SelectItem value={capabilityTypeValue}>Capability (Default)</SelectItem>
                     {metamodelTypes.map((def) => (

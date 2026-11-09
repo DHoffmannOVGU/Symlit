@@ -30,7 +30,7 @@ const DEFAULT_INSTANCE_TYPE_NODES: ValidationTypeNode[] = [
   { id: "__default_action__", label: "Behavior" },
   { id: "__default_concern__", label: "Concern" },
   { id: "__default_agent__", label: "Performer" },
-  { id: "__default_requirement__", label: "Requirement" },
+  { id: "__default_requirement__", label: "Need" },
   { id: "__default_event__", label: "Event" },
   { id: "__default_capability__", label: "Capability" },
 ];

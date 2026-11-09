@@ -1,3 +1,4 @@
+import { currentKindLabel } from "@shared/metamodel-setup";
 import type { FlowData } from "@/components/layout/sidebar-parts/types";
 import type { InsertFlowEdge, InsertFlowNode } from "@/hooks/use-flow";
 import type { ProjectType } from "@shared/schema";
@@ -33,17 +34,6 @@ type SerializableEdge = {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
-const canonicalTypeLabel = (value: unknown): string | undefined => {
-  if (typeof value !== "string") return undefined;
-  return value === "Part"
-    ? "Object"
-    : value === "Action"
-      ? "Behavior"
-      : value === "Agent"
-        ? "Performer"
-        : value;
-};
-
 export const normalizeFlow = (
   nodes: SerializableNode[],
   edges: SerializableEdge[],
@@ -62,8 +52,8 @@ export const normalizeFlow = (
         position: { x: node.position.x, y: node.position.y },
         data: {
           ...data,
-          ...(canonicalTypeLabel(data.type) !== undefined
-            ? { type: canonicalTypeLabel(data.type) }
+          ...(currentKindLabel(data.type, { nodeType: node.type, typeId: data.typeId }) !== undefined
+            ? { type: currentKindLabel(data.type, { nodeType: node.type, typeId: data.typeId }) }
             : {}),
         },
         parentId: node.parentId ?? null,
@@ -103,7 +93,9 @@ export function toCanvasGraph(flow: FlowData): { nodes: DiagramNode[]; edges: Di
       position: n.position as { x: number; y: number },
       data: {
         ...nodeData,
-        ...(canonicalTypeLabel(nodeData.type) !== undefined ? { type: canonicalTypeLabel(nodeData.type) } : {}),
+        ...(currentKindLabel(nodeData.type, { nodeType: n.type, typeId: nodeData.typeId }) !== undefined
+          ? { type: currentKindLabel(nodeData.type, { nodeType: n.type, typeId: nodeData.typeId }) }
+          : {}),
       },
       ...(n.parentId ? { parentId: n.parentId, extent: "parent" as const } : {}),
       // Restore the size an element was resized to (saved as data._nodeStyle).

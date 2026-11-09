@@ -12,6 +12,40 @@ export const magicNodeTypeEnum = [
 
 export type MagicNodeType = (typeof magicNodeTypeEnum)[number];
 
+/**
+ * Built-in kinds that were renamed, old name -> current name. Stored
+ * diagrams keep the old name until they are saved again.
+ */
+const RENAMED_KINDS: Record<string, { label: string; nodeType: string }> = {
+  Part: { label: "Object", nodeType: "partdef" },
+  Action: { label: "Behavior", nodeType: "actiondef" },
+  Agent: { label: "Performer", nodeType: "agentdef" },
+  Requirement: { label: "Need", nodeType: "requirementdef" },
+};
+
+/**
+ * The current name of an element's built-in kind. Only the built-in kind is
+ * renamed: in a metamodel, an element of that kind; in an instance model, an
+ * untyped element. An element typed by a metamodel type that someone named,
+ * say, "Requirement" keeps that name.
+ */
+export function currentKindLabel(
+  typeLabel: unknown,
+  element: { nodeType?: string | null; typeId?: unknown },
+): string | undefined {
+  if (typeof typeLabel !== "string") return undefined;
+  const renamed = RENAMED_KINDS[typeLabel];
+  if (!renamed) return typeLabel;
+  // Part, Action and Agent have always been renamed everywhere.
+  if (typeLabel !== "Requirement") return renamed.label;
+  if (element.typeId) return typeLabel;
+  const isBuiltInKind = element.nodeType === renamed.nodeType || element.nodeType === "part" || !element.nodeType;
+  return isBuiltInKind ? renamed.label : typeLabel;
+}
+
+/** Whether a stored type name means the built-in Need kind (also under its old name). */
+export const isNeedKindLabel = (typeLabel: unknown) => typeLabel === "Need" || typeLabel === "Requirement";
+
 export const magicRelationTypeEnum = [
   "association",
   "aggregation",
@@ -71,8 +105,8 @@ export const magicNodeTypeCatalog: Array<{
   },
   {
     id: "requirementdef",
-    label: "Requirement",
-    description: "A need, constraint, or requirement.",
+    label: "Need",
+    description: "A need, requirement, or constraint someone has.",
     iconName: "BadgeCheck",
   },
   {

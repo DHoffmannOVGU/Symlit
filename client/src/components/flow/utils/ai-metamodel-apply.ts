@@ -13,7 +13,7 @@ const kindMeta = {
   behavior: { nodeType: "actiondef", typeLabel: "Behavior" },
   concern: { nodeType: "concerndef", typeLabel: "Concern" },
   performer: { nodeType: "agentdef", typeLabel: "Performer" },
-  requirement: { nodeType: "requirementdef", typeLabel: "Requirement" },
+  requirement: { nodeType: "requirementdef", typeLabel: "Need" },
   event: { nodeType: "eventdef", typeLabel: "Event" },
   capability: { nodeType: "capabilitydef", typeLabel: "Capability" },
 } as const;

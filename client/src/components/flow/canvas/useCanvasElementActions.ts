@@ -2,6 +2,7 @@ import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { newNodeId } from "@/lib/ids";
+import { isNeedKindLabel } from "@shared/metamodel-setup";
 import { applyTypeStyle, pickElementStyle, withElementStyle } from "@/lib/element-style";
 import { useCallback, useMemo } from "react";
 import type { DiagramNode as Node, NodeData } from "../types";
@@ -55,7 +56,7 @@ export function useCanvasElementActions({
                     ? "concerndef"
                     : data.type === "Performer" || data.type === "Agent"
                       ? "agentdef"
-                      : data.type === "Requirement"
+                      : isNeedKindLabel(data.type)
                         ? "requirementdef"
                       : data.type === "Event"
                         ? "eventdef"
@@ -81,7 +82,7 @@ export function useCanvasElementActions({
                   ? { icon: data.icon || "Shield" }
                   : {}),
                 ...((data.type === "Performer" || data.type === "Agent") ? { icon: data.icon || "Bot" } : {}),
-                ...(data.type === "Requirement"
+                ...(isNeedKindLabel(data.type)
                   ? { icon: data.icon || "BadgeCheck" }
                   : {}),
                 ...(data.type === "Event" ? { icon: data.icon || "Radio" } : {}),
@@ -139,7 +140,7 @@ export function useCanvasElementActions({
       { value: "Behavior", label: "Behavior" },
       { value: "Concern", label: "Concern" },
       { value: "Performer", label: "Performer" },
-      { value: "Requirement", label: "Requirement" },
+      { value: "Need", label: "Need" },
       { value: "Event", label: "Event" },
       { value: "Capability", label: "Capability" },
     ],

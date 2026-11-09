@@ -232,15 +232,22 @@ test("long text in a resized element gets smaller, then is cut with the full tex
   const { project, firstViewId } = await created.json();
   await page.goto(`/project/${project.id}/view/${firstViewId}`);
 
+  // Stored under the old name "Requirement", shown as the kind's current name.
+  await expect(card(page, "REQ-2").getByTestId("element-type-label")).toHaveText("Need");
+
   const small = card(page, "REQ-1");
   await expect(small).toHaveAttribute("data-fixed-size", "true");
   const description = small.getByTestId("element-description");
   await expect(description).toHaveAttribute("data-fit-clamped", "true");
   await expect(description).toHaveAttribute("title", LONG_REQUIREMENT);
-  // Nothing spills out of the card.
-  const cardBox = await small.boundingBox();
-  const textBox = await description.boundingBox();
-  expect(textBox!.y + textBox!.height).toBeLessThanOrEqual(cardBox!.y + cardBox!.height);
+  // Nothing spills out of the card (once the canvas has sized it).
+  await expect
+    .poll(async () => {
+      const cardBox = await small.boundingBox();
+      const textBox = await description.boundingBox();
+      return cardBox!.y + cardBox!.height - (textBox!.y + textBox!.height);
+    })
+    .toBeGreaterThanOrEqual(0);
 
   // Short text keeps its full size.
   const short = card(page, "REQ-2").getByTestId("element-description");

@@ -72,11 +72,15 @@ the summary above is from established, widely published material.*
 | F2 | Element editor | Icon and colour appeared twice and took up much of the panel. | Fixed: the style section rendered under both tabs. |
 | F3 | Element editor | In the demo project the Type list showed every built-in type twice: "Object (Default)" and again as "Object". | Fixed: the built-ins were listed twice, with the same value. |
 | F5 | Element card | Requirements engineers need the description on the card as much as the name: show it per element/type, and handle long text. | Done (see below). |
+| F6 | Vocabulary | Rename the built-in kind "Requirement" to "Need", leaving room for requirement types defined in a metamodel. | Done (see below). |
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- F6: the built-in kind "Requirement" is called "Need". Stored diagrams are read with the new name
+  (`currentKindLabel` in `shared/metamodel-setup.ts`): metamodel elements of the kind and untyped instance elements;
+  instance elements typed by a metamodel type that someone named "Requirement" keep that name.
 - F5: "Description" in the Styling tab (Canvas setting / Show / Hide) overrides the canvas-wide "Show node descriptions" per
-  element, and is part of the type's style, so a Requirement type can show the description on every requirement. Cards
+  element, and is part of the type's style, so a Need type can show the description on every requirement. Cards
   show descriptions on several lines (up to 8, up to 300 px wide); in a resized card the text fits the box. Text that does not
   fit gets smaller (name 18 to 11 px, description 12 to 9 px), then is cut after whole lines with "…"; the full text is the
   tooltip (`client/src/lib/fit-text.ts`).
