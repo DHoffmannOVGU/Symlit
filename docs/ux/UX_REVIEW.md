@@ -90,6 +90,8 @@ One word per concept in everything a user reads (labels, tooltips, help, tutoria
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- O11: an element near the top of the canvas shows its edit/duplicate/delete bar below itself, so the bar never covers
+  the canvas toolbar (`e2e/canvas-chrome.spec.ts`).
 - O2: the canvas toolbar shows text on its main actions (Diagram, Table, Auto layout, Validate, Save pattern) at 1280 px and
   wider, is grouped with dividers (view | layout | check | output and help), has one hover label per button (also on
   keyboard focus, and on disabled buttons saying what enables them), and Auto layout no longer uses the magic-wand icon

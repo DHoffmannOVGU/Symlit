@@ -1,4 +1,7 @@
-import React, { useRef } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
+
+/** Space the canvas toolbar takes at the top of the canvas, plus the bar itself. */
+const ACTION_BAR_CLEARANCE = 110;
 import { Handle, Position, NodeProps, NodeResizer } from "@xyflow/react";
 import { getNodeIcon } from "@/lib/node-icons";
 import { AlertTriangle as AlertTriangleIcon, BadgeAlert as BadgeAlertIcon, BadgeCheck as BadgeCheckIcon, Copy as CopyIcon, Pencil as PencilIcon, Trash2 as Trash2Icon } from "lucide-react";
@@ -106,6 +109,17 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
   // up to a few lines; in both cases text that is still too long gets smaller, then cut.
   const fixedSize = Boolean(nodeData.hasFixedSize);
   const labelRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  // The edit/duplicate/delete bar sits above the element, unless that would put
+  // it under the canvas toolbar at the top: then it goes below.
+  const [actionBarBelow, setActionBarBelow] = useState(false);
+  const actionBarVisible = Boolean(nodeData.showActionToolbar) && !nodeData.suppressActionToolbar;
+  useLayoutEffect(() => {
+    if (!actionBarVisible || !cardRef.current) return;
+    const canvas = cardRef.current.closest(".react-flow")?.getBoundingClientRect();
+    if (!canvas) return;
+    setActionBarBelow(cardRef.current.getBoundingClientRect().top - canvas.top < ACTION_BAR_CLEARANCE);
+  }, [actionBarVisible, nodeData.label]);
   const descriptionRef = useRef<HTMLDivElement>(null);
   const labelMax = hasVisibleDescription ? 14 : 18;
   useFitText(labelRef, `${nodeData.label}|${fixedSize}|${hasVisibleDescription}`, { maxSize: labelMax, minSize: 11, lineHeight: 1.25 });
@@ -157,6 +171,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
           ${isDraft ? "border-dashed opacity-80" : ""}
           ${isFlowActive ? "ring-2 ring-emerald-400/70 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]" : ""}
         `}
+        ref={cardRef}
         data-testid="element-card"
         data-fixed-size={fixedSize ? "true" : "false"}
         style={{
@@ -208,7 +223,11 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
         </div>
 
         {showActionToolbar && !suppressActionToolbar && (
-          <div className="absolute right-[-3.75rem] top-0 -translate-y-[calc(100%+8px)]">
+          <div
+            className={`absolute right-[-3.75rem] ${actionBarBelow ? "bottom-0 translate-y-[calc(100%+8px)]" : "top-0 -translate-y-[calc(100%+8px)]"}`}
+            data-testid="element-action-bar"
+            data-placement={actionBarBelow ? "below" : "above"}
+          >
             <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white/96 p-1 shadow-lg backdrop-blur">
                   <button
                     type="button"
