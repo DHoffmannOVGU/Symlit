@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getNodeIcon } from "@/lib/node-icons";
-import { ArrowDownRight as ArrowDownRightIcon, Boxes as BoxesIcon, Diamond as DiamondIcon, GitBranchPlus as GitBranchPlusIcon, Link2 as Link2Icon, Network as NetworkIcon, TableProperties as TablePropertiesIcon } from "lucide-react";
+import { ArrowDownRight as ArrowDownRightIcon, Boxes as BoxesIcon, Diamond as DiamondIcon, GitBranchPlus as GitBranchPlusIcon, Link2 as Link2Icon, Share2 as Share2Icon, TableProperties as TablePropertiesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProjectType } from "@shared/schema";
 import { magicRelationTypeCatalog } from "@shared/metamodel-setup";
@@ -116,28 +116,34 @@ export function CanvasTableMode({
           <Button
             variant="outline"
             size="sm"
-            title="Graph View"
+            aria-label="Diagram"
+            aria-pressed={displayMode === "graph"}
+            data-testid="button-toolbar-graph"
             className={cn(
-              "h-9 w-9 px-0",
+              "h-9 gap-1.5 px-2.5 text-xs",
               displayMode === "graph" &&
                 "border-primary bg-primary/10 text-primary",
             )}
             onClick={() => onDisplayModeChange("graph")}
           >
-            <NetworkIcon className="h-4 w-4" />
+            <Share2Icon className="h-4 w-4" />
+            Diagram
           </Button>
           <Button
             variant="outline"
             size="sm"
-            title="Table View"
+            aria-label="Table"
+            aria-pressed={displayMode === "table"}
+            data-testid="button-toolbar-table"
             className={cn(
-              "h-9 w-9 px-0",
+              "h-9 gap-1.5 px-2.5 text-xs",
               displayMode === "table" &&
                 "border-primary bg-primary/10 text-primary",
             )}
             onClick={() => onDisplayModeChange("table")}
           >
             <TablePropertiesIcon className="h-4 w-4" />
+            Table
           </Button>
         </div>
         <Card className="border-slate-200 shadow-sm">

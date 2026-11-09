@@ -90,6 +90,10 @@ One word per concept in everything a user reads (labels, tooltips, help, tutoria
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- O2: the canvas toolbar shows text on its main actions (Diagram, Table, Auto layout, Validate, Save pattern) at 1280 px and
+  wider, is grouped with dividers (view | layout | check | output and help), has one hover label per button (also on
+  keyboard focus, and on disabled buttons saying what enables them), and Auto layout no longer uses the magic-wand icon
+  that reads as AI. Buttons have stable test ids, which the tutorial's highlights use.
 - O1: fitting the diagram never zooms in beyond 100% (`utils/fit-options.ts`), so a diagram with three elements shows
   them at their real size instead of filling the screen. The Controls fit button uses the same options.
 - O3: every fit keeps the tutorial coach clear (extra padding on the side it covers), and the canvas re-fits when the coach

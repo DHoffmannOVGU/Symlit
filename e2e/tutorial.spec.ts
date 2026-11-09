@@ -42,7 +42,7 @@ test("the guided tutorial starts from the project list and follows the learner",
   await expect(page.getByTestId("tutorial-lesson-title")).toHaveText("Define a type");
 
   // Doing a later step out of order still counts.
-  await page.getByTitle("Table View").click();
+  await page.getByTestId("button-toolbar-table").click();
   await expect(page.getByTestId("tutorial-progress-count")).toContainText(`3 of ${TUTORIAL_STEPS.length}`);
 
   // Skipping moves on to the next step.
