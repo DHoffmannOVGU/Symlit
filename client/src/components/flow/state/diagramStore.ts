@@ -74,6 +74,12 @@ export interface DiagramState {
   /** Signature of the diagram as last loaded or saved (see diagram-serialization.ts); "" before loading. */
   savedSignature: string;
   setSavedSignature: (signature: string) => void;
+  /** Server revision the diagram was loaded or last saved at; sent with a save to detect changes made elsewhere. */
+  revision: string | null;
+  setRevision: (revision: string | null) => void;
+  /** A save was refused because the diagram changed elsewhere; the user decides what to keep. */
+  saveConflict: boolean;
+  setSaveConflict: (value: boolean) => void;
 
   nodeTableFilter: string;
   edgeTableFilter: string;
@@ -202,6 +208,10 @@ export function createDiagramStore() {
 
     savedSignature: "",
     setSavedSignature: (signature) => set({ savedSignature: signature }),
+    revision: null,
+    setRevision: (revision) => set({ revision }),
+    saveConflict: false,
+    setSaveConflict: (value) => set({ saveConflict: value }),
 
     nodeTableFilter: "",
     edgeTableFilter: "",

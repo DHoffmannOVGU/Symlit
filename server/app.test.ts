@@ -678,3 +678,65 @@ describe("project import", () => {
     assert.equal((await request("GET", "/api/projects")).json.length, before);
   });
 });
+
+describe("saving over changes made elsewhere", () => {
+  test("a save based on an outdated revision is refused; overwriting is explicit", async () => {
+    const project = await createProject({ name: "Conflicts" });
+    const view = await createView(project.id);
+    const flow = sampleFlow(`rev${project.id}`);
+    const first = await request("POST", `/api/views/${view.id}/sync`, flow);
+    assert.equal(first.status, 200, first.text);
+    const loaded = await request("GET", `/api/views/${view.id}/flow`);
+    assert.equal(loaded.json.revision, first.json.revision);
+
+    // Saving what was loaded, twice: each save hands out the next revision.
+    const second = await request("POST", `/api/views/${view.id}/sync`, {
+      ...flow,
+      baseRevision: loaded.json.revision,
+    });
+    assert.equal(second.status, 200, second.text);
+    assert.equal(second.json.revision, loaded.json.revision, "unchanged content keeps its revision");
+
+    // "Another tab" renames an element.
+    const renamed = structuredClone(flow);
+    renamed.nodes[0].data.label = "Renamed elsewhere";
+    const other = await request("POST", `/api/views/${view.id}/sync`, {
+      ...renamed,
+      baseRevision: loaded.json.revision,
+    });
+    assert.equal(other.status, 200, other.text);
+    assert.notEqual(other.json.revision, loaded.json.revision);
+
+    const stale = await request("POST", `/api/views/${view.id}/sync`, {
+      ...flow,
+      baseRevision: loaded.json.revision,
+    });
+    assert.equal(stale.status, 409, stale.text);
+    const stored = await request("GET", `/api/views/${view.id}/flow`);
+    assert.ok(stored.json.nodes.some((node: any) => node.data.label === "Renamed elsewhere"));
+
+    const overwrite = await request("POST", `/api/views/${view.id}/sync`, flow);
+    assert.equal(overwrite.status, 200, "a save without a revision overwrites");
+  });
+
+  test("an element edited in another diagram makes this diagram's save conflict", async () => {
+    const project = await createProject({ name: "Shared element" });
+    const viewA = await createView(project.id);
+    const viewB = await createView(project.id);
+    const flow = sampleFlow(`shared${project.id}`);
+    await request("POST", `/api/views/${viewA.id}/sync`, flow);
+    await request("POST", `/api/views/${viewB.id}/sync`, { nodes: [flow.nodes[0]], edges: [] });
+    const loadedB = await request("GET", `/api/views/${viewB.id}/flow`);
+
+    const renamed = structuredClone(flow);
+    renamed.nodes[0].data.label = "Renamed in A";
+    assert.equal((await request("POST", `/api/views/${viewA.id}/sync`, renamed)).status, 200);
+
+    const staleB = await request("POST", `/api/views/${viewB.id}/sync`, {
+      nodes: [{ ...flow.nodes[0], position: { x: 500, y: 500 } }],
+      edges: [],
+      baseRevision: loadedB.json.revision,
+    });
+    assert.equal(staleB.status, 409, "saving B would have reverted the rename");
+  });
+});

@@ -114,6 +114,12 @@ export const flowSyncInputSchema = z
   .object({
     nodes: z.array(flowNodeInputSchema),
     edges: z.array(flowEdgeInputSchema),
+    /**
+     * The revision (from the flow response) this save is based on. When the
+     * stored diagram has moved on, the save is refused with 409. Leave it out
+     * to overwrite whatever is stored.
+     */
+    baseRevision: z.string().optional(),
   })
   .superRefine(validateFlowIdentity);
 
@@ -131,6 +137,7 @@ export const flowResponseSchema = z
   .object({
     nodes: z.array(flowNodeRecordSchema),
     edges: z.array(flowEdgeSchema),
+    revision: z.string().optional(),
   })
   .superRefine(validateFlowIdentity);
 
@@ -500,9 +507,10 @@ export const api = {
       path: '/api/views/:viewId/sync',
       input: flowSyncInputSchema,
       responses: {
-        200: z.object({ success: z.boolean() }),
+        200: z.object({ success: z.boolean(), revision: z.string().nullable().optional() }),
         400: errorSchemas.validation,
         404: errorSchemas.notFound,
+        409: errorSchemas.validation,
       },
     },
     get: {

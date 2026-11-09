@@ -1,4 +1,5 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 import { apiCall } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
@@ -35,24 +36,35 @@ export function useFlow(viewId: number) {
   });
 }
 
+/** The save was refused because the stored diagram changed since it was loaded. */
+export const isSaveConflict = (error: unknown) => error instanceof ApiError && error.status === 409;
+
 export function useSyncFlow() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
       viewId,
       nodes,
       edges,
+      baseRevision,
     }: {
       viewId: number;
       nodes: InsertFlowNode[];
       edges: InsertFlowEdge[];
+      /** Leave out to overwrite whatever is stored. */
+      baseRevision?: string;
     }) =>
       apiCall(api.flow.sync, {
         params: { viewId },
-        body: { nodes, edges },
+        body: { nodes, edges, ...(baseRevision ? { baseRevision } : {}) },
       }),
     onSuccess: () => {
+      // Elements are shared between diagrams, and cached diagrams never go
+      // stale on their own: without this, switching away and back showed the
+      // diagram as it was before the save.
+      void queryClient.invalidateQueries({ queryKey: [api.flow.get.path] });
       toast({
         title: "Saved",
         description: "Your diagram has been saved successfully.",
@@ -60,6 +72,8 @@ export function useSyncFlow() {
       });
     },
     onError: (error) => {
+      // A conflict is settled in its own dialog (SaveConflictDialog).
+      if (isSaveConflict(error)) return;
       console.error("Flow save failed:", error);
       toast({
         variant: "destructive",

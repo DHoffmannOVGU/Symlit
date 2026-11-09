@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { normalizeRelationship } from "@shared/relationships";
 import { db } from "../db";
 import {
@@ -69,6 +70,65 @@ export async function getFlow(
     nodes: flowNodes as FlowNodeWithPosition[],
     edges: flowEdges,
   };
+}
+
+/**
+ * A fingerprint of everything a diagram shows: its elements' data (shared
+ * with other diagrams), their placement here and its relationships. A save
+ * names the revision it was based on, so a diagram that changed in between
+ * (in another tab, or through an element edited in another diagram) is not
+ * overwritten unnoticed.
+ */
+export function flowRevision(flow: { nodes: FlowNodeWithPosition[]; edges: FlowEdge[] }): string {
+  const byId = <T extends { id: string }>(items: T[]) =>
+    [...items].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const content = {
+    nodes: byId(flow.nodes).map((node) => [
+      node.id,
+      node.type,
+      canonical(node.data),
+      canonical(node.position),
+      node.parentId ?? null,
+    ]),
+    edges: byId(flow.edges).map((edge) => [
+      edge.id,
+      edge.source,
+      edge.target,
+      edge.edgeType,
+      edge.sourceHandle ?? null,
+      edge.targetHandle ?? null,
+      canonical(edge.data ?? null),
+    ]),
+  };
+  return createHash("sha1").update(JSON.stringify(content)).digest("hex").slice(0, 16);
+}
+
+/** Object keys in a fixed order, so equal values always serialise the same. */
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, canonical((value as Record<string, unknown>)[key])]),
+  );
+}
+
+/** The diagram changed since the revision a save was based on. */
+export class FlowConflictError extends Error {
+  readonly status = 409;
+  constructor() {
+    super("This diagram was changed somewhere else since you opened it.");
+  }
+}
+
+async function currentRevision(viewId: number): Promise<string | null> {
+  try {
+    return flowRevision(await getFlow(viewId));
+  } catch {
+    // A damaged diagram has no revision; saving a repaired copy must work.
+    return null;
+  }
 }
 
 export type FlowRecoveryIssue = {
@@ -221,11 +281,17 @@ export async function syncFlow(
   viewId: number,
   newNodes: SyncFlowNodeInput[],
   newEdges: FlowEdgeInput[],
-): Promise<void> {
+  options: { baseRevision?: string } = {},
+): Promise<{ revision: string | null }> {
   validateFlowRecords(newNodes, newEdges);
 
   const [view] = await db.select().from(views).where(eq(views.id, viewId));
   if (!view) throw new Error("View not found");
+
+  if (options.baseRevision !== undefined) {
+    const stored = await currentRevision(viewId);
+    if (stored !== null && stored !== options.baseRevision) throw new FlowConflictError();
+  }
 
   const [project] = await db
     .select({
@@ -315,6 +381,7 @@ export async function syncFlow(
         .filter((id) => !keptIds.has(id)),
     );
   });
+  return { revision: await currentRevision(viewId) };
 }
 
 export async function insertNodeIntoView(

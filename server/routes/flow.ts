@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { z } from "zod";
 import { api } from "@shared/routes";
 import { storage } from "../storage";
+import { FlowConflictError, flowRevision } from "../services/flow-mutations";
 import { validateView } from "../services/model-validation";
 
 export function registerFlowRoutes(app: Express) {
@@ -12,13 +13,13 @@ export function registerFlowRoutes(app: Express) {
     if (!view) return res.status(404).json({ message: "View not found" });
     try {
       const flow = await storage.getFlow(viewId);
-      res.json(flow);
+      res.json({ ...flow, revision: flowRevision(flow) });
     } catch (err) {
       if (err instanceof z.ZodError) {
         console.error("Saved flow failed validation:", err.errors[0]?.message);
         return res.status(422).json({
           message:
-            "This diagram contains invalid saved data. Refresh and try again, or contact support if the problem continues.",
+            "This diagram contains invalid saved data and cannot be shown as it is.",
         });
       }
       throw err;
@@ -45,11 +46,15 @@ export function registerFlowRoutes(app: Express) {
       const view = await storage.getView(viewId);
       if (!view) return res.status(404).json({ message: "View not found" });
       const input = api.flow.sync.input.parse(req.body);
-      await storage.syncFlow(viewId, input.nodes, input.edges);
-      res.json({ success: true });
+      const { revision } = await storage.syncFlow(viewId, input.nodes, input.edges, {
+        baseRevision: input.baseRevision,
+      });
+      res.json({ success: true, revision });
     } catch (err) {
-       if (err instanceof z.ZodError) {
+      if (err instanceof z.ZodError) {
         res.status(400).json({ message: err.errors[0].message });
+      } else if (err instanceof FlowConflictError) {
+        res.status(409).json({ message: err.message });
       } else {
         console.error("Flow sync error:", err);
         res.status(500).json({
