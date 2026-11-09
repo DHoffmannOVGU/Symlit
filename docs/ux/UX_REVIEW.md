@@ -89,9 +89,15 @@ All fixed; see Done below.
 | F5 | Element card | Requirements engineers need the description on the card as much as the name: show it per element/type, and handle long text. | Done (see below). |
 | F6 | Vocabulary | Rename the built-in kind "Requirement" to "Need", leaving room for requirement types defined in a metamodel. | Done (see below). |
 | F7 | Element editor, attributes | Units are free text; the description is hidden behind an icon; a new attribute is not focused; every property is editable inline. A type's attributes reach instances only through an unexplained "Inherit" button. | Done (see below). |
+| F8 | Sidebar (instance) | The Metamodel and Diagram dropdowns feel stiff; the draggable type cards are very big. | Done (see below). |
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- F8: the instance palette has no dropdowns. It lists the types of every referenced metamodel at once, grouped by
+  metamodel (collapsible, with counts), with one search over names, kinds and descriptions, in compact rows. Built-in
+  kinds are a group of their own, folded away while a metamodel provides types. Without any metamodel the tab used to be
+  empty; it now offers the built-in kinds. Load errors and unavailable metamodels show inside their group. The sidebar no
+  longer shows an ADMIN badge in the local edition.
 - O7: the project list greets by the configured name (`SYMLIT_USER_NAME`), or just "Good to see you." with the default
   name, instead of the internal login "local".
 - O9: the header button always says "Save"; the state is shown next to it ("Unsaved changes", "Saving…", "All changes

@@ -188,3 +188,36 @@ test("clicking a type in the Metamodels palette places an element of it, like in
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.locator(".react-flow__node")).toHaveCount(2);
 });
+
+test("the instance palette lists all types without dropdowns, with search and built-in kinds", async ({ page, request }) => {
+  const { instanceUrl, batteryTypeId } = await createProjects(request, "palette");
+  await page.goto(instanceUrl);
+
+  // The metamodel's types are listed right away, under its name.
+  await expect(page.getByTestId(`button-insert-referenced-class-${batteryTypeId}`)).toBeVisible();
+  await expect(page.locator('[data-testid^="palette-group-"]').first()).toContainText("Drone parts palette");
+  // Built-in kinds are there, but folded away while a metamodel provides types.
+  await expect(page.getByTestId("button-insert-base-class-__default_part__")).toHaveCount(0);
+
+  // Search filters across groups; built-in kinds show up when they match.
+  const search = page.getByTestId("input-palette-search");
+  await search.fill("behav");
+  await expect(page.getByTestId(`button-insert-referenced-class-${batteryTypeId}`)).toHaveCount(0);
+  await expect(page.getByTestId("button-insert-base-class-__default_action__")).toBeVisible();
+  await search.fill("zzz");
+  await expect(page.getByTestId("palette-nothing-found")).toBeVisible();
+  await search.press("Escape");
+  await expect(page.getByTestId(`button-insert-referenced-class-${batteryTypeId}`)).toBeVisible();
+});
+
+test("an instance model without a metamodel offers the built-in kinds", async ({ page, request }) => {
+  const created = await request.post("/api/projects/starter", {
+    data: { name: "No metamodel", projectType: "instance", views: [{ name: "Main", nodes: [], edges: [] }] },
+  });
+  const { project, firstViewId } = await created.json();
+  await page.goto(`/project/${project.id}/view/${firstViewId}`);
+  const object = page.getByTestId("button-insert-base-class-__default_part__");
+  await expect(object).toBeVisible();
+  await object.click();
+  await expect(page.locator(".react-flow__node")).toHaveCount(1);
+});
