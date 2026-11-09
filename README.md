@@ -23,7 +23,7 @@ machine. It needs no accounts and no cloud services.
 - **A guided tutorial** that builds a small drone model with you: about 15 minutes, seven hands-on
   lessons covering metamodels, typed models, validation, model rules, table view, auto layout,
   patterns and export. Steps tick off as you work; "Show me" points at the right button.
-- **Starter templates.**
+- **Project templates:** start from an example; templates can bring their metamodel along.
 - **Export** to JSON or CSV (elements and relationships), and diagram screenshots.
 - **Optional AI metamodel assistant** (Google Gemini, bring your own API key).
 

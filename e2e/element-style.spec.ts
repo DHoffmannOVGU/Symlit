@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { createProjectWithViews } from "./support/create-project";
 
 // Full-stack: styling a type in a metamodel and how that reaches the elements
 // of an instance model that uses it. Each test creates its own projects.
@@ -9,8 +10,7 @@ interface Setup {
 }
 
 async function createProjects(request: APIRequestContext, suffix: string): Promise<Setup> {
-  const metamodel = await request.post("/api/projects/starter", {
-    data: {
+  const metamodel = await createProjectWithViews(request, {
       name: `Sensors ${suffix}`,
       projectType: "metamodel",
       views: [
@@ -27,7 +27,6 @@ async function createProjects(request: APIRequestContext, suffix: string): Promi
           edges: [],
         },
       ],
-    },
   });
   expect(metamodel.status()).toBe(201);
   const { project: meta, firstViewId: metaViewId } = await metamodel.json();
@@ -35,8 +34,7 @@ async function createProjects(request: APIRequestContext, suffix: string): Promi
   // Instance elements refer to a type of a referenced metamodel as mm:<project>:<element>.
   const sensorId = `mm:${meta.id}:${flow.nodes[0].id}`;
 
-  const instance = await request.post("/api/projects/starter", {
-    data: {
+  const instance = await createProjectWithViews(request, {
       name: `Station ${suffix}`,
       projectType: "instance",
       referencedMetamodels: [meta.id],
@@ -68,7 +66,6 @@ async function createProjects(request: APIRequestContext, suffix: string): Promi
           edges: [],
         },
       ],
-    },
   });
   expect(instance.status()).toBe(201);
   const { project: inst, firstViewId: instViewId } = await instance.json();
@@ -196,8 +193,7 @@ test("a type can always show its elements' descriptions; an element can still hi
 });
 
 test("long text in a resized element gets smaller, then is cut with the full text on hover", async ({ page, request }) => {
-  const created = await request.post("/api/projects/starter", {
-    data: {
+  const created = await createProjectWithViews(request, {
       name: "Overflow",
       projectType: "metamodel",
       views: [
@@ -227,7 +223,6 @@ test("long text in a resized element gets smaller, then is cut with the full tex
           edges: [],
         },
       ],
-    },
   });
   const { project, firstViewId } = await created.json();
   await page.goto(`/project/${project.id}/view/${firstViewId}`);

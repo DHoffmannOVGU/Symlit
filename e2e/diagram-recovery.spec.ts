@@ -386,15 +386,12 @@ async function installRelationshipApi(page: Page) {
     const url = new URL(request.url());
     const { pathname } = url;
 
-    if (request.method() === "POST" && pathname === "/api/projects/starter") {
+    // A blank project is created directly (templates go through /api/project-templates).
+    if (request.method() === "POST" && pathname === "/api/projects") {
       created = true;
       createdSetup = (request.postDataJSON() as { metamodelSetup?: unknown })
         .metamodelSetup;
-      await fulfillJson(
-        route,
-        { project: relationshipProject, firstViewId: relationshipView.id },
-        201,
-      );
+      await fulfillJson(route, relationshipProject, 201);
       return;
     }
 
@@ -509,7 +506,9 @@ test("renders configured relationship semantics and preserves them after reload"
     .getByTestId("input-project-name")
     .fill("Relationship Visuals");
   await setupDialog.getByTestId("button-create-project").click();
-  await expect(page).toHaveURL(/\/project\/2\/view\/2$/);
+  // A blank project has no diagram yet, so it opens on the project page.
+  await expect(page).toHaveURL(/\/project\/2$/);
+  await page.goto("/project/2/view/2");
   await expect(page.getByTestId("diagram-canvas-region")).toBeVisible();
   expect(
     (

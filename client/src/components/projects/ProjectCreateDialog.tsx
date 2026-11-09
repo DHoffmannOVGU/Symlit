@@ -22,10 +22,7 @@ import {
   type MagicRelationType,
   type MetamodelPurpose,
 } from "@shared/metamodel-setup";
-import {
-  PROJECT_TEMPLATES,
-  type ProjectTemplateId,
-} from "@/lib/project-templates";
+import { BLANK_TEMPLATE_ID, type ProjectTemplateOption } from "@/lib/project-templates";
 import { getProjectTypeMeta } from "./project-types";
 
 export interface ProjectCreateDialogProps {
@@ -33,7 +30,8 @@ export interface ProjectCreateDialogProps {
   projectName: string;
   projectDescription: string;
   projectType: ProjectType;
-  selectedTemplateId: ProjectTemplateId;
+  templates: ProjectTemplateOption[];
+  selectedTemplateId: string;
   metamodelPurpose: MetamodelPurpose;
   metamodelSetupDescription: string;
   selectedMagicNodeTypes: MagicNodeType[];
@@ -41,7 +39,7 @@ export interface ProjectCreateDialogProps {
   isCreating: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
-  onTemplateSelect: (templateId: ProjectTemplateId) => void;
+  onTemplateSelect: (templateId: string) => void;
   onProjectTypeChange: (projectType: ProjectType) => void;
   onProjectNameChange: (value: string) => void;
   onProjectDescriptionChange: (value: string) => void;
@@ -56,6 +54,7 @@ export function ProjectCreateDialog({
   projectName,
   projectDescription,
   projectType,
+  templates,
   selectedTemplateId,
   metamodelPurpose,
   metamodelSetupDescription,
@@ -90,7 +89,7 @@ export function ProjectCreateDialog({
           <div className="space-y-2">
             <Label>Start from a template</Label>
             <div className="grid gap-2">
-              {PROJECT_TEMPLATES.map((template) => {
+              {templates.map((template) => {
                 const templateMeta = getProjectTypeMeta(template.projectType);
                 const TemplateIcon = templateMeta.icon;
                 const isSelected = selectedTemplateId === template.id;
@@ -114,6 +113,11 @@ export function ProjectCreateDialog({
                       <p className="text-xs text-muted-foreground">
                         {template.description}
                       </p>
+                      {template.includedMetamodels.length > 0 && (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Includes metamodel: {template.includedMetamodels.join(", ")}
+                        </p>
+                      )}
                     </div>
                   </button>
                 );
@@ -125,6 +129,8 @@ export function ProjectCreateDialog({
             <Label>Project Type</Label>
             <RadioGroup
               value={projectType}
+              // A template decides the project type; only a blank project can choose.
+              disabled={selectedTemplateId !== BLANK_TEMPLATE_ID}
               onValueChange={(value) => onProjectTypeChange(value as ProjectType)}
               className="flex flex-wrap gap-4"
             >

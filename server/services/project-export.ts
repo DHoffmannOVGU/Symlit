@@ -139,19 +139,27 @@ export async function buildProjectExport(
         ...(options.includeRelationships ? { edges } : {}),
       };
     });
-  const patterns = options.includePatterns
-    ? await Promise.all(
-        (await storage.getPatterns(projectId)).map(async (pattern) => ({
-          ...pattern,
-          ...(await storage.getFlow(pattern.id)),
-        })),
-      )
-    : undefined;
+  const patternsOf = async (id: number) =>
+    options.includePatterns
+      ? serializeViews(
+          await Promise.all(
+            (await storage.getPatterns(id)).map(async (pattern) => ({
+              ...pattern,
+              ...(await storage.getFlow(pattern.id)),
+            })),
+          ),
+        )
+      : undefined;
+  const patterns = await patternsOf(projectId);
   // Referenced metamodels are collected recursively (a metamodel can build on
   // another one), each once, skipping deleted or unreadable projects.
   const collectReferencedMetamodels = async () => {
     const visited = new Set<number>([projectId]);
-    const collected: Array<{ project: Project; views: ReturnType<typeof serializeViews> }> = [];
+    const collected: Array<{
+      project: Project;
+      views: ReturnType<typeof serializeViews>;
+      patterns?: ReturnType<typeof serializeViews>;
+    }> = [];
     const queue = [...((exportData.project.referencedMetamodels ?? []) as number[])];
     while (queue.length > 0) {
       const metamodelId = queue.shift()!;
@@ -160,7 +168,12 @@ export async function buildProjectExport(
       const target = await storage.getProject(metamodelId);
       if (!target || target.projectType !== "metamodel" || !(await canRead(target))) continue;
       const metamodel = await storage.getProjectExportData(metamodelId);
-      collected.push({ project: metamodel.project, views: serializeViews(metamodel.views) });
+      const metamodelPatterns = await patternsOf(metamodelId);
+      collected.push({
+        project: metamodel.project,
+        views: serializeViews(metamodel.views),
+        ...(metamodelPatterns ? { patterns: metamodelPatterns } : {}),
+      });
       queue.push(...((target.referencedMetamodels ?? []) as number[]));
     }
     return collected;
@@ -184,7 +197,7 @@ export async function buildProjectExport(
             projectType: exportData.project.projectType,
           },
       views: serializeViews(selectedViews),
-      ...(patterns ? { patterns: serializeViews(patterns) } : {}),
+      ...(patterns ? { patterns } : {}),
       ...(referencedMetamodels
         ? { referencedMetamodels }
         : {}),

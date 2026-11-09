@@ -7,6 +7,7 @@ import { registerExportRoutes } from "./export";
 import { registerFlowRoutes } from "./flow";
 import { registerPatternRoutes } from "./patterns";
 import { registerProjectRoutes } from "./projects";
+import { registerProjectTemplateRoutes } from "./project-templates";
 import { registerSessionRoutes } from "./session";
 import { registerTutorialRoutes } from "./tutorial";
 import { registerViewRoutes } from "./views";
@@ -48,6 +49,7 @@ export async function registerRoutes(
   registerSessionRoutes(app, config);
   registerAiRoutes(app, config);
   registerProjectRoutes(app);
+  registerProjectTemplateRoutes(app);
   registerTutorialRoutes(app);
   registerExportRoutes(app);
   registerViewRoutes(app);

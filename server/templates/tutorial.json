@@ -1,0 +1,279 @@
+{
+  "template": {
+    "id": "tutorial",
+    "name": "Guided tutorial",
+    "description": "The Drone types metamodel and the Delivery drone model used by the guided tutorial.",
+    "listed": false
+  },
+  "export": {
+    "version": 1,
+    "kind": "instance-model"
+  },
+  "project": {
+    "id": 4,
+    "name": "Tutorial \u00b7 Delivery drone",
+    "description": "Instance model for the guided tutorial, built from the Drone types metamodel.",
+    "projectType": "instance",
+    "referencedMetamodels": [
+      3
+    ],
+    "metamodelSetup": null
+  },
+  "views": [
+    {
+      "id": 4,
+      "projectId": 4,
+      "name": "Delivery",
+      "description": "One drone, its battery and a delivery it performs.",
+      "viewType": "view",
+      "modelRules": [],
+      "nodes": [
+        {
+          "id": "node_1262a261-d94b-4fad-93be-4a5214163d40",
+          "projectId": 4,
+          "type": "part",
+          "data": {
+            "icon": "Compass",
+            "type": "Drone",
+            "color": "#2563eb",
+            "label": "Courier X1",
+            "typeId": "mm:3:node_960f7671-b5bf-418f-860b-cb99945bb525",
+            "attributes": [
+              {
+                "id": "attr-mass",
+                "name": "mass",
+                "type": "number",
+                "unit": "kg",
+                "value": "4.2",
+                "description": "Take-off mass"
+              },
+              {
+                "id": "attr-range",
+                "name": "range",
+                "type": "number",
+                "unit": "km",
+                "value": "18",
+                "description": "Maximum flight range"
+              }
+            ],
+            "description": "The drone used on the city route.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 80,
+            "y": 80
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_1523cced-13a7-463f-9aea-bcddfb3b2edc",
+          "projectId": 4,
+          "type": "part",
+          "data": {
+            "icon": "Battery",
+            "type": "Battery",
+            "color": "#16a34a",
+            "label": "Pack A",
+            "typeId": "mm:3:node_59e1139d-a3d6-4199-ba61-c5ad24b094c0",
+            "attributes": [
+              {
+                "id": "attr-capacity",
+                "name": "capacity",
+                "type": "number",
+                "unit": "Wh",
+                "value": "160",
+                "description": "Usable capacity"
+              }
+            ],
+            "description": "Standard battery pack.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 480,
+            "y": 80
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_d98a2450-08c4-4a68-97b7-d82b32f5f77b",
+          "projectId": 4,
+          "type": "part",
+          "data": {
+            "icon": "Package",
+            "type": "Delivery",
+            "color": "#d97706",
+            "label": "City route delivery",
+            "typeId": "mm:3:node_47ed1683-787a-4bcf-837a-e678c1ec8aeb",
+            "description": "Depot to the old town.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 80,
+            "y": 360
+          },
+          "parentId": null
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge_d41abac5-aeb0-4f06-bf93-6c52d46dbccb",
+          "viewId": 4,
+          "source": "node_1262a261-d94b-4fad-93be-4a5214163d40",
+          "target": "node_1523cced-13a7-463f-9aea-bcddfb3b2edc",
+          "edgeType": "composition",
+          "sourceHandle": "right",
+          "targetHandle": "left",
+          "data": {
+            "label": "powered by",
+            "edgeType": "composition"
+          }
+        },
+        {
+          "id": "edge_f45f885d-4141-4766-a7bb-8b2fdfa13fe6",
+          "viewId": 4,
+          "source": "node_1262a261-d94b-4fad-93be-4a5214163d40",
+          "target": "node_d98a2450-08c4-4a68-97b7-d82b32f5f77b",
+          "edgeType": "association",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "label": "performs",
+            "edgeType": "association"
+          }
+        }
+      ]
+    }
+  ],
+  "patterns": [],
+  "referencedMetamodels": [
+    {
+      "project": {
+        "id": 3,
+        "name": "Tutorial \u00b7 Drone types",
+        "description": "Metamodel for the guided tutorial: the types a delivery drone model is built from.",
+        "projectType": "metamodel",
+        "referencedMetamodels": [],
+        "metamodelSetup": null
+      },
+      "views": [
+        {
+          "id": 3,
+          "projectId": 3,
+          "name": "Types",
+          "description": "The building blocks of the delivery model.",
+          "viewType": "view",
+          "modelRules": [],
+          "nodes": [
+            {
+              "id": "node_960f7671-b5bf-418f-860b-cb99945bb525",
+              "projectId": 3,
+              "type": "partdef",
+              "data": {
+                "icon": "Compass",
+                "type": "Object",
+                "color": "#2563eb",
+                "label": "Drone",
+                "attributes": [
+                  {
+                    "id": "attr-mass",
+                    "name": "mass",
+                    "type": "number",
+                    "unit": "kg",
+                    "value": "",
+                    "description": "Take-off mass"
+                  },
+                  {
+                    "id": "attr-range",
+                    "name": "range",
+                    "type": "number",
+                    "unit": "km",
+                    "value": "",
+                    "description": "Maximum flight range"
+                  }
+                ],
+                "description": "An unmanned aircraft that carries parcels."
+              },
+              "position": {
+                "x": 80,
+                "y": 80
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_59e1139d-a3d6-4199-ba61-c5ad24b094c0",
+              "projectId": 3,
+              "type": "partdef",
+              "data": {
+                "icon": "Battery",
+                "type": "Object",
+                "color": "#16a34a",
+                "label": "Battery",
+                "attributes": [
+                  {
+                    "id": "attr-capacity",
+                    "name": "capacity",
+                    "type": "number",
+                    "unit": "Wh",
+                    "value": "",
+                    "description": "Usable capacity"
+                  }
+                ],
+                "description": "Stores the energy for a flight."
+              },
+              "position": {
+                "x": 480,
+                "y": 80
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_47ed1683-787a-4bcf-837a-e678c1ec8aeb",
+              "projectId": 3,
+              "type": "actiondef",
+              "data": {
+                "icon": "Package",
+                "type": "Behavior",
+                "color": "#d97706",
+                "label": "Delivery",
+                "description": "Bringing one parcel from the depot to a customer."
+              },
+              "position": {
+                "x": 80,
+                "y": 360
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_abbc107f-7f34-412b-9123-5b91714a5a73",
+              "viewId": 3,
+              "source": "node_960f7671-b5bf-418f-860b-cb99945bb525",
+              "target": "node_59e1139d-a3d6-4199-ba61-c5ad24b094c0",
+              "edgeType": "composition",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "label": "powered by",
+                "edgeType": "composition"
+              }
+            },
+            {
+              "id": "edge_e7bdc133-e4e1-448d-910b-dcfc6b6defbb",
+              "viewId": 3,
+              "source": "node_960f7671-b5bf-418f-860b-cb99945bb525",
+              "target": "node_47ed1683-787a-4bcf-837a-e678c1ec8aeb",
+              "edgeType": "association",
+              "sourceHandle": "bottom",
+              "targetHandle": "top",
+              "data": {
+                "label": "performs",
+                "edgeType": "association"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

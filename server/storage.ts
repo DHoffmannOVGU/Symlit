@@ -5,7 +5,6 @@ import {
   views,
   nodes,
   nodeViews,
-  edges,
   type User,
   type Project,
   type InsertProject,
@@ -24,11 +23,7 @@ import {
   getFlow as getFlowService,
   getFlowRecovery as getFlowRecoveryService,
   insertNodeIntoView as insertNodeIntoViewService,
-  assignFreshStarterIds,
   deleteUnplacedNodes,
-  buildStarterViewRecords,
-  validateStarterTemplate,
-  type StarterViewFlowInput,
   syncFlow as syncFlowService,
 } from "./services/flow-mutations";
 
@@ -56,13 +51,6 @@ export interface IStorage {
     >;
   }>;
   createProject(project: InsertProject): Promise<Project>;
-  createStarterProject(
-    project: InsertProject,
-    starterViews: Array<
-      StarterViewFlowInput & { name: string; description?: string }
-    >,
-    options?: { preserveIds?: boolean },
-  ): Promise<{ project: Project; firstViewId: number | null }>;
   updateProject(
     id: number,
     project: Partial<InsertProject> & { referencedMetamodels?: number[] },
@@ -163,57 +151,6 @@ export class DatabaseStorage implements IStorage {
       .values(insertProject)
       .returning();
     return project;
-  }
-
-  async createStarterProject(
-    insertProject: InsertProject,
-    starterViews: Array<
-      StarterViewFlowInput & { name: string; description?: string }
-    >,
-    options: { preserveIds?: boolean } = {},
-  ): Promise<{ project: Project; firstViewId: number | null }> {
-    validateStarterTemplate(starterViews);
-    // Callers that generate unique ids themselves (the tutorial, which links
-    // instance elements to metamodel types by id) can keep them.
-    const instantiatedViews = options.preserveIds
-      ? starterViews
-      : assignFreshStarterIds(starterViews);
-
-    return db.transaction(async (tx) => {
-      const [project] = await tx
-        .insert(projects)
-        .values(insertProject)
-        .returning();
-      let firstViewId: number | null = null;
-
-      for (const starterView of instantiatedViews) {
-        const [view] = await tx
-          .insert(views)
-          .values({
-            projectId: project.id,
-            name: starterView.name,
-            description: starterView.description,
-          })
-          .returning();
-        firstViewId ??= view.id;
-
-        const records = buildStarterViewRecords(
-          project.id,
-          view.id,
-          starterView,
-        );
-        if (starterView.nodes.length > 0) {
-          await tx.insert(nodes).values(records.nodes);
-          await tx.insert(nodeViews).values(records.nodeViews);
-        }
-
-        if (starterView.edges.length > 0) {
-          await tx.insert(edges).values(records.edges);
-        }
-      }
-
-      return { project, firstViewId };
-    });
   }
 
   async updateProject(

@@ -1,5 +1,4 @@
 import { normalizeRelationship } from "@shared/relationships";
-import { randomUUID } from "node:crypto";
 import { db } from "../db";
 import {
   edges,
@@ -22,11 +21,6 @@ import {
 } from "@shared/routes";
 import { and, eq, inArray, notExists, sql } from "drizzle-orm";
 
-export type StarterViewFlowInput = {
-  nodes: SyncFlowNodeInput[];
-  edges: FlowEdgeInput[];
-};
-
 /**
  * Validate flow identity and geometry before any records are written or
  * exposed to the canvas. Route parsing provides the same protection for HTTP
@@ -41,86 +35,6 @@ export function validateFlowRecords(
     edges: flowEdges,
   });
   if (!result.success) throw result.error;
-}
-
-export function validateStarterTemplate(
-  starterViews: StarterViewFlowInput[],
-) {
-  const nodeIds = starterViews.flatMap((view) =>
-    view.nodes.map((node) => node.id),
-  );
-  if (new Set(nodeIds).size !== nodeIds.length) {
-    throw new Error("Starter template contains duplicate node IDs");
-  }
-
-  const edgeIds = starterViews.flatMap((view) =>
-    view.edges.map((edge) => edge.id),
-  );
-  if (new Set(edgeIds).size !== edgeIds.length) {
-    throw new Error("Starter template contains duplicate edge IDs");
-  }
-}
-
-/**
- * Element and relationship ids are global primary keys, so template ids
- * (which are fixed strings) must be replaced by fresh ids every time a
- * template is instantiated. A node that appears in several starter views is
- * the same element, so the mapping is shared across all views.
- */
-export function assignFreshStarterIds<T extends StarterViewFlowInput>(
-  starterViews: T[],
-  createId: (kind: "node" | "edge") => string = (kind) => `${kind}_${randomUUID()}`,
-): T[] {
-  const nodeIds = new Map<string, string>();
-  const mapNode = (id: string) => {
-    let mapped = nodeIds.get(id);
-    if (!mapped) {
-      mapped = createId("node");
-      nodeIds.set(id, mapped);
-    }
-    return mapped;
-  };
-  for (const view of starterViews) view.nodes.forEach((node) => mapNode(node.id));
-
-  return starterViews.map((view) => ({
-    ...view,
-    nodes: view.nodes.map((node) => ({
-      ...node,
-      id: mapNode(node.id),
-      parentId: node.parentId ? (nodeIds.get(node.parentId) ?? node.parentId) : node.parentId,
-    })),
-    edges: view.edges.map((edge) => ({
-      ...edge,
-      id: createId("edge"),
-      source: nodeIds.get(edge.source) ?? edge.source,
-      target: nodeIds.get(edge.target) ?? edge.target,
-    })),
-  }));
-}
-
-export function buildStarterViewRecords(
-  projectId: number,
-  viewId: number,
-  starterView: StarterViewFlowInput,
-) {
-  return {
-    nodes: starterView.nodes.map((node) => ({
-      id: node.id,
-      projectId,
-      type: node.type ?? "default",
-      data: node.data,
-    })),
-    nodeViews: starterView.nodes.map((node) => ({
-      nodeId: node.id,
-      viewId,
-      position: node.position,
-      parentId: node.parentId ?? null,
-    })),
-    edges: starterView.edges.map((edge) => ({
-      ...normalizeRelationship(edge),
-      viewId,
-    })),
-  };
 }
 
 export async function getFlow(

@@ -165,3 +165,26 @@ test("relationships are normalised so every stored one passes the save checks", 
   });
   assert.deepEqual(byId["too-wide"].data, { edgeType: "association", strokeColor: "#123" });
 });
+
+test("both tutorial projects are marked with the one tutorial template", async (t) => {
+  const upTo0005 = await mkdtemp(path.join(tmpdir(), "symlit-migrations-"));
+  t.after(() => rm(upTo0005, { recursive: true, force: true }));
+  await cp(MIGRATIONS_DIR, upTo0005, { recursive: true });
+  const journalPath = path.join(upTo0005, "meta", "_journal.json");
+  const journal = JSON.parse(await readFile(journalPath, "utf8"));
+  journal.entries = journal.entries.filter((entry: { tag: string }) => entry.tag < "0006");
+  await writeFile(journalPath, JSON.stringify(journal));
+
+  const db = await openDatabase({ driver: "pglite", dataDir: null }, { migrationsDir: upTo0005 });
+  t.after(() => db.close());
+  const run = (query: string) => db.db.execute(sql.raw(query));
+  await run(`INSERT INTO users (id, username) VALUES (1, 'local')`);
+  await run(`INSERT INTO projects (id, user_id, name, template_id) VALUES
+    (1, 1, 'mm', 'tutorial-metamodel'), (2, 1, 'model', 'tutorial-instance'), (3, 1, 'mine', NULL), (4, 1, 'other', 'system-context')`);
+
+  const { migrate } = await import("drizzle-orm/pglite/migrator");
+  await migrate(db.db as never, { migrationsFolder: MIGRATIONS_DIR });
+
+  const rows = (await run(`SELECT id, template_id FROM projects ORDER BY id`)).rows as Array<{ template_id: string | null }>;
+  assert.deepEqual(rows.map((row) => row.template_id), ["tutorial", "tutorial", null, "system-context"]);
+});

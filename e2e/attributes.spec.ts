@@ -1,11 +1,11 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { createProjectWithViews } from "./support/create-project";
 
 // Full-stack: defining attributes on a type in a metamodel, and how they reach
 // the elements of an instance model typed by it.
 
 async function createProjects(request: APIRequestContext, suffix: string) {
-  const metamodel = await request.post("/api/projects/starter", {
-    data: {
+  const metamodel = await createProjectWithViews(request, {
       name: `Drone parts ${suffix}`,
       projectType: "metamodel",
       views: [
@@ -22,14 +22,12 @@ async function createProjects(request: APIRequestContext, suffix: string) {
           edges: [],
         },
       ],
-    },
   });
   const { project: meta, firstViewId: metaViewId } = await metamodel.json();
   const flow = await (await request.get(`/api/views/${metaViewId}/flow`)).json();
   const batteryTypeId = `mm:${meta.id}:${flow.nodes[0].id}`;
 
-  const instance = await request.post("/api/projects/starter", {
-    data: {
+  const instance = await createProjectWithViews(request, {
       name: `Drone ${suffix}`,
       projectType: "instance",
       referencedMetamodels: [meta.id],
@@ -48,7 +46,6 @@ async function createProjects(request: APIRequestContext, suffix: string) {
           edges: [],
         },
       ],
-    },
   });
   const { project: inst, firstViewId: instViewId } = await instance.json();
   return {
@@ -211,9 +208,7 @@ test("the instance palette lists all types without dropdowns, with search and bu
 });
 
 test("an instance model without a metamodel offers the built-in kinds", async ({ page, request }) => {
-  const created = await request.post("/api/projects/starter", {
-    data: { name: "No metamodel", projectType: "instance", views: [{ name: "Main", nodes: [], edges: [] }] },
-  });
+  const created = await createProjectWithViews(request, { name: "No metamodel", projectType: "instance", views: [{ name: "Main", nodes: [], edges: [] }] });
   const { project, firstViewId } = await created.json();
   await page.goto(`/project/${project.id}/view/${firstViewId}`);
   const object = page.getByTestId("button-insert-base-class-__default_part__");

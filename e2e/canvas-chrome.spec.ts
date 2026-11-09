@@ -1,4 +1,5 @@
 import { expect, test, type Locator } from "@playwright/test";
+import { createProjectWithViews } from "./support/create-project";
 
 // The canvas's own controls must not cover each other.
 
@@ -9,8 +10,7 @@ const overlaps = async (a: Locator, b: Locator) => {
 };
 
 test("an element's edit bar goes below it when above would cover the canvas toolbar", async ({ page, request }) => {
-  const created = await request.post("/api/projects/starter", {
-    data: {
+  const created = await createProjectWithViews(request, {
       name: "Edit bar",
       projectType: "instance",
       views: [
@@ -23,7 +23,6 @@ test("an element's edit bar goes below it when above would cover the canvas tool
           edges: [],
         },
       ],
-    },
   });
   const { project, firstViewId } = await created.json();
   await page.goto(`/project/${project.id}/view/${firstViewId}`);
@@ -40,8 +39,7 @@ test("an element's edit bar goes below it when above would cover the canvas tool
 });
 
 test("the save button says what it does; the state is shown next to it; Ctrl+S saves", async ({ page, request }) => {
-  const created = await request.post("/api/projects/starter", {
-    data: {
+  const created = await createProjectWithViews(request, {
       name: "Saving",
       projectType: "instance",
       views: [
@@ -55,7 +53,6 @@ test("the save button says what it does; the state is shown next to it; Ctrl+S s
           edges: [],
         },
       ],
-    },
   });
   const { project, firstViewId } = await created.json();
   await page.goto(`/project/${project.id}/view/${firstViewId}`);

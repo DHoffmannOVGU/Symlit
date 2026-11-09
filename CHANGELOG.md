@@ -12,6 +12,10 @@ DATABASE_URL. No account, no external requests.
 - Diagram editor: one bidirectional handle per element side, Auto Layout,
   table view, undo/redo, screenshots, AI metamodel assistant (optional,
   Gemini key).
+- Patterns: reusable snippets of model elements; metamodels can ship
+  pattern libraries for the models that use them.
+- Project templates: start from an example; a template can bring its
+  metamodel along. Templates use the JSON export format.
 - Guided tutorial (two sample projects, 15 steps) and export (JSON/CSV).
 - Versioned database migrations applied on start; strict server-side
   validation of elements and relationships.

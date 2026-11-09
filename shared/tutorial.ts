@@ -1,5 +1,3 @@
-import type { MagicRelationType } from "./metamodel-setup";
-import type { RelationshipData } from "./relationships";
 /**
  * The guided tutorial: lesson definitions (shared by client and server) and
  * the content of the two tutorial projects.
@@ -9,11 +7,14 @@ import type { RelationshipData } from "./relationships";
  * workflow: define types, then build typed models from them.
  */
 
-export const TUTORIAL_METAMODEL_TEMPLATE = "tutorial-metamodel";
-export const TUTORIAL_INSTANCE_TEMPLATE = "tutorial-instance";
+/**
+ * The project template both tutorial projects are created from
+ * (server/templates/tutorial.json); the project type tells them apart.
+ */
+export const TUTORIAL_TEMPLATE = "tutorial";
 
 export const isTutorialTemplate = (templateId: string | null | undefined) =>
-  templateId === TUTORIAL_METAMODEL_TEMPLATE || templateId === TUTORIAL_INSTANCE_TEMPLATE;
+  templateId === TUTORIAL_TEMPLATE;
 
 /** Things the app reports while someone works; tutorial steps wait for them. */
 export const tutorialSignals = [
@@ -249,132 +250,3 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
 ];
 
 export const TUTORIAL_STEPS: TutorialStep[] = TUTORIAL_LESSONS.flatMap((lesson) => lesson.steps);
-
-// ---------------------------------------------------------------------------
-// Seed content. Ids here are template-local; the server replaces them.
-
-export interface TutorialSeedNode {
-  key: string;
-  type: string;
-  position: { x: number; y: number };
-  data: Record<string, unknown>;
-  /** Instance elements: key of the metamodel type they instantiate. */
-  typeKey?: string;
-}
-
-export interface TutorialSeedEdge {
-  key: string;
-  source: string;
-  target: string;
-  edgeType: MagicRelationType;
-  data?: RelationshipData;
-}
-
-export interface TutorialSeedProject {
-  name: string;
-  description: string;
-  viewName: string;
-  viewDescription: string;
-  nodes: TutorialSeedNode[];
-  edges: TutorialSeedEdge[];
-}
-
-export const TUTORIAL_METAMODEL: TutorialSeedProject = {
-  name: "Tutorial · Drone types",
-  description: "Metamodel for the guided tutorial: the types a delivery drone model is built from.",
-  viewName: "Types",
-  viewDescription: "The building blocks of the delivery model.",
-  nodes: [
-    {
-      key: "drone",
-      type: "partdef",
-      position: { x: 80, y: 80 },
-      data: {
-        label: "Drone",
-        description: "An unmanned aircraft that carries parcels.",
-        icon: "Compass",
-        color: "#2563eb",
-        attributes: [
-          { id: "attr-mass", name: "mass", description: "Take-off mass", value: "", unit: "kg", type: "number" },
-          { id: "attr-range", name: "range", description: "Maximum flight range", value: "", unit: "km", type: "number" },
-        ],
-      },
-    },
-    {
-      key: "battery",
-      type: "partdef",
-      position: { x: 480, y: 80 },
-      data: {
-        label: "Battery",
-        description: "Stores the energy for a flight.",
-        icon: "Battery",
-        color: "#16a34a",
-        attributes: [
-          { id: "attr-capacity", name: "capacity", description: "Usable capacity", value: "", unit: "Wh", type: "number" },
-        ],
-      },
-    },
-    {
-      key: "delivery",
-      type: "actiondef",
-      position: { x: 80, y: 360 },
-      data: {
-        label: "Delivery",
-        description: "Bringing one parcel from the depot to a customer.",
-        icon: "Package",
-        color: "#d97706",
-      },
-    },
-  ],
-  edges: [
-    { key: "drone-battery", source: "drone", target: "battery", edgeType: "composition", data: { edgeType: "composition", label: "powered by" } },
-    { key: "drone-delivery", source: "drone", target: "delivery", edgeType: "association", data: { edgeType: "association", label: "performs" } },
-  ],
-};
-
-export const TUTORIAL_INSTANCE: TutorialSeedProject = {
-  name: "Tutorial · Delivery drone",
-  description: "Instance model for the guided tutorial, built from the Drone types metamodel.",
-  viewName: "Delivery",
-  viewDescription: "One drone, its battery and a delivery it performs.",
-  nodes: [
-    {
-      key: "courier",
-      type: "part",
-      typeKey: "drone",
-      position: { x: 80, y: 80 },
-      data: {
-        label: "Courier X1",
-        description: "The drone used on the city route.",
-        attributes: [
-          { id: "attr-mass", name: "mass", description: "Take-off mass", value: "4.2", unit: "kg", type: "number" },
-          { id: "attr-range", name: "range", description: "Maximum flight range", value: "18", unit: "km", type: "number" },
-        ],
-      },
-    },
-    {
-      key: "pack",
-      type: "part",
-      typeKey: "battery",
-      position: { x: 480, y: 80 },
-      data: {
-        label: "Pack A",
-        description: "Standard battery pack.",
-        attributes: [
-          { id: "attr-capacity", name: "capacity", description: "Usable capacity", value: "160", unit: "Wh", type: "number" },
-        ],
-      },
-    },
-    {
-      key: "route",
-      type: "part",
-      typeKey: "delivery",
-      position: { x: 80, y: 360 },
-      data: { label: "City route delivery", description: "Depot to the old town." },
-    },
-  ],
-  edges: [
-    { key: "courier-pack", source: "courier", target: "pack", edgeType: "composition", data: { edgeType: "composition", label: "powered by" } },
-    { key: "courier-route", source: "courier", target: "route", edgeType: "association", data: { edgeType: "association", label: "performs" } },
-  ],
-};

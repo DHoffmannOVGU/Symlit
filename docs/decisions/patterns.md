@@ -3,10 +3,8 @@ name: Patterns
 description: What patterns are, where they live, and the rules for saving and inserting them
 ---
 
-**Naming.** *Patterns* are reusable model snippets. *Starter projects* are
-the projects new users start from (tutorial, examples). The word "template"
-is avoided in the product for now; code still says `project-templates` /
-`templateId` for starter projects (to be renamed with the starter-project work).
+**Naming.** *Patterns* are reusable model snippets. *Project templates* are
+what new projects are created from (see `project-templates.md`).
 
 **Decisions (2026-11):**
 - Patterns are snippets of **instance-level** elements: one or more

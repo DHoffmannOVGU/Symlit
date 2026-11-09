@@ -12,11 +12,10 @@ commit that fixed them.
   model cleaner, but every edge, placement and reference would have to change.
 - **`node_views.parent_id` has no foreign key.** Parent elements may legitimately live outside
   the view, so it was left unconstrained.
-- **Starter templates cannot reuse an element in two views.** `validateStarterTemplate` rejects
-  the same node id in several views, although the data model supports it.
 
 ### Features
-- **Patterns, next steps (v0.2):** authoring instance-level patterns inside a metamodel (server ready, no editor yet), re-applying a pattern to its copies, importing exported patterns. Then the starter-project issues (rename `project-templates`/`templateId`; reuse one element in two views).
+- **Patterns, next steps (v0.2):** authoring instance-level patterns inside a metamodel (server ready, no editor yet), re-applying a pattern to its copies, importing exported patterns.
+- **Project templates, next steps (v0.2):** saving projects as templates, user template files, a template library, an "Import project file" action.
 - **SysML v2 textual export (later import).** The vocabulary already follows SysML v2; export
   makes models diffable and usable in SysML v2 tools. See
   `docs/decisions/diagram-editor-state-and-libraries.md`.
@@ -28,6 +27,7 @@ commit that fixed them.
   the canvas, the sidebar and Radix.
 
 ## Done
+- Project templates (`docs/decisions/project-templates.md`): templates are project files in the export format, shipped in `server/templates/`, and can be bundles (a model with its metamodels and patterns). The browser used to send each template's whole content to `POST /api/projects/starter`; it now picks a template by id. A new importer creates a file's projects with fresh ids and rewires references, so the tutorial is an ordinary template and its special id-preserving code is gone. Templates can show one element in several diagrams (previously refused). Every project created from a template records it; migration 0006 merges the two tutorial template ids into `tutorial`. The JSON export now also includes the referenced metamodels' patterns.
 - Patterns follow the decisions in `docs/decisions/patterns.md` (tested in `server/patterns.test.ts`, `e2e/patterns.spec.ts`): single-element patterns; relationships and nesting must stay inside the pattern; types must be known when saving and inserting; copies record their origin; patterns of every referenced metamodel (whole chain) are offered insert-only. Inserting a pattern used to save on the server and reload the diagram, which dropped unsaved edits and the undo history; the server now only builds the copy and the editor adds it as one undo step. Pattern route errors no longer hang requests.
 - Element ids were `node_${Date.now()}`, and template ids were fixed strings: creating a template
   twice failed with a 500, and two elements created in the same millisecond collided.
