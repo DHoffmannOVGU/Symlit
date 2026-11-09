@@ -18,7 +18,7 @@ import type {
   FlowEdgeInput,
   SyncFlowNodeInput,
 } from "@shared/flow-inputs";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import {
   getFlow as getFlowService,
   getFlowRecovery as getFlowRecoveryService,
@@ -121,7 +121,11 @@ export class DatabaseStorage implements IStorage {
 
   // Projects
   async getProjectsByUser(userId: number): Promise<Project[]> {
-    return db.select().from(projects).where(eq(projects.userId, userId));
+    return db
+      .select()
+      .from(projects)
+      .where(eq(projects.userId, userId))
+      .orderBy(desc(projects.updatedAt), desc(projects.id));
   }
 
   async getProject(id: number): Promise<Project | undefined> {
@@ -160,7 +164,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<Project> {
     const [project] = await db
       .update(projects)
-      .set(update)
+      .set({ ...update, updatedAt: new Date() })
       .where(eq(projects.id, id))
       .returning();
     if (!project) throw new Error("Project not found");
@@ -189,6 +193,7 @@ export class DatabaseStorage implements IStorage {
 
   async createView(insertView: InsertView): Promise<View> {
     const [view] = await db.insert(views).values(insertView).returning();
+    await this.touchProject(view.projectId);
     return view;
   }
 
@@ -199,10 +204,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(views.id, id))
       .returning();
     if (!view) throw new Error("View not found");
+    await this.touchProject(view.projectId);
     return view;
   }
 
+  /** Records that the project (or something in it) changed just now. */
+  async touchProject(id: number): Promise<void> {
+    await db.update(projects).set({ updatedAt: new Date() }).where(eq(projects.id, id));
+  }
+
   async deleteView(id: number): Promise<void> {
+    const existing = await this.getView(id);
+    if (existing) await this.touchProject(existing.projectId);
     await db.transaction(async (tx) => {
       const placed = await tx
         .select({ nodeId: nodeViews.nodeId })

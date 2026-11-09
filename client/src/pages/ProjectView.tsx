@@ -46,6 +46,15 @@ import { TutorialCoach } from "@/components/tutorial/TutorialCoach";
 import { useTutorialCoach } from "@/components/tutorial/useTutorialCoach";
 import { WorkspaceUnavailable } from "@/components/WorkspaceUnavailable";
 
+/** Leaves a page that cannot be shown, saying why instead of silently landing elsewhere. */
+function RedirectWithNotice({ to, title, description }: { to: string; title: string; description: string }) {
+  const { toast } = useToast();
+  useEffect(() => {
+    toast({ title, description });
+  }, [description, title, toast]);
+  return <Redirect to={to} />;
+}
+
 export default function ProjectView() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -179,7 +188,27 @@ export default function ProjectView() {
   }
 
   // Not found handling
-  if (!project) return <Redirect to="/projects" />;
+  if (!project) {
+    return (
+      <RedirectWithNotice
+        to="/projects"
+        title="Project not found"
+        description="It may have been deleted. Here are your projects."
+      />
+    );
+  }
+  // The address names a diagram that does not exist or belongs to another
+  // project: showing it here would mix two projects (this one's sidebar and
+  // types around the other one's diagram).
+  if (viewId && currentView !== undefined && (currentView === null || currentView.projectId !== project.id)) {
+    return (
+      <RedirectWithNotice
+        to={`/project/${project.id}`}
+        title="Diagram not found"
+        description={`"${project.name}" has no such diagram.`}
+      />
+    );
+  }
 
   const availableMetamodels = (
     allProjects?.filter(
@@ -203,6 +232,7 @@ export default function ProjectView() {
           templateId: null,
           metamodelSetup: null,
           createdAt: null,
+          updatedAt: null,
         }),
       ),
   );

@@ -740,3 +740,23 @@ describe("saving over changes made elsewhere", () => {
     assert.equal(staleB.status, 409, "saving B would have reverted the rename");
   });
 });
+
+describe("last edited", () => {
+  test("saving a diagram moves its project to the top of the list", async () => {
+    const older = await createProject({ name: "Edited later" });
+    const newer = await createProject({ name: "Created later" });
+    const ids = async () =>
+      ((await request("GET", "/api/projects")).json as Array<{ id: number }>)
+        .map((project) => project.id)
+        .filter((id) => id === older.id || id === newer.id);
+    assert.deepEqual(await ids(), [newer.id, older.id]);
+
+    const before = (await request("GET", `/api/projects/${older.id}`)).json.updatedAt;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const view = await createView(older.id);
+    await request("POST", `/api/views/${view.id}/sync`, sampleFlow(`edited${older.id}`));
+    const after = (await request("GET", `/api/projects/${older.id}`)).json.updatedAt;
+    assert.ok(new Date(after) > new Date(before));
+    assert.deepEqual(await ids(), [older.id, newer.id]);
+  });
+});

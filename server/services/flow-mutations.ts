@@ -380,6 +380,7 @@ export async function syncFlow(
         .map((row) => row.nodeId)
         .filter((id) => !keptIds.has(id)),
     );
+    await tx.update(projects).set({ updatedAt: new Date() }).where(eq(projects.id, view.projectId));
   });
   return { revision: await currentRevision(viewId) };
 }
