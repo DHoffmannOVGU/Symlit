@@ -34,25 +34,19 @@ export function useCanvasDropInsertion({
       const typeNode = availablePartDefNodes.find((node) => node.id === typeId);
       const data = typeNode?.data as NodeData | undefined;
       const style = partDefStyleById.get(typeId);
-      const targetPosition =
-        position ??
-        screenToFlowPosition({
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
-        });
       handleAddNode({
         typeId,
         typeLabel: data?.label ?? fallback?.typeLabel,
         icon: style?.icon ?? data?.icon ?? fallback?.icon,
         color: style?.color ?? data?.color ?? fallback?.color,
-        position: targetPosition,
+        // Without a drop position, the element goes to a free spot in the middle.
+        position,
       });
     },
     [
       availablePartDefNodes,
       handleAddNode,
       partDefStyleById,
-      screenToFlowPosition,
     ],
   );
 

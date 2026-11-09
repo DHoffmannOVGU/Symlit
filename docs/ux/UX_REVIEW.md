@@ -79,6 +79,13 @@ the summary above is from established, widely published material.*
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- Placing an element by click (either palette) puts it at the nearest free spot around the middle instead of on top of
+  another element (`utils/free-spot.ts`); a dropped element still goes where it is dropped.
+- Instance models reloaded their metamodel types on every diagram or selection change and cleared them meanwhile; an element
+  placed in that moment got neither its type's style nor its attributes. The types now stay until the set of referenced
+  metamodels changes.
+- The AI assistant showed "Applied" before the elements were added (the layout engine loads first), so a quick follow-up
+  prompt was sent without them; it now waits, and a second click cannot apply twice.
 - O12: clicking a type in an instance model's Metamodels palette (or pressing Enter/Space on it) places an element in the
   middle of the canvas, as in metamodels; dragging still places it where it is dropped.
 - F7: attributes are listed in short form (name, type, description, value; values editable in place on instance elements).

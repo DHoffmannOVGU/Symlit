@@ -8,7 +8,8 @@ import { attributesFromType } from "@/lib/type-attributes";
 import type { DiagramNode } from "../types";
 import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
-import { NODE_HEIGHT, NODE_WIDTH } from "../utils/node-size";
+import { NODE_HEIGHT, NODE_WIDTH, nodeSize } from "../utils/node-size";
+import { findFreeSpot } from "../utils/free-spot";
 
 export interface AddElementOptions {
   /** Element kind in a metamodel (instance models always create `part`). */
@@ -44,11 +45,15 @@ export function useAddElement() {
       const node: DiagramNode = {
         id,
         type: nodeType,
-        position: {
-          // A little jitter so repeated additions do not stack exactly.
-          x: center.x - NODE_WIDTH / 2 + (Math.random() - 0.5) * 50,
-          y: center.y - NODE_HEIGHT / 2 + (Math.random() - 0.5) * 50,
-        },
+        // Dropped: where the user let go. Placed by click: the middle of the
+        // screen, moved to the nearest free spot so it covers no other element.
+        position: options?.position
+          ? { x: center.x - NODE_WIDTH / 2, y: center.y - NODE_HEIGHT / 2 }
+          : findFreeSpot(
+              center,
+              { width: NODE_WIDTH, height: NODE_HEIGHT },
+              diagramStore.getState().nodes.map((other) => ({ ...other.position, ...nodeSize(other) })),
+            ),
         data: {
           label: `New ${typeLabel} ${count + 1}`,
           attributes: [],

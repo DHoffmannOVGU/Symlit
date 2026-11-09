@@ -1,5 +1,5 @@
 import { typeStyle, type ElementStyle } from "@/lib/element-style";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Edge } from "@xyflow/react";
 import type { DiagramNode as Node } from "../types";
 import { apiRequest } from "@/lib/queryClient";
@@ -149,15 +149,25 @@ export function useMetamodelParts({
     MagicRelationType[]
   >([]);
 
+  const loadedReferencesKey = useRef<string | null>(null);
   useEffect(() => {
     let cancelled = false;
 
+    // This runs again whenever the diagram or the selection changes. Keep the
+    // types from the last load meanwhile: clearing them each time left the
+    // model briefly without types, and an element placed then got neither its
+    // type's style nor its attributes. Only a different set of referenced
+    // metamodels clears them, so a removed metamodel's types do not linger.
+    const referencesKey = `${projectType}:${referencedMetamodelIds.join(",")}`;
     const fetchMetamodelNodes = async () => {
-      setAvailablePartDefs([]);
-      setAvailablePartDefNodes([]);
-      setAvailablePartDefEdges([]);
-      setReferencedModelRules([]);
-      setReferencedRelationTypes([]);
+      if (loadedReferencesKey.current !== referencesKey) {
+        loadedReferencesKey.current = referencesKey;
+        setAvailablePartDefs([]);
+        setAvailablePartDefNodes([]);
+        setAvailablePartDefEdges([]);
+        setReferencedModelRules([]);
+        setReferencedRelationTypes([]);
+      }
 
       const defaultPartDefs = DEFAULT_INSTANCE_TYPE_NODES.map((node) => ({
         id: node.id,
@@ -343,6 +353,7 @@ export function useMetamodelParts({
       } catch (err) {
         if (cancelled) return;
         console.error("Failed to fetch metamodel nodes:", err);
+        loadedReferencesKey.current = null;
         setAvailablePartDefs([]);
         setAvailablePartDefNodes([]);
         setAvailablePartDefEdges([]);

@@ -58,9 +58,13 @@ async function createProjects(request: APIRequestContext, suffix: string) {
   };
 }
 
+// Right after loading, the canvas may still re-render elements (it applies type
+// styles), which can swallow a double-click; try again until the panel opens.
 const openElement = async (page: Page, label: string) => {
-  await page.locator(".react-flow__node", { hasText: label }).first().dblclick();
-  await expect(page.getByTestId("node-attribute-panel")).toBeVisible();
+  await expect(async () => {
+    await page.locator(".react-flow__node", { hasText: label }).first().dblclick();
+    await expect(page.getByTestId("node-attribute-panel")).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
 };
 
 const dialog = (page: Page) => page.getByTestId("attribute-editor-dialog");
@@ -132,11 +136,18 @@ test("new typed elements get copies of their type's attributes; older ones are o
   await page.getByTestId("button-attribute-done").click();
   await saveElementAndDiagram(page);
 
-  // A Battery added to the instance model now comes with that attribute.
+  // The element created before the type had attributes is offered them.
   await page.goto(instanceUrl);
-  await page
-    .getByTestId(`button-insert-referenced-class-${batteryTypeId}`)
-    .dragTo(page.locator(".react-flow__pane"), { targetPosition: { x: 600, y: 420 } });
+  await openElement(page, "Old pack");
+  await expect(page.getByTestId("attributes-missing-from-type")).toContainText("capacity");
+  await page.getByTestId("button-add-missing-attributes").click();
+  await expect(page.getByTestId("attributes-missing-from-type")).toHaveCount(0);
+  await expect(page.getByTestId("attribute-name-0")).toHaveText("capacity");
+  await page.getByTestId("button-cancel-attributes").click();
+  await expect(page.getByTestId("node-attribute-panel")).toBeHidden();
+
+  // A Battery added to the instance model now comes with that attribute.
+  await page.getByTestId(`button-insert-referenced-class-${batteryTypeId}`).click();
   await expect(page.locator(".react-flow__node")).toHaveCount(2);
   await openElement(page, "New Battery");
   const row = page.getByTestId("attribute-summary-0");
@@ -149,14 +160,7 @@ test("new typed elements get copies of their type's attributes; older ones are o
   await page.reload();
   await openElement(page, "New Battery");
   await expect(page.getByTestId("input-attr-value-0")).toHaveValue("180");
-  await page.getByTestId("button-cancel-attributes").click();
 
-  // The element created before the type had attributes is offered them.
-  await openElement(page, "Old pack");
-  await expect(page.getByTestId("attributes-missing-from-type")).toContainText("capacity");
-  await page.getByTestId("button-add-missing-attributes").click();
-  await expect(page.getByTestId("attributes-missing-from-type")).toHaveCount(0);
-  await expect(page.getByTestId("attribute-name-0")).toHaveText("capacity");
 });
 
 test("clicking a type in the Metamodels palette places an element of it, like in metamodels", async ({ page, request }) => {
@@ -168,6 +172,12 @@ test("clicking a type in the Metamodels palette places an element of it, like in
   await paletteItem.click();
   await expect(page.locator(".react-flow__node")).toHaveCount(2);
   await expect(page.locator(".react-flow__node", { hasText: "New Battery" })).toBeInViewport();
+  // It does not cover the element that was already in the middle.
+  const boxes = await page.locator(".react-flow__node").evaluateAll((els) =>
+    els.map((el) => el.getBoundingClientRect()).map((r) => ({ x: r.x, y: r.y, w: r.width, h: r.height })),
+  );
+  const [a, b] = boxes;
+  expect(a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y).toBe(false);
 
   // The keyboard works too.
   await paletteItem.focus();
