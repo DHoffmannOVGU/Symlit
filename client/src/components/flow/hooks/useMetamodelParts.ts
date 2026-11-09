@@ -1,3 +1,4 @@
+import { typeStyle, type ElementStyle } from "@/lib/element-style";
 import { useEffect, useMemo, useState } from "react";
 import type { Edge } from "@xyflow/react";
 import type { DiagramNode as Node } from "../types";
@@ -97,7 +98,8 @@ const DEFAULT_INSTANCE_TYPE_NODES: Node[] = [
   },
 ];
 
-const getDefaultStyleForType = (type: string | undefined) => {
+/** Icon and colour of an element kind (Object, Behavior, ...) when it has none of its own. */
+export const getDefaultStyleForType = (type: string | undefined) => {
   switch (type) {
     case "actiondef":
       return { icon: "Zap", color: ACTIONDEF_DEFAULT_ACCENT_COLOR };
@@ -363,17 +365,9 @@ export function useMetamodelParts({
   ]);
 
   const partDefStyleById = useMemo(() => {
-    return new Map(
+    return new Map<string, ElementStyle>(
       availablePartDefNodes.map((node) => {
-        const data = node.data as NodeData | undefined;
-        const defaults = getDefaultStyleForType(node.type);
-        return [
-          node.id,
-          {
-            icon: data?.icon || defaults.icon,
-            color: data?.color || defaults.color,
-          },
-        ];
+        return [node.id, typeStyle(node.data, getDefaultStyleForType(node.type))];
       }),
     );
   }, [availablePartDefNodes]);

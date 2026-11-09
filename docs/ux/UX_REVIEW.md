@@ -61,6 +61,7 @@ the summary above is from established, widely published material.*
 | O7 | Project list | Greeting uses the username: "Good to see you, local." | 2 |
 | O8 | Element editor | Attributes are headed "Attribute 1/2" instead of their names; the "Inherit" button gives no hint what it does. | 6 |
 | O9 | Save button | The button label shows state ("No Changes") rather than the action. | 1, 4 |
+| O11 | Canvas | An element near the top edge puts its edit/copy/delete bar over the canvas toolbar. | 8 |
 | O10 | Tutorial coach | Step text is set larger than the lesson text around it; the orange "This happens in …" line reads like a warning. | 8 |
 
 ## Findings from the drone tutorial walk-through
@@ -70,8 +71,13 @@ the summary above is from established, widely published material.*
 | F1 | Element editor | Clicking the Name field sometimes did not focus it, so the name could not be changed; later it worked. | Not reproduced (focus worked in 3 of 3 automated tries, opened by double-click). Watch for it; note what was open just before (a menu, the tutorial's Show me, table view). |
 | F2 | Element editor | Icon and colour appeared twice and took up much of the panel. | Fixed: the style section rendered under both tabs. |
 | F3 | Element editor | In the demo project the Type list showed every built-in type twice: "Object (Default)" and again as "Object". | Fixed: the built-ins were listed twice, with the same value. |
-| F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Proposed, to design |
+| F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- F4: the Styling tab shows a live preview, the current icon and colour as buttons that open their pickers, and new
+  settings: border width and style, shape (square, rounded, pill), fill (plain, tint, solid) and the type label.
+  "Match type styling" covers all of them. The rules live in one module, `client/src/lib/element-style.ts`
+  (unit tests in `element-style.test.ts`); the metamodel-to-instance round trip is tested in `e2e/element-style.spec.ts`.
+  Typed elements created by drag, click or the relationship menu now get the type's whole style, not just icon and colour.
 - F2: the icon and colour pickers rendered under both the Content and Styling tabs (`NodeStyleTab` was not inside a `TabsContent`).
 - F3: instance projects without a metamodel listed each built-in type twice in the element editor's Type menu.

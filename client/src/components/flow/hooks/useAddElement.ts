@@ -3,6 +3,7 @@ import { useReactFlow } from "@xyflow/react";
 import { magicNodeTypeCatalog, type MagicNodeType } from "@shared/metamodel-setup";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { newNodeId } from "@/lib/ids";
+import { applyTypeStyle, pickElementStyle } from "@/lib/element-style";
 import type { DiagramNode } from "../types";
 import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
@@ -22,7 +23,7 @@ export interface AddElementOptions {
 
 /** Adds a new element to the open diagram (undoable). */
 export function useAddElement() {
-  const { viewId, projectType } = useDiagramModel();
+  const { viewId, projectType, partDefStyleById } = useDiagramModel();
   const diagramStore = useDiagramStoreApi();
   const setNodes = useDiagramStore((state) => state.setNodes);
   const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
@@ -53,11 +54,14 @@ export function useAddElement() {
           ...(projectType === "metamodel"
             ? { type: typeLabel, icon: options?.icon ?? kind.iconName, ...(options?.color ? { color: options.color } : {}) }
             : {}),
-          ...(options?.typeId
-            ? { type: typeLabel, typeId: options.typeId, icon: options.icon, color: options.color, inheritStyle: true }
-            : {}),
+          ...(options?.typeId ? { type: typeLabel, typeId: options.typeId } : {}),
         },
       };
+      if (options?.typeId) {
+        // A typed element starts out matching its type's style.
+        const style = partDefStyleById.get(options.typeId) ?? { icon: options.icon, color: options.color };
+        node.data = applyTypeStyle(node.data, pickElementStyle(style));
+      }
 
       setNodes((current) => [...current, node]);
       dispatchDiagramEvent("diagram-model-node-created", {
@@ -66,6 +70,6 @@ export function useAddElement() {
         ...(options?.typeId ? { typeId: options.typeId } : {}),
       });
     },
-    [diagramStore, projectType, screenToFlowPosition, setNodes, takeSnapshot, viewId],
+    [diagramStore, partDefStyleById, projectType, screenToFlowPosition, setNodes, takeSnapshot, viewId],
   );
 }

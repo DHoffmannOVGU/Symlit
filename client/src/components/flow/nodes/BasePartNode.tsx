@@ -3,6 +3,7 @@ import { Handle, Position, NodeProps, NodeResizer } from "@xyflow/react";
 import { getNodeIcon } from "@/lib/node-icons";
 import { AlertTriangle as AlertTriangleIcon, BadgeAlert as BadgeAlertIcon, BadgeCheck as BadgeCheckIcon, Copy as CopyIcon, Pencil as PencilIcon, Trash2 as Trash2Icon } from "lucide-react";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
+import { elementCardAppearance, pickElementStyle } from "@/lib/element-style";
 
 interface PartNodeData {
   label: string;
@@ -49,7 +50,9 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
   const IconComponent = getNodeIcon(nodeData.icon);
   const accentColor =
     nodeData.ruleAccentColor || nodeData.color || config.defaultAccentColor;
-  const iconBg = nodeData.color ? `${accentColor}25` : config.defaultIconBg;
+  const appearance = elementCardAppearance(pickElementStyle(nodeData), nodeData.color || config.defaultAccentColor);
+  const onSolid = appearance.onSolid;
+  const iconBg = onSolid ? "rgba(255,255,255,0.22)" : nodeData.color ? `${accentColor}25` : config.defaultIconBg;
   const typeLabel = nodeData.type || config.defaultTypeLabel;
   const isDraft = Boolean(nodeData.isDraft);
   const isFlowStart = Boolean(nodeData.flowStart);
@@ -141,7 +144,13 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
           ${isDraft ? "border-dashed opacity-80" : ""}
           ${isFlowActive ? "ring-2 ring-emerald-400/70 shadow-[0_0_0_4px_rgba(16,185,129,0.15)]" : ""}
         `}
+        data-testid="element-card"
         style={{
+          borderWidth: appearance.borderWidth,
+          borderStyle: isDraft ? "dashed" : appearance.borderStyle,
+          borderRadius: appearance.borderRadius,
+          backgroundColor: appearance.backgroundColor,
+          ...(appearance.borderRadius > 100 ? { paddingLeft: 28, paddingRight: 28 } : {}),
           borderColor: selected
             ? accentColor
             : alwaysShowAccent
@@ -165,20 +174,23 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
         }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between gap-3 mb-2 pb-2 border-b border-border/50">
+        <div className={`flex items-center justify-between gap-3 mb-2 pb-2 border-b ${onSolid ? "border-white/25" : "border-border/50"}`}>
           <div
             className="p-1.5 rounded"
-            style={{ backgroundColor: iconBg, color: accentColor }}
+            style={{ backgroundColor: iconBg, color: onSolid ? "#ffffff" : accentColor }}
           >
             <IconComponent className="w-4 h-4" />
           </div>
 
-          <div
-            className="text-xs font-mono text-muted-foreground uppercase tracking-wider truncate max-w-[100px]"
-            title={typeLabel}
-          >
-            {typeLabel}
-          </div>
+          {appearance.showTypeLabel ? (
+            <div
+              className={`text-xs font-mono uppercase tracking-wider truncate max-w-[100px] ${onSolid ? "text-white/80" : "text-muted-foreground"}`}
+              title={typeLabel}
+              data-testid="element-type-label"
+            >
+              {typeLabel}
+            </div>
+          ) : null}
         </div>
 
         {showActionToolbar && !suppressActionToolbar && (
@@ -296,7 +308,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
           }`}
         >
           <div
-            className={`font-semibold text-foreground ${
+            className={`font-semibold ${onSolid ? "text-white" : "text-foreground"} ${
               hasVisibleDescription
                 ? "text-sm"
                 : "text-lg leading-tight"
@@ -307,7 +319,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
         </div>
 
         {hasVisibleDescription ? (
-          <div className="text-xs text-muted-foreground mt-1 truncate max-w-[150px]">
+          <div className={`text-xs mt-1 truncate max-w-[150px] ${onSolid ? "text-white/80" : "text-muted-foreground"}`}>
             {description}
           </div>
         ) : null}

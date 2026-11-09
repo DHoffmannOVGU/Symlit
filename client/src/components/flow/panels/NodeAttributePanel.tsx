@@ -6,9 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Save, X } from "lucide-react";
-import { nodeColors, sanitizeAttributeOptions } from "./node-attribute/style-presets";
+import { sanitizeAttributeOptions } from "./node-attribute/style-presets";
 import type { DiagramNode as Node } from "../types";
-import { PARTDEF_DEFAULT_ACCENT_COLOR } from "../nodes/PartDefNode";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   evaluateDerivedAttribute,
@@ -36,6 +35,8 @@ import {
 import { AttributeRowEditor } from "./node-attribute/AttributeRowEditor";
 import { InheritAttributesDialog } from "./node-attribute/InheritAttributesDialog";
 import { NodeStyleTab } from "./node-attribute/NodeStyleTab";
+import { ELEMENT_STYLE_KEYS, pickElementStyle, typeStyle, type ElementStyle } from "@/lib/element-style";
+import { getDefaultStyleForType } from "../hooks/useMetamodelParts";
 
 interface NodeAttributePanelProps {
   node: Node | null;
@@ -75,8 +76,8 @@ export function NodeAttributePanel({
   const [attributes, setAttributes] = useState<NodeAttribute[]>([]);
   const [nodeTypeLabel, setNodeTypeLabel] = useState("Object");
   const [nodeTypeId, setNodeTypeId] = useState<string | undefined>(undefined);
-  const [icon, setIcon] = useState("Box");
-  const [color, setColor] = useState("");
+  /** The element's own style (used when it does not match its type). */
+  const [ownStyle, setOwnStyle] = useState<ElementStyle>({});
   const [inheritStyle, setInheritStyle] = useState(false);
   const [inheritDialogOpen, setInheritDialogOpen] = useState(false);
   const [openDescriptions, setOpenDescriptions] = useState<Set<string>>(new Set());
@@ -86,7 +87,6 @@ export function NodeAttributePanel({
   const [listOptionDrafts, setListOptionDrafts] = useState<Record<string, string>>({});
   const [formulaDrafts, setFormulaDrafts] = useState<Record<string, string>>({});
   const [formulaAutocomplete, setFormulaAutocomplete] = useState<FormulaAutocompleteState | null>(null);
-  const [showExtendedIcons, setShowExtendedIcons] = useState(false);
   const formulaTextareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const defaultTypeValue = "__default_part__";
   // Instance projects also receive the built-in types in availablePartDefs;
@@ -109,8 +109,7 @@ export function NodeAttributePanel({
       setAttributes(nextAttributes);
       setNodeTypeLabel(data?.type === "Part" ? "Object" : data?.type === "Action" ? "Behavior" : data?.type === "Agent" ? "Performer" : data?.type || "Object");
       setNodeTypeId(data?.typeId);
-      setIcon(data?.icon || "Box");
-      setColor(data?.color || "");
+      setOwnStyle(pickElementStyle(data));
       if (node.type === "part" && data?.typeId) {
         setInheritStyle(data?.inheritStyle !== false);
       } else {
@@ -124,7 +123,6 @@ export function NodeAttributePanel({
     setCollapsedAttributes(new Set());
     setListOptionDrafts({});
     setFormulaAutocomplete(null);
-    setShowExtendedIcons(false);
   }, [node]);
 
   useEffect(() => {
@@ -170,22 +168,26 @@ export function NodeAttributePanel({
     });
   }, [availablePartDefNodes, nodeTypeId, parentNodes]);
 
-  const inheritedStyle = useMemo(() => {
+  const kindDefaults = getDefaultStyleForType(node?.type === "part" ? "partdef" : node?.type);
+  const inheritedStyle = useMemo<ElementStyle | null>(() => {
     if (!nodeTypeId) return null;
     const parent = availablePartDefNodes.find((candidate) => candidate.id === nodeTypeId);
-    const data = parent?.data;
-    return {
-      icon: data?.icon || "Box",
-      color: data?.color || PARTDEF_DEFAULT_ACCENT_COLOR,
-    };
+    return typeStyle(parent?.data, getDefaultStyleForType(parent?.type));
   }, [availablePartDefNodes, nodeTypeId]);
 
-  const currentIcon = inheritStyle ? inheritedStyle?.icon || icon : icon;
-  const currentColor = inheritStyle ? inheritedStyle?.color : color;
-  const isCustomColor =
-    !!currentColor &&
-    !nodeColors.some((item) => item.value === currentColor) &&
-    currentColor !== "";
+  const shownStyle: ElementStyle =
+    inheritStyle && inheritedStyle ? inheritedStyle : { ...ownStyle, icon: ownStyle.icon ?? kindDefaults.icon };
+
+  /** Changing a setting gives the element its own style, starting from what it shows now. */
+  const handleStyleChange = (patch: ElementStyle) => {
+    setOwnStyle({ ...shownStyle, ...patch });
+    setInheritStyle(false);
+  };
+  const handleInheritStyleChange = (checked: boolean) => {
+    // Turning matching off keeps the look the element has now, so nothing jumps.
+    if (!checked && inheritedStyle) setOwnStyle(inheritedStyle);
+    setInheritStyle(checked);
+  };
 
   const isPartNode = node?.type === "part";
   const canInheritStyle = isPartNode && Boolean(nodeTypeId);
@@ -486,8 +488,9 @@ export function NodeAttributePanel({
       attributes: getCalculatedAttributesForSave(),
       type: nodeTypeLabel,
       typeId: nodeTypeId,
-      icon: inheritStyle && nodeTypeId ? undefined : icon,
-      color: inheritStyle && nodeTypeId ? "" : color,
+      // Every style key is written, so settings removed here are removed on the element too.
+      ...Object.fromEntries(ELEMENT_STYLE_KEYS.map((key) => [key, undefined])),
+      ...(inheritStyle && nodeTypeId ? {} : ownStyle),
       inheritStyle: inheritStyle && !!nodeTypeId,
       rule: undefined,
     });
@@ -861,14 +864,11 @@ export function NodeAttributePanel({
           <NodeStyleTab
             canInheritStyle={canInheritStyle}
             inheritStyle={inheritStyle}
-            currentIcon={currentIcon}
-            currentColor={currentColor}
-            isCustomColor={isCustomColor}
-            showExtendedIcons={showExtendedIcons}
-            onInheritStyleChange={setInheritStyle}
-            onIconChange={setIcon}
-            onToggleExtendedIcons={() => setShowExtendedIcons((current) => !current)}
-            onColorChange={setColor}
+            typeLabel={nodeTypeLabel}
+            style={shownStyle}
+            defaultColor={inheritStyle && inheritedStyle?.color ? inheritedStyle.color : kindDefaults.color}
+            onInheritStyleChange={handleInheritStyleChange}
+            onStyleChange={handleStyleChange}
           />
           </TabsContent>
         </Tabs>
