@@ -15,6 +15,7 @@ const config: AppConfig = {
   database: { driver: "pglite", dataDir: null },
   seedDemo: false,
   localUserName: "Test Engineer",
+  allowedHosts: [],
   features: { ai: false },
 };
 
@@ -565,5 +566,68 @@ describe("server-controlled project fields", () => {
     // Removing the tutorial therefore never touches this project.
     await request("DELETE", "/api/tutorial");
     assert.equal((await request("GET", `/api/projects/${created.json.id}`)).status, 200);
+  });
+});
+
+describe("malformed requests", () => {
+  test("ids that cannot exist answer 404 and the server keeps running", async () => {
+    for (const path of [
+      "/api/projects/abc",
+      "/api/projects/99999999999999",
+      "/api/projects/1.5",
+      "/api/views/abc",
+      "/api/views/abc/flow",
+      "/api/views/99999999999999/flow",
+      "/api/projects/abc/views",
+    ]) {
+      assert.equal((await request("GET", path)).status, 404, path);
+    }
+    assert.equal((await request("PATCH", "/api/projects/abc", { name: "x" })).status, 404);
+    assert.equal((await request("DELETE", "/api/views/0")).status, 404);
+    assert.equal((await request("GET", "/api/config")).status, 200);
+  });
+});
+
+describe("requests from other websites", () => {
+  const raw = (method: string, path: string, headers: Record<string, string>, body?: string) =>
+    fetch(`${baseUrl}${path}`, { method, headers, body });
+
+  test("form posts and cross-origin writes are refused", async () => {
+    const before = (await request("GET", "/api/projects")).json.length;
+    const form = await raw(
+      "POST",
+      "/api/projects",
+      { "Content-Type": "application/x-www-form-urlencoded", Origin: "https://evil.example" },
+      "name=pwned&projectType=metamodel",
+    );
+    assert.equal(form.status, 403);
+    const json = await raw(
+      "POST",
+      "/api/projects",
+      { "Content-Type": "application/json", Origin: "https://evil.example" },
+      JSON.stringify({ name: "pwned", projectType: "metamodel" }),
+    );
+    assert.equal(json.status, 403);
+    const noBody = await raw("POST", "/api/tutorial", { "Sec-Fetch-Site": "cross-site" });
+    assert.equal(noBody.status, 403);
+    // Without an Origin, a form body is simply not read.
+    const plainForm = await raw(
+      "POST",
+      "/api/projects",
+      { "Content-Type": "application/x-www-form-urlencoded" },
+      "name=pwned&projectType=metamodel",
+    );
+    assert.equal(plainForm.status, 400);
+    assert.equal((await request("GET", "/api/projects")).json.length, before);
+  });
+
+  test("the app's own origin may write", async () => {
+    const res = await raw(
+      "POST",
+      "/api/projects",
+      { "Content-Type": "application/json", Origin: baseUrl },
+      JSON.stringify({ name: "Same origin", projectType: "metamodel" }),
+    );
+    assert.equal(res.status, 201);
   });
 });

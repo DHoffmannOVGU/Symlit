@@ -21,6 +21,7 @@ const config: AppConfig = {
   database: { driver: "pglite", dataDir: null },
   seedDemo: false,
   localUserName: "Test Engineer",
+  allowedHosts: [],
   features: { ai: false },
 };
 

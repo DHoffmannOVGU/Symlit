@@ -22,6 +22,7 @@ const envSchema = z.object({
   SYMLIT_DATA_DIR: z.string().min(1).default("./data"),
   SYMLIT_SEED_DEMO: booleanFlag(true),
   SYMLIT_USER_NAME: z.string().trim().min(1).max(80).default(DEFAULT_LOCAL_USER_NAME),
+  SYMLIT_ALLOWED_HOSTS: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),
 });
@@ -37,6 +38,8 @@ export interface AppConfig {
   database: DatabaseConfig;
   seedDemo: boolean;
   localUserName: string;
+  /** Host names (besides localhost and IP addresses) the app may be reached under. */
+  allowedHosts: string[];
   features: {
     ai: boolean;
   };
@@ -73,6 +76,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
         },
     seedDemo: values.SYMLIT_SEED_DEMO,
     localUserName: values.SYMLIT_USER_NAME,
+    allowedHosts: (values.SYMLIT_ALLOWED_HOSTS ?? "")
+      .split(",")
+      .map((host) => host.trim())
+      .filter(Boolean),
     features: {
       ai: Boolean(values.GEMINI_API_KEY?.trim()),
     },
