@@ -152,3 +152,8 @@ All fixed; see Done below.
   Typed elements created by drag, click or the relationship menu now get the type's whole style, not just icon and colour.
 - F2: the icon and colour pickers rendered under both the Content and Styling tabs (`NodeStyleTab` was not inside a `TabsContent`).
 - F3: instance projects without a metamodel listed each built-in type twice in the element editor's Type menu.
+- Review round 2 (see `docs/BACKLOG.md` "Done" for the technical side): the element/relationship panels' button is
+  "Apply" with a line saying Save in the header keeps it (4, 1); deleting a metamodel in use names the projects that
+  depend on it (5); project cards are real links and show "Edited …" with sorting (Jakob, 1); the count tiles are gone (8);
+  missing projects and diagrams redirect with a notice (9); a save conflict asks instead of overwriting (5, 9); the
+  toolbar no longer overlaps undo/redo and the coach starts minimised in small windows (tutorial: don't block).

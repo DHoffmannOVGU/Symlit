@@ -568,9 +568,12 @@ export function EdgeAttributePanel({
             Cancel
           </Button>
           <Button onClick={handleSave} data-testid="button-save-edge">
-            Save Changes
+            Apply
           </Button>
         </div>
+        <p className="pt-2 text-right text-xs text-muted-foreground">
+          Apply updates the diagram. Use Save in the header to keep it.
+        </p>
       </SheetContent>
     </Sheet>
   );
