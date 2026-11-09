@@ -130,7 +130,7 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
         position: { x: 70, y: 150 },
         data: {
           label: "Stakeholder Need",
-          type: "Requirement",
+          type: "Need",
           description: "A need expressed by a stakeholder",
           icon: "BadgeCheck",
           color: "#7c3aed",
@@ -142,7 +142,7 @@ export const PROJECT_TEMPLATES: ProjectTemplate[] = [
         position: { x: 350, y: 150 },
         data: {
           label: "System Requirement",
-          type: "Requirement",
+          type: "Need",
           description: "A measurable system-level requirement",
           icon: "FileCheck2",
           color: "#2563eb",

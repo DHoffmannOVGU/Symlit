@@ -11,14 +11,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  LayoutGrid,
+  AlignHorizontalDistributeCenter,
+  LayoutDashboard,
   ArrowLeftRight,
   Undo2,
   Redo2,
   Camera,
   CheckCircle2,
   Sparkles,
-  Wand2,
+  Share2,
   Play,
   Square,
   Flag,
@@ -28,7 +29,6 @@ import {
   RotateCcw,
   SlidersHorizontal,
   CircleHelp,
-  Network,
   TableProperties,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -85,6 +85,12 @@ type Props = {
 type ToolbarButtonProps = {
   icon: LucideIcon;
   label: string;
+  /** Stable id for tests and the tutorial's "Show me" (`button-toolbar-<id>`). */
+  id?: string;
+  /** Show the label next to the icon on wide screens (main actions only). */
+  showLabel?: boolean;
+  /** Shown in the hover label while the button is disabled: why, and what enables it. */
+  disabledHint?: string;
   onClick?: () => void;
   disabled?: boolean;
   variant?: "default" | "outline" | "secondary" | "ghost";
@@ -94,14 +100,20 @@ type ToolbarButtonProps = {
 };
 
 const toolbarButtonClasses =
-  "group/toolbar-button relative h-9 w-9 justify-center overflow-visible px-0 transition-colors duration-200";
+  "group/toolbar-button relative h-9 min-w-9 justify-center gap-1.5 overflow-visible px-2.5 transition-colors duration-200 disabled:pointer-events-auto disabled:cursor-not-allowed";
 
 const toolbarLabelClasses =
-  "pointer-events-none invisible absolute left-1/2 top-[calc(100%+0.35rem)] z-20 -translate-x-1/2 whitespace-nowrap rounded-md border bg-background/95 px-2 py-1 text-xs font-medium text-foreground shadow-sm opacity-0 transition-opacity duration-200 group-hover/toolbar-button:visible group-hover/toolbar-button:opacity-100";
+  "pointer-events-none invisible absolute left-1/2 top-[calc(100%+0.35rem)] z-20 -translate-x-1/2 whitespace-nowrap rounded-md border bg-background/95 px-2 py-1 text-xs font-medium text-foreground shadow-sm opacity-0 transition-opacity duration-200 group-hover/toolbar-button:visible group-hover/toolbar-button:opacity-100 group-focus-visible/toolbar-button:visible group-focus-visible/toolbar-button:opacity-100";
+
+/** A thin divider between groups of toolbar buttons. */
+const ToolbarDivider = () => <div aria-hidden className="mx-0.5 h-6 w-px self-center bg-border" />;
 
 function ToolbarButton({
   icon: Icon,
   label,
+  id,
+  showLabel = false,
+  disabledHint,
   onClick,
   disabled = false,
   variant = "outline",
@@ -115,16 +127,20 @@ function ToolbarButton({
       disabled={disabled}
       variant={variant}
       size="sm"
-      title={label}
+      aria-label={label}
+      aria-pressed={active || undefined}
+      data-testid={id ? `button-toolbar-${id}` : undefined}
       className={cn(
         toolbarButtonClasses,
+        !showLabel && "w-9 px-0",
         active && "border-primary bg-primary/10 text-primary hover:bg-primary/15",
         className,
       )}
     >
       <Icon className={cn("h-4 w-4 shrink-0", iconClassName)} />
-      <span className={toolbarLabelClasses}>
-        {label}
+      {showLabel ? <span className="hidden text-xs font-medium xl:inline">{label}</span> : null}
+      <span className={cn(toolbarLabelClasses, showLabel && "xl:hidden", disabled && disabledHint && "xl:block")}>
+        {disabled && disabledHint ? `${label}: ${disabledHint}` : label}
       </span>
     </Button>
   );
@@ -214,83 +230,38 @@ export function DiagramToolbar(props: Props) {
           {onDisplayModeChange && (
             <div className="flex items-center gap-1">
               <ToolbarButton
-                icon={Network}
-                label="Graph View"
+                icon={Share2}
+                id="graph"
+                label="Diagram"
+                showLabel
                 active={displayMode === "graph"}
                 onClick={() => onDisplayModeChange("graph")}
               />
               <ToolbarButton
                 icon={TableProperties}
-                label="Table View"
+                id="table"
+                label="Table"
+                showLabel
                 active={displayMode === "table"}
                 onClick={() => onDisplayModeChange("table")}
               />
             </div>
           )}
+          {onDisplayModeChange && <ToolbarDivider />}
 
           {canStraightenEdge && (
-            <ToolbarButton icon={ArrowLeftRight} label="Straighten Edge" onClick={onStraightenEdge} />
+            <ToolbarButton icon={ArrowLeftRight} id="straighten" label="Straighten relationship" onClick={onStraightenEdge} />
           )}
 
-          {(onToggleSnap || onToggleAlwaysShowAccent || onToggleBackgroundDots || onToggleNodeDescriptions) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  title="Canvas settings"
-                  className={toolbarButtonClasses}
-                >
-                  <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
-                  <span className={toolbarLabelClasses}>
-                    Configure
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent side="right" align="start">
-                <DropdownMenuLabel>Canvas style</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {onToggleSnap && (
-                  <DropdownMenuCheckboxItem
-                    checked={snapNodesEnabled}
-                    onCheckedChange={() => onToggleSnap()}
-                  >
-                    Snap nodes
-                  </DropdownMenuCheckboxItem>
-                )}
-                {onToggleBackgroundDots && (
-                  <DropdownMenuCheckboxItem
-                    checked={showBackgroundDots}
-                    onCheckedChange={() => onToggleBackgroundDots()}
-                  >
-                    Show background dots
-                  </DropdownMenuCheckboxItem>
-                )}
-                {onToggleNodeDescriptions && (
-                  <DropdownMenuCheckboxItem
-                    checked={showNodeDescriptions}
-                    onCheckedChange={() => onToggleNodeDescriptions()}
-                  >
-                    Show node descriptions
-                  </DropdownMenuCheckboxItem>
-                )}
-                {onToggleAlwaysShowAccent && (
-                  <DropdownMenuCheckboxItem
-                    checked={alwaysShowAccent}
-                    onCheckedChange={() => onToggleAlwaysShowAccent()}
-                  >
-                    Always show accent border
-                  </DropdownMenuCheckboxItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
 
           <ToolbarButton
-            icon={Wand2}
-            label="Auto Layout"
+            icon={LayoutDashboard}
+            id="auto-layout"
+            label="Auto layout"
+            showLabel
             onClick={onAutoLayout}
             disabled={!canAutoLayout}
+            disabledHint="add elements first"
           />
 
           <DropdownMenu>
@@ -298,13 +269,14 @@ export function DiagramToolbar(props: Props) {
               <Button
                 variant="outline"
                 size="sm"
-                title="Alignment tools"
+                aria-label="Align selected elements"
+                data-testid="button-toolbar-align"
                 disabled={!canLayoutSelection}
-                className={toolbarButtonClasses}
+                className={cn(toolbarButtonClasses, "w-9 px-0")}
               >
-                <LayoutGrid className="h-4 w-4 shrink-0 text-primary" />
+                <AlignHorizontalDistributeCenter className="h-4 w-4 shrink-0 text-primary" />
                 <span className={toolbarLabelClasses}>
-                  Align
+                  {canLayoutSelection ? "Align selected elements" : "Align: select two or more elements first"}
                 </span>
               </Button>
             </DropdownMenuTrigger>
@@ -327,13 +299,69 @@ export function DiagramToolbar(props: Props) {
             </DropdownMenuContent>
           </DropdownMenu>
 
+          <ToolbarDivider />
+          <ToolbarButton icon={CheckCircle2} id="validate" label="Validate" showLabel onClick={onValidate} iconClassName="text-primary" />
           {canSavePattern && onSavePattern && (
-            <ToolbarButton icon={Sparkles} label="Save Pattern" onClick={onSavePattern} iconClassName="text-primary" />
+            <ToolbarButton icon={Sparkles} id="save-pattern" label="Save pattern" showLabel onClick={onSavePattern} iconClassName="text-primary" />
           )}
 
-          <ToolbarButton icon={CheckCircle2} label="Validate" onClick={onValidate} iconClassName="text-primary" />
-          <ToolbarButton icon={Camera} label="Screenshot" onClick={onScreenshot} iconClassName="text-primary" />
-          <ToolbarButton icon={CircleHelp} label="Help" onClick={onOpenHelp} />
+          <ToolbarDivider />
+          <ToolbarButton icon={Camera} id="screenshot" label="Screenshot" onClick={onScreenshot} iconClassName="text-primary" />
+          {(onToggleSnap || onToggleAlwaysShowAccent || onToggleBackgroundDots || onToggleNodeDescriptions) && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="Canvas settings"
+                  data-testid="button-toolbar-settings"
+                  className={cn(toolbarButtonClasses, "w-9 px-0")}
+                >
+                  <SlidersHorizontal className="h-4 w-4 shrink-0 text-primary" />
+                  <span className={toolbarLabelClasses}>
+                    Canvas settings
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent side="right" align="start">
+                <DropdownMenuLabel>Canvas style</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {onToggleSnap && (
+                  <DropdownMenuCheckboxItem
+                    checked={snapNodesEnabled}
+                    onCheckedChange={() => onToggleSnap()}
+                  >
+                    Snap elements to each other
+                  </DropdownMenuCheckboxItem>
+                )}
+                {onToggleBackgroundDots && (
+                  <DropdownMenuCheckboxItem
+                    checked={showBackgroundDots}
+                    onCheckedChange={() => onToggleBackgroundDots()}
+                  >
+                    Show background dots
+                  </DropdownMenuCheckboxItem>
+                )}
+                {onToggleNodeDescriptions && (
+                  <DropdownMenuCheckboxItem
+                    checked={showNodeDescriptions}
+                    onCheckedChange={() => onToggleNodeDescriptions()}
+                  >
+                    Show descriptions
+                  </DropdownMenuCheckboxItem>
+                )}
+                {onToggleAlwaysShowAccent && (
+                  <DropdownMenuCheckboxItem
+                    checked={alwaysShowAccent}
+                    onCheckedChange={() => onToggleAlwaysShowAccent()}
+                  >
+                    Always show accent border
+                  </DropdownMenuCheckboxItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          <ToolbarButton icon={CircleHelp} id="help" label="Help and shortcuts" onClick={onOpenHelp} />
         </>
       )}
       </Panel>

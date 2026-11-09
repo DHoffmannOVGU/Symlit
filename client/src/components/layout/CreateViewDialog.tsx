@@ -43,14 +43,14 @@ export function CreateViewDialog({ open, onOpenChange, projectId }: CreateViewDi
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Create New View</DialogTitle>
+          <DialogTitle>New diagram</DialogTitle>
           <DialogDescription>
-            Add a new diagram view to your project to model a specific aspect of the system.
+            A diagram shows one aspect of the system. Elements can appear in several diagrams.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="space-y-2">
-            <Label htmlFor="name">View Name</Label>
+            <Label htmlFor="name">Name</Label>
             <Input 
               id="name" 
               placeholder="e.g. System Architecture" 
@@ -64,7 +64,7 @@ export function CreateViewDialog({ open, onOpenChange, projectId }: CreateViewDi
             <Label htmlFor="description">Description (Optional)</Label>
             <Textarea 
               id="description" 
-              placeholder="Briefly describe what this view represents..." 
+              placeholder="What does this diagram show? (optional)" 
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="resize-none"
@@ -74,7 +74,7 @@ export function CreateViewDialog({ open, onOpenChange, projectId }: CreateViewDi
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={createView.isPending || !name.trim()}>
               {createView.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create View
+              Create diagram
             </Button>
           </DialogFooter>
         </form>

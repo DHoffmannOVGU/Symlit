@@ -6,9 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, Save, X } from "lucide-react";
-import { nodeColors, sanitizeAttributeOptions } from "./node-attribute/style-presets";
+import { sanitizeAttributeOptions } from "./node-attribute/style-presets";
 import type { DiagramNode as Node } from "../types";
-import { PARTDEF_DEFAULT_ACCENT_COLOR } from "../nodes/PartDefNode";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   evaluateDerivedAttribute,
@@ -34,8 +33,14 @@ import {
   type FormulaAutocompleteState,
 } from "./node-attribute/formula-utils";
 import { AttributeRowEditor } from "./node-attribute/AttributeRowEditor";
+import { AttributeEditorDialog } from "./node-attribute/AttributeEditorDialog";
+import { AttributeSummaryRow } from "./node-attribute/AttributeSummaryRow";
+import { missingTypeAttributes } from "@/lib/type-attributes";
 import { InheritAttributesDialog } from "./node-attribute/InheritAttributesDialog";
 import { NodeStyleTab } from "./node-attribute/NodeStyleTab";
+import { isNeedKindLabel } from "@shared/metamodel-setup";
+import { ELEMENT_STYLE_KEYS, pickElementStyle, typeStyle, type ElementStyle } from "@/lib/element-style";
+import { getDefaultStyleForType } from "../hooks/useMetamodelParts";
 
 interface NodeAttributePanelProps {
   node: Node | null;
@@ -75,27 +80,31 @@ export function NodeAttributePanel({
   const [attributes, setAttributes] = useState<NodeAttribute[]>([]);
   const [nodeTypeLabel, setNodeTypeLabel] = useState("Object");
   const [nodeTypeId, setNodeTypeId] = useState<string | undefined>(undefined);
-  const [icon, setIcon] = useState("Box");
-  const [color, setColor] = useState("");
+  /** The element's own style (used when it does not match its type). */
+  const [ownStyle, setOwnStyle] = useState<ElementStyle>({});
   const [inheritStyle, setInheritStyle] = useState(false);
   const [inheritDialogOpen, setInheritDialogOpen] = useState(false);
-  const [openDescriptions, setOpenDescriptions] = useState<Set<string>>(new Set());
-  const [collapsedAttributes, setCollapsedAttributes] = useState<Set<string>>(new Set());
+  /** The attribute open in the attribute editor, and the list as it was before (for Cancel). */
+  const [editingAttribute, setEditingAttribute] = useState<
+    { id: string; isNew: boolean; before: NodeAttribute[] } | null
+  >(null);
   const [selectedParentId, setSelectedParentId] = useState<string>("");
   const [selectedInherited, setSelectedInherited] = useState<Set<string>>(new Set());
   const [listOptionDrafts, setListOptionDrafts] = useState<Record<string, string>>({});
   const [formulaDrafts, setFormulaDrafts] = useState<Record<string, string>>({});
   const [formulaAutocomplete, setFormulaAutocomplete] = useState<FormulaAutocompleteState | null>(null);
-  const [showExtendedIcons, setShowExtendedIcons] = useState(false);
   const formulaTextareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const defaultTypeValue = "__default_part__";
+  // Instance projects also receive the built-in types in availablePartDefs;
+  // they are listed above as "(Default)" already.
+  const metamodelTypes = availablePartDefs.filter((def) => !def.id.startsWith("__default_"));
   const actionTypeValue = "__default_action__";
   const concernTypeValue = "__default_concern__";
   const agentTypeValue = "__default_agent__";
   const requirementTypeValue = "__default_requirement__";
   const eventTypeValue = "__default_event__";
   const capabilityTypeValue = "__default_capability__";
-  const attributeValueLabel = node?.type === "part" ? "Value" : "Default Value";
+  const attributeValueLabel = node?.type === "part" ? "Value" : "Default value";
 
   useEffect(() => {
     if (node) {
@@ -106,8 +115,7 @@ export function NodeAttributePanel({
       setAttributes(nextAttributes);
       setNodeTypeLabel(data?.type === "Part" ? "Object" : data?.type === "Action" ? "Behavior" : data?.type === "Agent" ? "Performer" : data?.type || "Object");
       setNodeTypeId(data?.typeId);
-      setIcon(data?.icon || "Box");
-      setColor(data?.color || "");
+      setOwnStyle(pickElementStyle(data));
       if (node.type === "part" && data?.typeId) {
         setInheritStyle(data?.inheritStyle !== false);
       } else {
@@ -117,11 +125,9 @@ export function NodeAttributePanel({
     } else {
       setFormulaDrafts({});
     }
-    setOpenDescriptions(new Set());
-    setCollapsedAttributes(new Set());
+    setEditingAttribute(null);
     setListOptionDrafts({});
     setFormulaAutocomplete(null);
-    setShowExtendedIcons(false);
   }, [node]);
 
   useEffect(() => {
@@ -131,7 +137,7 @@ export function NodeAttributePanel({
       nodeTypeLabel === "Behavior" ||
       nodeTypeLabel === "Concern" ||
       nodeTypeLabel === "Performer" ||
-      nodeTypeLabel === "Requirement" ||
+      isNeedKindLabel(nodeTypeLabel) ||
       nodeTypeLabel === "Event" ||
       nodeTypeLabel === "Capability"
     ) {
@@ -167,22 +173,26 @@ export function NodeAttributePanel({
     });
   }, [availablePartDefNodes, nodeTypeId, parentNodes]);
 
-  const inheritedStyle = useMemo(() => {
+  const kindDefaults = getDefaultStyleForType(node?.type === "part" ? "partdef" : node?.type);
+  const inheritedStyle = useMemo<ElementStyle | null>(() => {
     if (!nodeTypeId) return null;
     const parent = availablePartDefNodes.find((candidate) => candidate.id === nodeTypeId);
-    const data = parent?.data;
-    return {
-      icon: data?.icon || "Box",
-      color: data?.color || PARTDEF_DEFAULT_ACCENT_COLOR,
-    };
+    return typeStyle(parent?.data, getDefaultStyleForType(parent?.type));
   }, [availablePartDefNodes, nodeTypeId]);
 
-  const currentIcon = inheritStyle ? inheritedStyle?.icon || icon : icon;
-  const currentColor = inheritStyle ? inheritedStyle?.color : color;
-  const isCustomColor =
-    !!currentColor &&
-    !nodeColors.some((item) => item.value === currentColor) &&
-    currentColor !== "";
+  const shownStyle: ElementStyle =
+    inheritStyle && inheritedStyle ? inheritedStyle : { ...ownStyle, icon: ownStyle.icon ?? kindDefaults.icon };
+
+  /** Changing a setting gives the element its own style, starting from what it shows now. */
+  const handleStyleChange = (patch: ElementStyle) => {
+    setOwnStyle({ ...shownStyle, ...patch });
+    setInheritStyle(false);
+  };
+  const handleInheritStyleChange = (checked: boolean) => {
+    // Turning matching off keeps the look the element has now, so nothing jumps.
+    if (!checked && inheritedStyle) setOwnStyle(inheritedStyle);
+    setInheritStyle(checked);
+  };
 
   const isPartNode = node?.type === "part";
   const canInheritStyle = isPartNode && Boolean(nodeTypeId);
@@ -279,10 +289,12 @@ export function NodeAttributePanel({
   const getAttributeKey = (attr: NodeAttribute) => attr.id;
 
   const handleAddAttribute = () => {
+    const id = `attr_${Date.now()}`;
+    setEditingAttribute({ id, isNew: true, before: attributes });
     const nextAttributes = [
       ...attributes,
       {
-        id: `attr_${Date.now()}`,
+        id,
         name: "",
         description: "",
         value: "",
@@ -483,8 +495,9 @@ export function NodeAttributePanel({
       attributes: getCalculatedAttributesForSave(),
       type: nodeTypeLabel,
       typeId: nodeTypeId,
-      icon: inheritStyle && nodeTypeId ? undefined : icon,
-      color: inheritStyle && nodeTypeId ? "" : color,
+      // Every style key is written, so settings removed here are removed on the element too.
+      ...Object.fromEntries(ELEMENT_STYLE_KEYS.map((key) => [key, undefined])),
+      ...(inheritStyle && nodeTypeId ? {} : ownStyle),
       inheritStyle: inheritStyle && !!nodeTypeId,
       rule: undefined,
     });
@@ -576,52 +589,43 @@ export function NodeAttributePanel({
     setInheritDialogOpen(false);
   };
 
-  const toggleDescription = (id: string) => {
-    setOpenDescriptions((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  /** Attributes of the element's type it does not have (created earlier, or the type gained them since). */
+  const missingFromType = useMemo(() => {
+    if (node?.type !== "part" || !nodeTypeId) return [];
+    const typeNode = availablePartDefNodes.find((candidate) => candidate.id === nodeTypeId);
+    return missingTypeAttributes(attributes, nodeTypeId, typeNode?.data?.attributes);
+  }, [attributes, availablePartDefNodes, node?.type, nodeTypeId]);
+
+  const addMissingFromType = () => {
+    const nextAttributes = [...attributes, ...missingFromType];
+    setAttributes(nextAttributes);
+    setFormulaDrafts((prev) => syncFormulaDrafts(prev, nextAttributes));
   };
 
-  const toggleAttributeCollapsed = (id: string) => {
-    setCollapsedAttributes((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  const openAttributeEditor = (id: string) =>
+    setEditingAttribute({ id, isNew: false, before: attributes });
 
-  const formatAttributeSummary = (attr: NodeAttribute) => {
-    const name = attr.name.trim() || "Attribute";
-    const options = sanitizeAttributeOptions(attr.options);
-    const derivedState = attr.type === "derived" ? derivedAttributeState.get(attr.id) : undefined;
-    let value =
-      attr.type === "derived"
-        ? derivedState?.error
-          ? "Invalid formula"
-          : derivedState?.value || ""
-        : attr.value?.trim() || "";
-
-    if (attr.type === "boolean") {
-      value = value === "true" ? "Yes" : "No";
-    } else if (attr.type === "list" && value && !options.includes(value)) {
-      value = options[0] ?? value;
+  const closeAttributeEditor = (keep: boolean) => {
+    if (!editingAttribute) return;
+    if (!keep) {
+      const restored = editingAttribute.before;
+      setAttributes(restored);
+      setFormulaDrafts(buildFormulaDrafts(restored));
     }
-
-    const unit = (attr.type === "number" || attr.type === "derived") && attr.unit.trim()
-      ? ` ${attr.unit.trim()}`
-      : "";
-    return `${name}: ${value || "-"}${unit}`;
+    setFormulaAutocomplete(null);
+    setEditingAttribute(null);
   };
+
+  const editedAttribute = editingAttribute
+    ? attributes.find((attr) => attr.id === editingAttribute.id)
+    : undefined;
+  const editedAttributeProblem = !editedAttribute
+    ? null
+    : !editedAttribute.name.trim()
+      ? "Give the attribute a name."
+      : duplicateAttributeNameSet.has(editedAttribute.name.trim().toLowerCase())
+        ? "Another attribute of this element already has this name."
+        : null;
 
   const hasDerivedFormulaErrors = attributes.some(
     (attr) => attr.type === "derived" && !!derivedAttributeState.get(attr.id)?.error,
@@ -637,15 +641,15 @@ export function NodeAttributePanel({
         <SheetHeader className="relative">
           <div className="flex items-center justify-between pr-8">
             <div>
-              <SheetTitle>Configure Node</SheetTitle>
-              <SheetDescription>Edit the properties and appearance of this node.</SheetDescription>
+              <SheetTitle>{node.type === "part" ? "Edit element" : "Edit type"}</SheetTitle>
+              <SheetDescription>{node.type === "part" ? "Name, attributes and appearance of this element." : "Name, attributes and appearance of this type. Elements of this type start from it."}</SheetDescription>
             </div>
             <Button 
               variant="ghost" 
               size="icon"
               className="text-muted-foreground hover:text-destructive"
               onClick={handleDelete}
-              title="Delete node"
+              title="Delete"
               data-testid="button-delete-node"
             >
               <Trash2 className="w-5 h-5" />
@@ -667,7 +671,7 @@ export function NodeAttributePanel({
                   id="node-label"
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
-                  placeholder="Enter node name"
+                  placeholder="Name"
                   data-testid="input-node-label"
                 />
               </div>
@@ -684,7 +688,7 @@ export function NodeAttributePanel({
                           ? concernTypeValue
                           : nodeTypeLabel === "Performer"
                             ? agentTypeValue
-                            : nodeTypeLabel === "Requirement"
+                            : isNeedKindLabel(nodeTypeLabel)
                               ? requirementTypeValue
                               : nodeTypeLabel === "Event"
                                 ? eventTypeValue
@@ -719,7 +723,7 @@ export function NodeAttributePanel({
                       return;
                     }
                     if (value === requirementTypeValue) {
-                      setNodeTypeLabel("Requirement");
+                      setNodeTypeLabel("Need");
                       setNodeTypeId(undefined);
                       setInheritStyle(false);
                       return;
@@ -751,10 +755,10 @@ export function NodeAttributePanel({
                     <SelectItem value={actionTypeValue}>Behavior (Default)</SelectItem>
                     <SelectItem value={concernTypeValue}>Concern (Default)</SelectItem>
                     <SelectItem value={agentTypeValue}>Performer (Default)</SelectItem>
-                    <SelectItem value={requirementTypeValue}>Requirement (Default)</SelectItem>
+                    <SelectItem value={requirementTypeValue}>Need (Default)</SelectItem>
                     <SelectItem value={eventTypeValue}>Event (Default)</SelectItem>
                     <SelectItem value={capabilityTypeValue}>Capability (Default)</SelectItem>
-                    {availablePartDefs.map((def) => (
+                    {metamodelTypes.map((def) => (
                       <SelectItem key={def.id} value={def.id}>
                         {def.label}
                       </SelectItem>
@@ -778,22 +782,22 @@ export function NodeAttributePanel({
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Custom Attributes</Label>
+                <Label>Attributes</Label>
                 <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setInheritDialogOpen(true)}
-                    disabled={parentOptions.length === 0}
-                    title={
-                      parentOptions.length === 0
-                        ? "No parent node available for inheritance"
-                        : "Inherit attributes from a parent node"
-                    }
-                  >
-                    Inherit
-                  </Button>
+                  {/* Typed elements get their type's attributes when created; this copies
+                      attributes from a general type (a Generalization parent). */}
+                  {!nodeTypeId && parentOptions.length > 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setInheritDialogOpen(true)}
+                      title="Copy attributes from the type this one specializes"
+                      data-testid="button-inherit-attributes"
+                    >
+                      Copy from parent…
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"
@@ -802,70 +806,107 @@ export function NodeAttributePanel({
                     data-testid="button-add-attribute"
                   >
                     <Plus className="w-4 h-4 mr-1" />
-                    Add Attribute
+                    Add attribute
                   </Button>
                 </div>
               </div>
 
-              {attributes.length === 0 && (
+              {missingFromType.length > 0 ? (
+                <div
+                  className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm"
+                  data-testid="attributes-missing-from-type"
+                >
+                  <span>
+                    {nodeTypeLabel} defines {missingFromType.length === 1 ? "an attribute" : `${missingFromType.length} attributes`} this
+                    element does not have: {missingFromType.map((attr) => attr.name).join(", ")}.
+                  </span>
+                  <Button type="button" size="sm" variant="outline" onClick={addMissingFromType} data-testid="button-add-missing-attributes">
+                    Add
+                  </Button>
+                </div>
+              ) : null}
+
+              {attributes.length === 0 && missingFromType.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">
-                  No custom attributes defined. Click "Add Attribute" to create one.
+                  No attributes yet. Add one to describe properties such as mass or range.
                 </p>
               )}
 
-              <TooltipProvider delayDuration={0}>
-              <div className="space-y-3">
-              {attributes.map((attr, index) => (
-                <AttributeRowEditor
-                  key={attr.id}
-                  attr={attr}
-                  index={index}
-                  attributes={attributes}
-                  isCollapsed={collapsedAttributes.has(attr.id)}
-                  isDescriptionOpen={openDescriptions.has(attr.id)}
-                  duplicateAttributeNameSet={duplicateAttributeNameSet}
-                  attributeValueLabel={attributeValueLabel}
-                  listOptionDraft={listOptionDrafts[attr.id] ?? ""}
-                  formulaDrafts={formulaDrafts}
-                  formulaAutocomplete={formulaAutocomplete}
-                  derivedAttributeState={derivedAttributeState}
-                  formulaTextareaRefs={formulaTextareaRefs}
-                  formatAttributeSummary={formatAttributeSummary}
-                  onToggleCollapsed={toggleAttributeCollapsed}
-                  onToggleDescription={toggleDescription}
-                  onRemoveAttribute={handleRemoveAttribute}
-                  onAttributeChange={handleAttributeChange}
-                  onAttributeTypeChange={handleAttributeTypeChange}
-                  onListOptionDraftChange={handleListOptionDraftChange}
-                  onAddListOption={handleAddListOption}
-                  onRemoveListOption={handleRemoveListOption}
-                  onAutoResize={handleAutoResize}
-                  setFormulaDrafts={setFormulaDrafts}
-                  setFormulaAutocomplete={setFormulaAutocomplete}
-                  updateFormulaAutocomplete={updateFormulaAutocomplete}
-                  applyFormulaAutocomplete={applyFormulaAutocomplete}
-                />
-              ))}
+              <div className="space-y-2">
+                {attributes.map((attr, index) =>
+                  editingAttribute?.isNew && editingAttribute.id === attr.id ? null : (
+                    <AttributeSummaryRow
+                      key={attr.id}
+                      attr={attr}
+                      index={index}
+                      valueEditable={node.type === "part"}
+                      valueLabel={attributeValueLabel}
+                      derived={derivedAttributeState.get(attr.id)}
+                      onValueChange={(value) => handleAttributeChange(attr.id, "value", value)}
+                      onEdit={() => openAttributeEditor(attr.id)}
+                      onRemove={() => handleRemoveAttribute(attr.id)}
+                    />
+                  ),
+                )}
               </div>
-              </TooltipProvider>
+
+              <AttributeEditorDialog
+                open={!!editedAttribute}
+                isNew={!!editingAttribute?.isNew}
+                elementLabel={label}
+                problem={editedAttributeProblem}
+                onDone={() => closeAttributeEditor(true)}
+                onCancel={() => closeAttributeEditor(false)}
+                onDelete={() => {
+                  if (editedAttribute) handleRemoveAttribute(editedAttribute.id);
+                  setEditingAttribute(null);
+                }}
+              >
+                {editedAttribute ? (
+                  <TooltipProvider delayDuration={0}>
+                    <AttributeRowEditor
+                      attr={editedAttribute}
+                      index={attributes.indexOf(editedAttribute)}
+                      attributes={attributes}
+                      autoFocusName={editingAttribute?.isNew}
+                      duplicateAttributeNameSet={duplicateAttributeNameSet}
+                      attributeValueLabel={attributeValueLabel}
+                      listOptionDraft={listOptionDrafts[editedAttribute.id] ?? ""}
+                      formulaDrafts={formulaDrafts}
+                      formulaAutocomplete={formulaAutocomplete}
+                      derivedAttributeState={derivedAttributeState}
+                      formulaTextareaRefs={formulaTextareaRefs}
+                      onAttributeChange={handleAttributeChange}
+                      onAttributeTypeChange={handleAttributeTypeChange}
+                      onListOptionDraftChange={handleListOptionDraftChange}
+                      onAddListOption={handleAddListOption}
+                      onRemoveListOption={handleRemoveListOption}
+                      onAutoResize={handleAutoResize}
+                      setFormulaDrafts={setFormulaDrafts}
+                      setFormulaAutocomplete={setFormulaAutocomplete}
+                      updateFormulaAutocomplete={updateFormulaAutocomplete}
+                      applyFormulaAutocomplete={applyFormulaAutocomplete}
+                    />
+                  </TooltipProvider>
+                ) : null}
+              </AttributeEditorDialog>
             </div>
 
           </TabsContent>
 
 
 
+          <TabsContent value="style">
           <NodeStyleTab
             canInheritStyle={canInheritStyle}
             inheritStyle={inheritStyle}
-            currentIcon={currentIcon}
-            currentColor={currentColor}
-            isCustomColor={isCustomColor}
-            showExtendedIcons={showExtendedIcons}
-            onInheritStyleChange={setInheritStyle}
-            onIconChange={setIcon}
-            onToggleExtendedIcons={() => setShowExtendedIcons((current) => !current)}
-            onColorChange={setColor}
+            typeLabel={nodeTypeLabel}
+            style={shownStyle}
+            defaultColor={inheritStyle && inheritedStyle?.color ? inheritedStyle.color : kindDefaults.color}
+            onInheritStyleChange={handleInheritStyleChange}
+            onStyleChange={handleStyleChange}
           />
+          </TabsContent>
         </Tabs>
 
         {hasDuplicateAttributeNames ? (

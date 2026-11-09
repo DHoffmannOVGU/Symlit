@@ -1,3 +1,4 @@
+import { ScrollingTabsContent } from "./ScrollingTabsContent";
 import type { FlowQuery, NodeMeta, ReferencedViewGroup } from "./types";
 import type { ProjectType } from "@shared/schema";
 import type { View } from "@shared/schema";
@@ -11,7 +12,7 @@ import { Plus } from "lucide-react";
 import type { FlowNode } from "@shared/schema";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   SidebarContent,
   SidebarGroup,
@@ -86,17 +87,17 @@ export function SidebarTabsContent({
                       value="metamodels"
                       className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
                     >
-                      Metamodels
+                      Add elements
                     </TabsTrigger>
                     <TabsTrigger
                       value="diagrams"
                       className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
                     >
-                      Diagram Views
+                      Diagrams
                     </TabsTrigger>
                   </TabsList>
     
-                  <TabsContent
+                  <ScrollingTabsContent
                     value="diagrams"
                     className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1"
                   >
@@ -135,14 +136,14 @@ export function SidebarTabsContent({
                       }}
                       onNavigate={handleLinkClick}
                     />
-                  </TabsContent>
+                  </ScrollingTabsContent>
     
-                  <TabsContent
+                  <ScrollingTabsContent
                     value="metamodels"
                     className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1"
                   >
                     {renderReferencedNodePalette()}
-                  </TabsContent>
+                  </ScrollingTabsContent>
                 </Tabs>
               ) : (
                 <Tabs
@@ -160,17 +161,17 @@ export function SidebarTabsContent({
                       value="node-types"
                       className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
                     >
-                      Create Nodes
+                      Add elements
                     </TabsTrigger>
                     <TabsTrigger
                       value="diagrams"
                       className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
                     >
-                      Show Views
+                      Diagrams
                     </TabsTrigger>
                   </TabsList>
     
-                  <TabsContent
+                  <ScrollingTabsContent
                     value="diagrams"
                     className="mt-3 flex-1 overflow-y-auto pr-1"
                   >
@@ -185,14 +186,14 @@ export function SidebarTabsContent({
                                   setIncludeReferencedMetamodelViews(checked === true)
                                 }
                               />
-                              <span>Include referenced metamodel views</span>
+                              <span>Include referenced metamodel diagrams</span>
                             </label>
                           </div>
                         )}
                         <SidebarMenu>
                           {views.length === 0 ? (
                             <div className="px-4 py-8 text-center text-white/30 text-xs italic">
-                              No views yet.
+                              No diagrams yet.
                             </div>
                           ) : (
                             orderedViews.map((view) => {
@@ -239,7 +240,7 @@ export function SidebarTabsContent({
                                         asChild
                                         className="text-red-300"
                                       >
-                                        <span>Failed to load referenced views</span>
+                                        <span>Failed to load referenced diagrams</span>
                                       </SidebarMenuButton>
                                     </SidebarMenuItem>
                                   )}
@@ -249,7 +250,7 @@ export function SidebarTabsContent({
                                         asChild
                                         className="text-white/40"
                                       >
-                                        <span>No views available</span>
+                                        <span>No diagrams available</span>
                                       </SidebarMenuButton>
                                     </SidebarMenuItem>
                                   )}
@@ -298,9 +299,9 @@ export function SidebarTabsContent({
                         </div>
                       </SidebarGroupContent>
                     </SidebarGroup>
-                  </TabsContent>
+                  </ScrollingTabsContent>
     
-                  <TabsContent
+                  <ScrollingTabsContent
                     value="node-types"
                     className="mt-3 flex-1 overflow-y-auto pr-1"
                   >
@@ -309,7 +310,7 @@ export function SidebarTabsContent({
                         {renderMetamodelCreatePalette()}
                       </SidebarGroupContent>
                     </SidebarGroup>
-                  </TabsContent>
+                  </ScrollingTabsContent>
                 </Tabs>
               )}
             </SidebarContent>

@@ -2,6 +2,8 @@ import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { newNodeId } from "@/lib/ids";
+import { isNeedKindLabel } from "@shared/metamodel-setup";
+import { applyTypeStyle, pickElementStyle, withElementStyle } from "@/lib/element-style";
 import { useCallback, useMemo } from "react";
 import type { DiagramNode as Node, NodeData } from "../types";
 import { getEdgeSemanticDefaults, getEdgeMarkers, type CustomEdgeData } from "../edges/CustomEdges";
@@ -23,6 +25,19 @@ export function useCanvasElementActions({
   const setSelectedEdgeId = useDiagramStore((state) => state.setSelectedEdgeId);
   const requestDelete = useDiagramStore((state) => state.requestDelete);
   const { isExternalNode, partDefStyleById, partTypeOptions, projectType, edgeTypeCycle } = useDiagramModel();
+  /**
+   * Instance elements that match their type take the type's whole style;
+   * the others keep exactly the style they were saved with.
+   */
+  const withStyleForSave = useCallback(
+    (nodeType: string | undefined, data: NodeData): NodeData => {
+      if (nodeType !== "part") return data;
+      const typeStyle = data.typeId ? partDefStyleById.get(data.typeId) : undefined;
+      if (data.typeId && data.inheritStyle !== false && typeStyle) return applyTypeStyle(data, typeStyle);
+      return { ...withElementStyle(data, pickElementStyle(data)), inheritStyle: data.typeId ? false : data.inheritStyle };
+    },
+    [partDefStyleById],
+  );
   const handleSaveNodeData = useCallback(
     (nodeId: string, data: NodeData) => {
       if (isExternalNode(nodeId)) return;
@@ -41,7 +56,7 @@ export function useCanvasElementActions({
                     ? "concerndef"
                     : data.type === "Performer" || data.type === "Agent"
                       ? "agentdef"
-                      : data.type === "Requirement"
+                      : isNeedKindLabel(data.type)
                         ? "requirementdef"
                       : data.type === "Event"
                         ? "eventdef"
@@ -59,7 +74,7 @@ export function useCanvasElementActions({
                           ].includes(n.type || "")
                         ? "partdef"
                         : n.type,
-              data: {
+              data: withStyleForSave(n.type, {
                 ...n.data,
                 ...data,
                 ...((data.type === "Behavior" || data.type === "Action") ? { icon: data.icon || "Zap" } : {}),
@@ -67,37 +82,18 @@ export function useCanvasElementActions({
                   ? { icon: data.icon || "Shield" }
                   : {}),
                 ...((data.type === "Performer" || data.type === "Agent") ? { icon: data.icon || "Bot" } : {}),
-                ...(data.type === "Requirement"
+                ...(isNeedKindLabel(data.type)
                   ? { icon: data.icon || "BadgeCheck" }
                   : {}),
                 ...(data.type === "Event" ? { icon: data.icon || "Radio" } : {}),
                 ...(data.type === "Capability" ? { icon: data.icon || "Gem" } : {}),
-                ...(n.type === "part"
-                  ? (() => {
-                      if (!data.typeId || data.inheritStyle === false) {
-                        return {
-                          icon: data.icon,
-                          color: data.color,
-                          inheritStyle: false,
-                        };
-                      }
-                      const style = partDefStyleById.get(data.typeId);
-                      return style
-                        ? {
-                            icon: style.icon,
-                            color: style.color,
-                            inheritStyle: true,
-                          }
-                        : {};
-                    })()
-                  : {}),
-              },
+              }),
             }
           : n,
       );
       setNodes(nextNodes);
     },
-    [nodes, edges, setNodes, takeSnapshot, partDefStyleById, isExternalNode],
+    [nodes, edges, setNodes, takeSnapshot, withStyleForSave, isExternalNode],
   );
 
   const handleSaveEdgeData = useCallback(
@@ -144,7 +140,7 @@ export function useCanvasElementActions({
       { value: "Behavior", label: "Behavior" },
       { value: "Concern", label: "Concern" },
       { value: "Performer", label: "Performer" },
-      { value: "Requirement", label: "Requirement" },
+      { value: "Need", label: "Need" },
       { value: "Event", label: "Event" },
       { value: "Capability", label: "Capability" },
     ],

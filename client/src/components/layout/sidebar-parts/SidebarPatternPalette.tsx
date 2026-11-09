@@ -135,8 +135,8 @@ export function SidebarPatternPalette({
                   )}
                   title={
                     currentViewId
-                      ? "Insert pattern into current view"
-                      : "Select a view to insert"
+                      ? "Insert pattern into this diagram"
+                      : "Open a diagram to insert"
                   }
                 >
                   <ArrowRight className="h-3.5 w-3.5" />

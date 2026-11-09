@@ -193,7 +193,7 @@ export function ProjectCreateDialog({
               </div>
               <div className="grid gap-5 sm:grid-cols-2">
                 <TypeSelectionList
-                  title="Suggested node types"
+                  title="Suggested element kinds"
                   description="Choose the concepts you need to define."
                   items={magicNodeTypeCatalog}
                   selected={selectedMagicNodeTypes}

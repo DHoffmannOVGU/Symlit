@@ -3,10 +3,13 @@ import { useReactFlow } from "@xyflow/react";
 import { magicNodeTypeCatalog, type MagicNodeType } from "@shared/metamodel-setup";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { newNodeId } from "@/lib/ids";
+import { applyTypeStyle, pickElementStyle } from "@/lib/element-style";
+import { attributesFromType } from "@/lib/type-attributes";
 import type { DiagramNode } from "../types";
 import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
-import { NODE_HEIGHT, NODE_WIDTH } from "../utils/node-size";
+import { NODE_HEIGHT, NODE_WIDTH, nodeSize } from "../utils/node-size";
+import { findFreeSpot } from "../utils/free-spot";
 
 export interface AddElementOptions {
   /** Element kind in a metamodel (instance models always create `part`). */
@@ -22,7 +25,7 @@ export interface AddElementOptions {
 
 /** Adds a new element to the open diagram (undoable). */
 export function useAddElement() {
-  const { viewId, projectType } = useDiagramModel();
+  const { viewId, projectType, partDefStyleById, availablePartDefNodes } = useDiagramModel();
   const diagramStore = useDiagramStoreApi();
   const setNodes = useDiagramStore((state) => state.setNodes);
   const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
@@ -42,22 +45,32 @@ export function useAddElement() {
       const node: DiagramNode = {
         id,
         type: nodeType,
-        position: {
-          // A little jitter so repeated additions do not stack exactly.
-          x: center.x - NODE_WIDTH / 2 + (Math.random() - 0.5) * 50,
-          y: center.y - NODE_HEIGHT / 2 + (Math.random() - 0.5) * 50,
-        },
+        // Dropped: where the user let go. Placed by click: the middle of the
+        // screen, moved to the nearest free spot so it covers no other element.
+        position: options?.position
+          ? { x: center.x - NODE_WIDTH / 2, y: center.y - NODE_HEIGHT / 2 }
+          : findFreeSpot(
+              center,
+              { width: NODE_WIDTH, height: NODE_HEIGHT },
+              diagramStore.getState().nodes.map((other) => ({ ...other.position, ...nodeSize(other) })),
+            ),
         data: {
           label: `New ${typeLabel} ${count + 1}`,
           attributes: [],
           ...(projectType === "metamodel"
             ? { type: typeLabel, icon: options?.icon ?? kind.iconName, ...(options?.color ? { color: options.color } : {}) }
             : {}),
-          ...(options?.typeId
-            ? { type: typeLabel, typeId: options.typeId, icon: options.icon, color: options.color, inheritStyle: true }
-            : {}),
+          ...(options?.typeId ? { type: typeLabel, typeId: options.typeId } : {}),
         },
       };
+      if (options?.typeId) {
+        // A typed element starts out matching its type's style.
+        const style = partDefStyleById.get(options.typeId) ?? { icon: options.icon, color: options.color };
+        node.data = applyTypeStyle(node.data, pickElementStyle(style));
+        // ...and with copies of its type's attributes.
+        const typeNode = availablePartDefNodes.find((candidate) => candidate.id === options.typeId);
+        node.data.attributes = attributesFromType(options.typeId, typeNode?.data?.attributes);
+      }
 
       setNodes((current) => [...current, node]);
       dispatchDiagramEvent("diagram-model-node-created", {
@@ -66,6 +79,6 @@ export function useAddElement() {
         ...(options?.typeId ? { typeId: options.typeId } : {}),
       });
     },
-    [diagramStore, projectType, screenToFlowPosition, setNodes, takeSnapshot, viewId],
+    [availablePartDefNodes, diagramStore, partDefStyleById, projectType, screenToFlowPosition, setNodes, takeSnapshot, viewId],
   );
 }

@@ -45,13 +45,13 @@ test("insert patterns without losing unsaved work, undo one insert, use a metamo
   ).toBe(201);
 
   await page.goto(`/project/${project.id}/view/${view.id}`);
-  await page.getByRole("tab", { name: "Diagram Views" }).click();
+  await page.getByRole("tab", { name: "Diagrams" }).click();
   const nodes = page.locator(".react-flow__node");
   const edges = page.locator(".react-flow__edge");
   const insert = async (name: string) => {
     const item = page.locator("li", { hasText: name }).last();
     await item.hover();
-    await item.getByTitle("Insert pattern into current view").click();
+    await item.getByTitle("Insert pattern into this diagram").click();
   };
 
   // Two inserts in a row: the second must not drop the first (unsaved) copy.
@@ -62,7 +62,7 @@ test("insert patterns without losing unsaved work, undo one insert, use a metamo
   await expect(edges).toHaveCount(2);
 
   // Undo removes the last insert only.
-  await page.getByTitle("Undo").click();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect(nodes).toHaveCount(2);
   await expect(edges).toHaveCount(1);
 

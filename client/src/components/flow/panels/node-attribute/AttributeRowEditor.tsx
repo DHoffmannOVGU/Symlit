@@ -13,17 +13,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Plus,
-  Trash2,
   X,
-  Info,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NodeAttribute } from "../../types";
@@ -37,6 +28,7 @@ import {
   getStoredFormulaFromDisplay,
 } from "../../utils/attribute-formula";
 import type { FormulaAutocompleteState } from "./formula-utils";
+import { UnitPicker } from "./UnitPicker";
 
 export type DerivedAttributeStateMap = globalThis.Map<
   string,
@@ -47,8 +39,6 @@ export interface AttributeRowEditorProps {
   attr: NodeAttribute;
   index: number;
   attributes: NodeAttribute[];
-  isCollapsed: boolean;
-  isDescriptionOpen: boolean;
   duplicateAttributeNameSet: Set<string>;
   attributeValueLabel: string;
   listOptionDraft: string;
@@ -58,10 +48,6 @@ export interface AttributeRowEditorProps {
   formulaTextareaRefs: React.MutableRefObject<
     Record<string, HTMLTextAreaElement | null>
   >;
-  formatAttributeSummary: (attr: NodeAttribute) => string;
-  onToggleCollapsed: (id: string) => void;
-  onToggleDescription: (id: string) => void;
-  onRemoveAttribute: (id: string) => void;
   onAttributeChange: (
     id: string,
     field: keyof NodeAttribute,
@@ -82,14 +68,14 @@ export interface AttributeRowEditorProps {
     cursor: number,
   ) => void;
   applyFormulaAutocomplete: (id: string, name: string) => void;
+  /** Focus the name field when shown (a new attribute). */
+  autoFocusName?: boolean;
 }
 
 export function AttributeRowEditor({
   attr,
   index,
   attributes,
-  isCollapsed,
-  isDescriptionOpen,
   duplicateAttributeNameSet,
   attributeValueLabel,
   listOptionDraft,
@@ -97,10 +83,6 @@ export function AttributeRowEditor({
   formulaAutocomplete,
   derivedAttributeState,
   formulaTextareaRefs,
-  formatAttributeSummary,
-  onToggleCollapsed,
-  onToggleDescription,
-  onRemoveAttribute,
   onAttributeChange,
   onAttributeTypeChange,
   onListOptionDraftChange,
@@ -111,6 +93,7 @@ export function AttributeRowEditor({
   setFormulaAutocomplete,
   updateFormulaAutocomplete,
   applyFormulaAutocomplete,
+  autoFocusName = false,
 }: AttributeRowEditorProps) {
   const formulaSuggestions =
     formulaAutocomplete?.attrId === attr.id
@@ -129,115 +112,26 @@ export function AttributeRowEditor({
       : [];
 
   return (
-    <div
-      className="p-3 border rounded-lg bg-muted/30 space-y-3"
-      data-testid={`attribute-row-${index}`}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
-            onClick={() => onToggleCollapsed(attr.id)}
-            data-testid={`button-attr-collapse-${index}`}
-            aria-label={isCollapsed ? "Expand attribute" : "Collapse attribute"}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" />
-            )}
-          </Button>
-          <div className="min-w-0">
-            <div className="text-xs font-medium text-muted-foreground">
-              Attribute {index + 1}
-            </div>
-            {isCollapsed && (
-              <div
-                className="truncate text-sm text-foreground"
-                title={formatAttributeSummary(attr)}
-              >
-                {formatAttributeSummary(attr)}
-              </div>
-            )}
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                onClick={() => onToggleDescription(attr.id)}
-                data-testid={`button-attr-description-toggle-${index}`}
-                aria-label="Toggle attribute description"
-              >
-                <Info className="h-3.5 w-3.5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              {attr.description?.trim()
-                ? attr.description
-                : "No description yet"}
-            </TooltipContent>
-          </Tooltip>
-          {attr.inheritedFrom && (
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground border border-muted-foreground/40 rounded px-1.5 py-0.5">
-              Inherited
-            </span>
-          )}
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-destructive"
-          onClick={() => onRemoveAttribute(attr.id)}
-          data-testid={`button-remove-attribute-${index}`}
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </Button>
-      </div>
-
-      {!isCollapsed && isDescriptionOpen && (
-        <div className="space-y-1">
-          <Label className="text-xs">Description</Label>
-          <Textarea
-            value={attr.description || ""}
-            onChange={(e) => {
-              onAttributeChange(attr.id, "description", e.target.value);
-              onAutoResize(e.currentTarget);
-            }}
-            onInput={(e) => onAutoResize(e.currentTarget)}
-            placeholder="Explain what this attribute means"
-            className="min-h-8 h-auto text-sm resize-none"
-            rows={1}
-            data-testid={`input-attr-description-${index}`}
-          />
-        </div>
-      )}
-
-      {!isCollapsed && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    <div className="space-y-4" data-testid={`attribute-row-${index}`}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_170px]">
             <div className="space-y-1">
-              <Label className="text-xs">Name</Label>
+              <Label className="text-xs" htmlFor={`attr-name-${attr.id}`}>Name</Label>
               <Input
+                id={`attr-name-${attr.id}`}
                 value={attr.name}
+                autoFocus={autoFocusName}
                 onChange={(e) =>
                   onAttributeChange(attr.id, "name", e.target.value)
                 }
-                placeholder="e.g. Mass"
-                className="h-8 text-sm"
+                placeholder="e.g. mass"
+                className="h-9 text-sm"
                 data-testid={`input-attr-name-${index}`}
               />
               {duplicateAttributeNameSet.has(
                 attr.name.trim().toLowerCase(),
               ) ? (
                 <p className="text-[11px] text-destructive">
-                  Attribute names must be unique within a node.
+                  Another attribute of this element already has this name.
                 </p>
               ) : null}
             </div>
@@ -250,7 +144,7 @@ export function AttributeRowEditor({
                 }
               >
                 <SelectTrigger
-                  className="h-8 text-sm"
+                  className="h-9 text-sm"
                   data-testid={`select-attr-type-${index}`}
                 >
                   <SelectValue />
@@ -264,6 +158,23 @@ export function AttributeRowEditor({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs" htmlFor={`attr-description-${attr.id}`}>Description</Label>
+            <Textarea
+              id={`attr-description-${attr.id}`}
+              value={attr.description || ""}
+              onChange={(e) => {
+                onAttributeChange(attr.id, "description", e.target.value);
+                onAutoResize(e.currentTarget);
+              }}
+              onInput={(e) => onAutoResize(e.currentTarget)}
+              placeholder="What does this attribute mean? (optional)"
+              className="min-h-16 h-auto text-sm resize-none"
+              rows={2}
+              data-testid={`input-attr-description-${index}`}
+            />
           </div>
 
           {attr.type === "list" ? (
@@ -602,14 +513,10 @@ export function AttributeRowEditor({
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Unit</Label>
-                  <Input
+                  <UnitPicker
                     value={attr.unit}
-                    onChange={(e) =>
-                      onAttributeChange(attr.id, "unit", e.target.value)
-                    }
-                    placeholder="e.g. m³"
-                    className="h-8 text-sm"
-                    data-testid={`input-attr-unit-${index}`}
+                    onChange={(unit) => onAttributeChange(attr.id, "unit", unit)}
+                    testId={`input-attr-unit-${index}`}
                   />
                 </div>
               </div>
@@ -682,21 +589,15 @@ export function AttributeRowEditor({
               {attr.type === "number" ? (
                 <div className="space-y-1">
                   <Label className="text-xs">Unit</Label>
-                  <Input
+                  <UnitPicker
                     value={attr.unit}
-                    onChange={(e) =>
-                      onAttributeChange(attr.id, "unit", e.target.value)
-                    }
-                    placeholder="e.g. kg"
-                    className="h-8 text-sm"
-                    data-testid={`input-attr-unit-${index}`}
+                    onChange={(unit) => onAttributeChange(attr.id, "unit", unit)}
+                    testId={`input-attr-unit-${index}`}
                   />
                 </div>
               ) : null}
             </div>
           )}
-        </div>
-      )}
     </div>
   );
 }

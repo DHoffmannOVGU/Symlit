@@ -24,8 +24,11 @@ import {
   type EdgeMouseHandler,
   ConnectionLineType,
   ConnectionMode,
+  ControlButton,
   useConnection,
+  useReactFlow,
 } from "@xyflow/react";
+import { Maximize } from "lucide-react";
 import "@xyflow/react/dist/style.css";
 
 import { nodeTypes } from "../nodes/nodeTypes";
@@ -63,6 +66,7 @@ import { useCanvasKeyboardShortcuts } from "./useCanvasKeyboardShortcuts";
 import { useCanvasNodeSnapping } from "./useCanvasNodeSnapping";
 import type { ProjectType } from "@shared/schema";
 import type { MetamodelSetup } from "@shared/metamodel-setup";
+import { CANVAS_OVERLAY_CHANGED, canvasFitOptions } from "../utils/fit-options";
 
 export interface DiagramCanvasProps {
   viewId: number;
@@ -90,6 +94,21 @@ function FlowInner({
   displayMode = "graph",
   onDisplayModeChange,
 }: DiagramCanvasProps) {
+  const { fitView } = useReactFlow();
+  // Re-fit when an overlay (the tutorial coach) appears or changes size, unless
+  // the user has moved the view since the last fit: then their view stays.
+  const userMovedViewport = useRef(false);
+  useEffect(() => {
+    const refit = () => {
+      if (userMovedViewport.current) return;
+      requestAnimationFrame(() => void fitView(canvasFitOptions(300)));
+    };
+    window.addEventListener(CANVAS_OVERLAY_CHANGED, refit);
+    return () => window.removeEventListener(CANVAS_OVERLAY_CHANGED, refit);
+  }, [fitView]);
+  useEffect(() => {
+    userMovedViewport.current = false;
+  }, [viewId]);
   const [suspendFlowLoad, setSuspendFlowLoad] = useState(false);
   const canvasShellRef = useRef<HTMLDivElement | null>(null);
 
@@ -389,6 +408,11 @@ function FlowInner({
           // React Flow would otherwise zoom onto the first element dropped in,
           // pushing the next one off-screen.
           fitView={fitViewOnMount}
+          // Moves with an input event are the user's; fits and animations have none.
+          onMoveStart={(event) => {
+            if (event) userMovedViewport.current = true;
+          }}
+          fitViewOptions={fitViewOnMount ? canvasFitOptions() : undefined}
           className={`bg-slate-50 dark:bg-slate-950${isConnecting ? " flow-connecting" : ""}${isConnectionValid === true ? " flow-connecting-valid" : ""}${isConnectionValid === false ? " flow-connecting-invalid" : ""}`}
         >
           <AggregationMarkerDefs />
@@ -401,7 +425,12 @@ function FlowInner({
             />
           )}
           <CanvasAlignmentGuides guides={alignmentGuides} />
-          <Controls className="bg-white dark:bg-slate-900 border-border shadow-lg" />
+          {/* The fit button keeps the tutorial coach clear like every other fit. */}
+          <Controls className="bg-white dark:bg-slate-900 border-border shadow-lg" showFitView={false}>
+            <ControlButton onClick={() => void fitView(canvasFitOptions(300))} title="Fit view" aria-label="Fit view">
+              <Maximize className="h-3 w-3" />
+            </ControlButton>
+          </Controls>
 
           <CanvasToolbar
             displayMode={displayMode}

@@ -4,6 +4,7 @@ import { useFlow } from "@/hooks/use-flow";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { diagramSignature, toCanvasGraph } from "./diagram-serialization";
+import { canvasFitOptions } from "../utils/fit-options";
 
 /**
  * Loads the open diagram into the store whenever the server copy changes
@@ -38,7 +39,7 @@ export function useDiagramLoading(suspended: boolean) {
     if (!flowData || lastFittedViewId.current === viewId) return;
     lastFittedViewId.current = viewId;
     requestAnimationFrame(() => {
-      fitView({ duration: 500 });
+      fitView(canvasFitOptions(500));
     });
   }, [flowData, fitView, viewId]);
 

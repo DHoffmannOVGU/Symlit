@@ -1,3 +1,4 @@
+import { isNeedKindLabel } from "@shared/metamodel-setup";
 import { PARTDEF_DEFAULT_ACCENT_COLOR } from "@/components/flow/nodes/PartDefNode";
 import { ACTIONDEF_DEFAULT_ACCENT_COLOR } from "@/components/flow/nodes/ActionDefNode";
 import { CONCERNDEF_DEFAULT_ACCENT_COLOR } from "@/components/flow/nodes/ConcernDefNode";
@@ -44,8 +45,8 @@ export const BASE_INSTANCE_TYPE_ITEMS = [
   },
   {
     id: "__default_requirement__",
-    label: "Requirement",
-    description: "Generic requirement type.",
+    label: "Need",
+    description: "Generic need type.",
     iconName: "BadgeCheck",
     color: REQUIREMENTDEF_DEFAULT_ACCENT_COLOR,
   },
@@ -104,7 +105,7 @@ export const getDefaultNodeStyle = (
   if (nodeType === "agentdef" || dataType === "Performer" || dataType === "Agent") {
     return { iconName: "Bot", color: AGENTDEF_DEFAULT_ACCENT_COLOR };
   }
-  if (nodeType === "requirementdef" || dataType === "Requirement") {
+  if (nodeType === "requirementdef" || isNeedKindLabel(dataType)) {
     return {
       iconName: "BadgeCheck",
       color: REQUIREMENTDEF_DEFAULT_ACCENT_COLOR,

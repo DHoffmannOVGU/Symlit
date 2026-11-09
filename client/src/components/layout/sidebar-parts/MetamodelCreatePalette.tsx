@@ -140,8 +140,7 @@ export function MetamodelCreatePalette({
             )}
             {selectedMetamodelCreateProjectId === BASE_METAMODEL_ID ? (
               <p className="mt-3 text-xs text-white/50">
-                Create one of the {visibleMetamodelNodeTypes.length} enabled
-                magic node types.
+                {visibleMetamodelNodeTypes.length} kinds are enabled for this metamodel. Click one to place a new type.
               </p>
             ) : (
               <p className="mt-3 text-xs text-white/50">
@@ -151,12 +150,12 @@ export function MetamodelCreatePalette({
           </div>
         ) : (
           <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
-            These are the 7 standard node types that can be used in the metamodel.
+            Seven built-in kinds. Click one to place a new type, or drag it to a spot.
           </div>
         )}
 
         {selectedMetamodelCreateProjectId === BASE_METAMODEL_ID ? (
-          <>
+          <div className="space-y-1.5">
              {visibleMetamodelNodeTypes.map((item) => {
               const IconComponent =
                 getNodeIcon(item.iconName);
@@ -185,16 +184,17 @@ export function MetamodelCreatePalette({
                     })
                   }
                   className={cn(
-                    "w-full rounded-lg border border-white/10 bg-white/5 p-3 text-left transition-colors",
+                    "w-full rounded-lg border border-white/10 bg-white/5 px-2.5 py-2 text-left transition-colors",
                     disabled
                       ? "cursor-not-allowed opacity-50"
                       : "cursor-grab hover:bg-white/10 hover:border-white/20 active:cursor-grabbing",
                   )}
                   data-testid={`button-create-sidebar-${item.type}`}
+                  title={`${item.label}: ${item.description}`}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-center gap-2.5">
                     <span
-                      className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md"
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md"
                       style={{
                         backgroundColor: `${item.color}25`,
                         color: item.color,
@@ -203,10 +203,10 @@ export function MetamodelCreatePalette({
                       <IconComponent className="h-4 w-4" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-medium text-white">
+                      <span className="block text-sm font-medium leading-tight text-white">
                         {item.label}
                       </span>
-                      <span className="block text-xs text-white/55">
+                      <span className="block truncate text-xs text-white/55">
                         {item.description}
                       </span>
                     </span>
@@ -214,7 +214,7 @@ export function MetamodelCreatePalette({
                 </button>
               );
             })}
-          </>
+          </div>
         ) : (
           <>
             {paletteLoading && (
@@ -333,7 +333,7 @@ export function MetamodelCreatePalette({
 
         {!currentViewId && (
           <div className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-white/45">
-            Select a diagram view to create node types.
+            Open a diagram to add types.
           </div>
         )}
       </div>

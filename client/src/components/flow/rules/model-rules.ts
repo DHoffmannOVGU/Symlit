@@ -240,7 +240,7 @@ export const MODEL_RULE_CHECK_LABELS: Record<NonNullable<ModelRule["check"]>, st
   "missing-name": "Name is missing",
   "missing-description": "Description is missing",
   "duplicate-name": "Name is duplicated",
-  "no-connections": "Node has no connections",
+  "no-connections": "Element has no relationships",
 };
 
 export const MODEL_RULE_OPERATOR_LABELS: Record<Extract<ModelRuleCondition, { kind: "comparison" }>["operator"], string> = {

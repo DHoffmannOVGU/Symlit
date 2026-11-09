@@ -37,3 +37,5 @@ export function roleCapabilities(role: WorkspaceRole) {
     canCreateProjects: true,
   };
 }
+/** Display name of the local user when SYMLIT_USER_NAME is not set. */
+export const DEFAULT_LOCAL_USER_NAME = "Local user";

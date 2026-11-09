@@ -19,7 +19,7 @@ import { lazyNamed, MountWhenOpened } from "@/lib/lazy";
 
 // Loads when first opened (it brings the form library).
 const EditViewDialog = lazyNamed(() => import("@/components/layout/EditViewDialog"), "EditViewDialog");
-import { Layers, Loader2, Plus, ArrowRight, Settings2, Save } from "lucide-react";
+import { Layers, Loader2, Plus, ArrowRight, Settings2, Save, Check } from "lucide-react";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -146,6 +146,20 @@ export default function ProjectView() {
     dispatchDiagramEvent("diagram-save-request", { viewId });
   };
 
+  // Ctrl+S / Cmd+S saves the open diagram (and never opens the browser's "save page").
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s" || event.shiftKey || event.altKey) return;
+      if (!viewId) return;
+      event.preventDefault();
+      if (activeDiagramDirtyState && !activeDiagramSaveState) dispatchDiagramEvent("diagram-save-request", { viewId });
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [activeDiagramDirtyState, activeDiagramSaveState, viewId]);
+
+  const saveShortcut = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318S" : "Ctrl+S";
+
   // Auth check
   if (authLoading) return null;
   if (!user) return <WorkspaceUnavailable onRetry={() => void refreshSession()} />;
@@ -262,33 +276,41 @@ export default function ProjectView() {
                 )}
 
                 {viewId && (
-                  <Button
-                    onClick={handleSaveDiagram}
-                    disabled={activeDiagramSaveState || !activeDiagramDirtyState}
-                    variant={activeDiagramDirtyState || activeDiagramSaveState ? "default" : "outline"}
-                    className="order-last gap-2 min-w-[124px]"
-                    data-testid="button-save-diagram-header"
-                    title={
-                      activeDiagramSaveState
-                        ? "Saving diagram"
-                        : activeDiagramDirtyState
-                          ? "Save diagram"
-                          : "No changes to save"
-                    }
-                  >
-                    {activeDiagramSaveState ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : !activeDiagramDirtyState ? (
-                      <Save className="h-4 w-4 opacity-60" />
-                    ) : (
+                  <div className="order-last flex items-center gap-3">
+                    <span
+                      className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex"
+                      aria-live="polite"
+                      data-testid="diagram-save-status"
+                    >
+                      {activeDiagramSaveState ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Saving…
+                        </>
+                      ) : activeDiagramDirtyState ? (
+                        <>
+                          <span className="h-2 w-2 rounded-full bg-amber-500" />
+                          Unsaved changes
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          All changes saved
+                        </>
+                      )}
+                    </span>
+                    <Button
+                      onClick={handleSaveDiagram}
+                      disabled={activeDiagramSaveState || !activeDiagramDirtyState}
+                      variant={activeDiagramDirtyState || activeDiagramSaveState ? "default" : "outline"}
+                      className="gap-2"
+                      data-testid="button-save-diagram-header"
+                      title={activeDiagramDirtyState ? `Save the diagram (${saveShortcut})` : "Nothing to save"}
+                    >
                       <Save className="h-4 w-4" />
-                    )}
-                    {activeDiagramSaveState
-                      ? "Saving..."
-                      : activeDiagramDirtyState
-                        ? "Save Diagram"
-                        : "No Changes"}
-                  </Button>
+                      Save
+                    </Button>
+                  </div>
                 )}
 
 
@@ -326,7 +348,7 @@ export default function ProjectView() {
                         Views
                       </h2>
                       <p className="text-muted-foreground mt-1">
-                        Select or create a diagram view to start modeling.
+                        Open a diagram or create one to start modeling.
                       </p>
                     </div>
                     <Button
@@ -336,7 +358,7 @@ export default function ProjectView() {
                       data-testid="button-create-view-hero"
                     >
                       <Plus className="w-5 h-5" />
-                      Create New View
+                      New diagram
                     </Button>
                   </div>
 
@@ -399,10 +421,10 @@ export default function ProjectView() {
                         <Layers className="w-8 h-8 opacity-50" />
                       </div>
                       <h3 className="text-xl font-medium">
-                        No views created yet
+                        No diagrams yet
                       </h3>
                       <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
-                        This project is empty. Create your first diagram view to
+                        This project is empty. Create your first diagram to
                         get started.
                       </p>
                     </div>

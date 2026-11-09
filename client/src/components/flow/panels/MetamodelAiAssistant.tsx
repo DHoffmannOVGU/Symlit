@@ -1,6 +1,6 @@
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type {
   AiMetamodelNodeKind,
   AiMetamodelProposal,
@@ -59,7 +59,8 @@ type ChatMessage = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  onApply: (proposal: AiMetamodelProposal) => void;
+  /** Adds the proposal to the diagram; resolves once the elements are there. */
+  onApply: (proposal: AiMetamodelProposal) => void | Promise<void>;
 };
 
 const suggestions = [
@@ -176,6 +177,8 @@ export function MetamodelAiAssistant({
     [metamodelSetup],
   );
 
+  /** A proposal is being added; a second click must not add it again. */
+  const applyingRef = useRef(false);
   const currentModel = useMemo(
     () => ({
       nodes: nodes.map((node) => {
@@ -305,8 +308,8 @@ export function MetamodelAiAssistant({
     );
   };
 
-  const applyProposal = (message: ChatMessage) => {
-    if (!message.proposal || message.applied) return;
+  const applyProposal = async (message: ChatMessage) => {
+    if (!message.proposal || message.applied || applyingRef.current) return;
     const selectedNodeIds = new Set(message.selectedNodeIds ?? []);
     const selectedEdgeIndexes = new Set(message.selectedEdgeIndexes ?? []);
     const selected = filterAiMetamodelProposal(
@@ -319,7 +322,14 @@ export function MetamodelAiAssistant({
       setError("Select at least one valid element or relationship before applying.");
       return;
     }
-    onApply(selected);
+    // Only report "Applied" (and let a follow-up prompt see the new elements)
+    // once they are in the diagram; adding them waits for the layout engine to load.
+    applyingRef.current = true;
+    try {
+      await onApply(selected);
+    } finally {
+      applyingRef.current = false;
+    }
     setError(null);
     setMessages((current) =>
       current.map((item) =>

@@ -17,6 +17,13 @@ export interface UseCanvasDisplayGraphParams {
   dragPreviewNode: Node | null;
 }
 
+/** The element was resized by hand, so its text has to fit the box. */
+const hasFixedSize = (node: { width?: number; height?: number; style?: unknown }) => {
+  const style = (node.style ?? {}) as { width?: unknown; height?: unknown };
+  return typeof node.height === "number" || typeof style.height === "number" ||
+    typeof node.width === "number" || typeof style.width === "number";
+};
+
 export function useCanvasDisplayGraph({
   connectingFromNodeId,
   draggingNodeId,
@@ -64,6 +71,7 @@ export function useCanvasDisplayGraph({
               isReadOnly: isExternalNode(node.id),
               alwaysShowAccent,
               showDescription: showNodeDescriptions,
+              hasFixedSize: hasFixedSize(node),
             },
           };
         }
@@ -82,6 +90,7 @@ export function useCanvasDisplayGraph({
             flowActive: false,
             alwaysShowAccent,
             showDescription: showNodeDescriptions,
+              hasFixedSize: hasFixedSize(node),
           },
         };
       }
@@ -116,6 +125,7 @@ export function useCanvasDisplayGraph({
           flowActive: isFlowActive,
           alwaysShowAccent,
           showDescription: showNodeDescriptions,
+              hasFixedSize: hasFixedSize(node),
         },
       };
     });

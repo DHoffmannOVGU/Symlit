@@ -73,7 +73,7 @@ export function Sidebar({
   onRemoveReferencedMetamodel,
   metamodelSetup,
 }: SidebarProps) {
-  const { username, role, capabilities } = useAuth();
+  const { username, role, capabilities, authKind } = useAuth();
   const visibleRole = workspaceRole ?? role;
   const canEditMetamodels =
     capabilities.canEditMetamodels || visibleRole === "admin" || visibleRole === "architect";
@@ -89,10 +89,6 @@ export function Sidebar({
   const [selectedNodeByViewId, setSelectedNodeByViewId] = useState<
     Map<number, string | null>
   >(() => new Map());
-  const [selectedReferencedProjectId, setSelectedReferencedProjectId] =
-    useState<string>(BASE_METAMODEL_ID);
-  const [selectedReferencedViewId, setSelectedReferencedViewId] =
-    useState<string>("all");
   const [selectedMetamodelCreateProjectId, setSelectedMetamodelCreateProjectId] =
     useState<string>(BASE_METAMODEL_ID);
   const [selectedMetamodelCreateViewId, setSelectedMetamodelCreateViewId] =
@@ -123,8 +119,6 @@ export function Sidebar({
     views,
     expandedViews,
     referencedProjects,
-    selectedReferencedProjectId,
-    selectedReferencedViewId,
   });
 
   const hasReferencedMetamodels = referencedProjects.length > 0;
@@ -134,23 +128,6 @@ export function Sidebar({
       configuredTypes.has(item.type),
     );
   }, [metamodelSetup]);
-
-  useEffect(() => {
-    if (referencedProjects.length === 0) {
-      setSelectedReferencedProjectId(BASE_METAMODEL_ID);
-      setSelectedMetamodelCreateProjectId(BASE_METAMODEL_ID);
-      return;
-    }
-
-    setSelectedReferencedProjectId((current) => {
-      if (current === BASE_METAMODEL_ID) {
-        return String(referencedProjects[0].id);
-      }
-      return referencedProjects.some((project) => String(project.id) === current)
-        ? current
-        : String(referencedProjects[0].id);
-    });
-  }, [referencedProjects]);
 
   useEffect(() => {
     if (referencedProjects.length === 0) {
@@ -165,23 +142,6 @@ export function Sidebar({
         : BASE_METAMODEL_ID;
     });
   }, [referencedProjects]);
-
-  const filteredReferencedViews = useMemo(() => {
-    if (selectedReferencedProjectId === BASE_METAMODEL_ID) return [];
-    return referencedViews.find(
-      ({ project }) => String(project.id) === selectedReferencedProjectId,
-    )?.views ?? [];
-  }, [referencedViews, selectedReferencedProjectId]);
-
-  useEffect(() => {
-    setSelectedReferencedViewId((current) => {
-      if (selectedReferencedProjectId === BASE_METAMODEL_ID) return "all";
-      if (current === "all") return current;
-      return filteredReferencedViews.some((view) => String(view.id) === current)
-        ? current
-        : "all";
-    });
-  }, [filteredReferencedViews, selectedReferencedProjectId]);
 
   const filteredMetamodelCreateViews = useMemo(() => {
     if (selectedMetamodelCreateProjectId === BASE_METAMODEL_ID) return [];
@@ -325,15 +285,9 @@ export function Sidebar({
     return ownerProjectId ? `mm:${ownerProjectId}:${node.id}` : node.id;
   };
 
+  // Types of every referenced metamodel, once each (a type can appear in several diagrams).
   const referencedPaletteItems = useMemo(() => {
-    if (selectedReferencedProjectId === BASE_METAMODEL_ID) return [];
-
     const items = referencedViewEntries
-      .filter(({ project, view }) => {
-        if (String(project.id) !== selectedReferencedProjectId) return false;
-        if (selectedReferencedViewId === "all") return true;
-        return String(view.id) === selectedReferencedViewId;
-      })
       .flatMap(({ project, view }) => {
         const flowQuery = referencedFlowByViewId.get(view.id);
         const nodes = ((flowQuery?.data?.nodes ?? []) as FlowNode[])
@@ -367,12 +321,7 @@ export function Sidebar({
     return Array.from(uniqueByType.values()).sort((a, b) =>
       a.meta.label.localeCompare(b.meta.label),
     );
-  }, [
-    referencedFlowByViewId,
-    referencedViewEntries,
-    selectedReferencedProjectId,
-    selectedReferencedViewId,
-  ]);
+  }, [referencedFlowByViewId, referencedViewEntries]);
 
   const metamodelCreatePaletteItems = useMemo(() => {
     if (selectedMetamodelCreateProjectId === BASE_METAMODEL_ID) return [];
@@ -518,13 +467,8 @@ export function Sidebar({
   const renderReferencedNodePalette = () => (
     <ReferencedNodePalette
       referencedProjects={referencedProjects}
-      selectedReferencedProjectId={selectedReferencedProjectId}
       unavailableMetamodelIds={unavailableMetamodelIds}
       getReferencedFlowQueriesForSelection={getReferencedFlowQueriesForSelection}
-      selectedReferencedViewId={selectedReferencedViewId}
-      setSelectedReferencedProjectId={setSelectedReferencedProjectId}
-      setSelectedReferencedViewId={setSelectedReferencedViewId}
-      filteredReferencedViews={filteredReferencedViews}
       onRemoveReferencedMetamodel={onRemoveReferencedMetamodel}
       retryReferencedFlows={retryReferencedFlows}
       referencedPaletteItems={referencedPaletteItems}
@@ -562,7 +506,8 @@ export function Sidebar({
           handleLinkClick={handleLinkClick}
           projectName={projectName}
           username={username}
-          visibleRole={visibleRole}
+          // Roles mean nothing in the single-user local edition; don't show one there.
+          visibleRole={authKind === "local" ? null : visibleRole}
         />
 
         <SidebarTabsContent

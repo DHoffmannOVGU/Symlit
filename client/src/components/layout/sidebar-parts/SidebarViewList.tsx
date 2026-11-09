@@ -46,7 +46,7 @@ export function SidebarViewList({
         <SidebarMenu>
           {views.length === 0 ? (
             <div className="px-4 py-8 text-center text-xs italic text-white/30">
-              No views yet.
+              No diagrams yet.
             </div>
           ) : (
             orderedViews.map((view) => {

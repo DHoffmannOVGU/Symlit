@@ -27,7 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getNodeIcon } from "@/lib/node-icons";
-import { ArrowDownRight as ArrowDownRightIcon, Boxes as BoxesIcon, Diamond as DiamondIcon, GitBranchPlus as GitBranchPlusIcon, Link2 as Link2Icon, Network as NetworkIcon, TableProperties as TablePropertiesIcon } from "lucide-react";
+import { ArrowDownRight as ArrowDownRightIcon, Boxes as BoxesIcon, Diamond as DiamondIcon, GitBranchPlus as GitBranchPlusIcon, Link2 as Link2Icon, Share2 as Share2Icon, TableProperties as TablePropertiesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProjectType } from "@shared/schema";
 import { magicRelationTypeCatalog } from "@shared/metamodel-setup";
@@ -116,33 +116,39 @@ export function CanvasTableMode({
           <Button
             variant="outline"
             size="sm"
-            title="Graph View"
+            aria-label="Diagram"
+            aria-pressed={displayMode === "graph"}
+            data-testid="button-toolbar-graph"
             className={cn(
-              "h-9 w-9 px-0",
+              "h-9 gap-1.5 px-2.5 text-xs",
               displayMode === "graph" &&
                 "border-primary bg-primary/10 text-primary",
             )}
             onClick={() => onDisplayModeChange("graph")}
           >
-            <NetworkIcon className="h-4 w-4" />
+            <Share2Icon className="h-4 w-4" />
+            Diagram
           </Button>
           <Button
             variant="outline"
             size="sm"
-            title="Table View"
+            aria-label="Table"
+            aria-pressed={displayMode === "table"}
+            data-testid="button-toolbar-table"
             className={cn(
-              "h-9 w-9 px-0",
+              "h-9 gap-1.5 px-2.5 text-xs",
               displayMode === "table" &&
                 "border-primary bg-primary/10 text-primary",
             )}
             onClick={() => onDisplayModeChange("table")}
           >
             <TablePropertiesIcon className="h-4 w-4" />
+            Table
           </Button>
         </div>
         <Card className="border-slate-200 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Nodes</CardTitle>
+            <CardTitle className="text-base">Elements</CardTitle>
             <CardDescription>
               {filteredNodeTableRows.length} of {nodeTableRows.length} node
               {nodeTableRows.length === 1 ? "" : "s"}
@@ -153,7 +159,7 @@ export function CanvasTableMode({
               <Input
                 value={nodeTableFilter}
                 onChange={(event) => onNodeTableFilterChange(event.target.value)}
-                placeholder="Filter nodes by name, id, type, description, or parent"
+                placeholder="Filter elements by name, id, type, description, or parent"
                 data-testid="input-node-table-filter"
               />
             </div>
@@ -179,8 +185,8 @@ export function CanvasTableMode({
                         className="text-center text-muted-foreground"
                       >
                         {nodeTableRows.length === 0
-                          ? "No nodes in this diagram."
-                          : "No nodes match the current filter."}
+                          ? "No elements in this diagram."
+                          : "No elements match the filter."}
                       </TableCell>
                     </TableRow>
                   ) : (

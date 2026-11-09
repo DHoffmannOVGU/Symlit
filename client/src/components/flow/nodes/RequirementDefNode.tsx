@@ -5,7 +5,7 @@ import BasePartNode, { type BasePartNodeConfig } from "./BasePartNode";
 export const REQUIREMENTDEF_DEFAULT_ACCENT_COLOR = "#14b8a6";
 
 const config: BasePartNodeConfig = {
-  defaultTypeLabel: "Requirement",
+  defaultTypeLabel: "Need",
   defaultAccentColor: REQUIREMENTDEF_DEFAULT_ACCENT_COLOR,
   defaultIconBg: "rgba(20, 184, 166, 0.12)",
   hoverBorderClass: "group-hover:!border-teal-500",
