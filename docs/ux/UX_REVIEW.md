@@ -65,6 +65,13 @@ the summary above is from established, widely published material.*
 
 ## Findings from the drone tutorial walk-through
 
-_To be filled with your notes._
+| # | Where | Finding | Status |
+| --- | --- | --- | --- |
+| F1 | Element editor | Clicking the Name field sometimes did not focus it, so the name could not be changed; later it worked. | Not reproduced (focus worked in 3 of 3 automated tries, opened by double-click). Watch for it; note what was open just before (a menu, the tutorial's Show me, table view). |
+| F2 | Element editor | Icon and colour appeared twice and took up much of the panel. | Fixed: the style section rendered under both tabs. |
+| F3 | Element editor | In the demo project the Type list showed every built-in type twice: "Object (Default)" and again as "Object". | Fixed: the built-ins were listed twice, with the same value. |
+| F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Proposed, to design |
 
 ## Done
+- F2: the icon and colour pickers rendered under both the Content and Styling tabs (`NodeStyleTab` was not inside a `TabsContent`).
+- F3: instance projects without a metamodel listed each built-in type twice in the element editor's Type menu.

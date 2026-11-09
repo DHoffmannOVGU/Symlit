@@ -89,6 +89,9 @@ export function NodeAttributePanel({
   const [showExtendedIcons, setShowExtendedIcons] = useState(false);
   const formulaTextareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const defaultTypeValue = "__default_part__";
+  // Instance projects also receive the built-in types in availablePartDefs;
+  // they are listed above as "(Default)" already.
+  const metamodelTypes = availablePartDefs.filter((def) => !def.id.startsWith("__default_"));
   const actionTypeValue = "__default_action__";
   const concernTypeValue = "__default_concern__";
   const agentTypeValue = "__default_agent__";
@@ -754,7 +757,7 @@ export function NodeAttributePanel({
                     <SelectItem value={requirementTypeValue}>Requirement (Default)</SelectItem>
                     <SelectItem value={eventTypeValue}>Event (Default)</SelectItem>
                     <SelectItem value={capabilityTypeValue}>Capability (Default)</SelectItem>
-                    {availablePartDefs.map((def) => (
+                    {metamodelTypes.map((def) => (
                       <SelectItem key={def.id} value={def.id}>
                         {def.label}
                       </SelectItem>
@@ -854,6 +857,7 @@ export function NodeAttributePanel({
 
 
 
+          <TabsContent value="style">
           <NodeStyleTab
             canInheritStyle={canInheritStyle}
             inheritStyle={inheritStyle}
@@ -866,6 +870,7 @@ export function NodeAttributePanel({
             onToggleExtendedIcons={() => setShowExtendedIcons((current) => !current)}
             onColorChange={setColor}
           />
+          </TabsContent>
         </Tabs>
 
         {hasDuplicateAttributeNames ? (
