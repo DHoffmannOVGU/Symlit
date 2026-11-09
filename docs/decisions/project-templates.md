@@ -57,7 +57,22 @@ Importing a project file (`server/services/project-import.ts`)
 - **F8** Exporting a project with its metamodels and patterns and importing
   the file gives the same model.
 
+Creating and duplicating (`e2e/project-templates.spec.ts`, `server/project-templates.test.ts`)
+- **C1** Creating is two steps: what to start from (empty metamodel, empty
+  model, or a template), then name, description and only the choices that
+  apply (a metamodel's purpose; a model's metamodel). A template decides the
+  project type.
+- **C2** An empty model can be based on one of the user's metamodels; a
+  metamodel's card offers "New model from this metamodel".
+- **C3** An empty project gets a first diagram ("Main") and opens on it.
+- **C4** The confirmation names every project created, including
+  metamodels a template brings.
+- **D1** Duplicating copies a project's diagrams, elements, relationships,
+  rules and patterns with fresh ids, via the project file format. The copy
+  keeps referencing the same metamodels (they are not copied), is named
+  "Copy of …" and is not linked to any template.
+- **D2** A project that does not exist cannot be duplicated.
+
 ## Not done yet (v0.2)
 - Saving a project as a template, template files from users, a template
   library (structure to be decided).
-- An "Import project file" action in the UI (the importer exists).
