@@ -1,3 +1,4 @@
+import { DEFAULT_LOCAL_USER_NAME } from "@shared/authorization";
 import path from "node:path";
 import { z } from "zod";
 
@@ -20,7 +21,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url().optional().or(z.literal("").transform(() => undefined)),
   SYMLIT_DATA_DIR: z.string().min(1).default("./data"),
   SYMLIT_SEED_DEMO: booleanFlag(true),
-  SYMLIT_USER_NAME: z.string().trim().min(1).max(80).default("Local user"),
+  SYMLIT_USER_NAME: z.string().trim().min(1).max(80).default(DEFAULT_LOCAL_USER_NAME),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL: z.string().optional(),
 });

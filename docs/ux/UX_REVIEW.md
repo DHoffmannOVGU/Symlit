@@ -59,7 +59,9 @@ One word per concept in everything a user reads (labels, tooltips, help, tutoria
 - **Tutorial:** docked coach card bottom right; 7 lessons, 15 steps; Show me / Hint / Skip; collapsible;
   steps complete on app signals (`shared/tutorial.ts`, `client/src/components/tutorial/`).
 
-## First observations (from screenshots, not yet discussed)
+## First observations (from screenshots)
+
+All fixed; see Done below.
 
 | # | Where | Observation | Heuristic |
 | --- | --- | --- | --- |
@@ -90,6 +92,8 @@ One word per concept in everything a user reads (labels, tooltips, help, tutoria
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- O7: the project list greets by the configured name (`SYMLIT_USER_NAME`), or just "Good to see you." with the default
+  name, instead of the internal login "local".
 - O9: the header button always says "Save"; the state is shown next to it ("Unsaved changes", "Saving…", "All changes
   saved"). Ctrl+S / Cmd+S saves the open diagram (it used to open the browser's "save page" dialog).
 - O6: palette entries are compact (one-line description, full text on hover) and the sidebar footer is tighter, so all

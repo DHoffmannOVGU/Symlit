@@ -15,6 +15,8 @@ test("opens straight into the local workspace without a login", async ({ page })
   await expect(page.getByTestId("button-new-project")).toBeVisible();
   await expect(page.getByText("Local workspace")).toBeVisible();
   await expect(page).toHaveTitle("Symlit");
+  // Greets without the internal login name ("local") or the default display name.
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Good to see you.");
   expect(external).toEqual([]);
 });
 
