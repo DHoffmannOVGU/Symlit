@@ -107,7 +107,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
         title: "Give it an attribute",
         instruction:
           "Double-click the new type to open its editor, add an attribute such as resolution with a unit, and save the editor.",
-        hint: "Attributes defined on a type are offered on every instance of that type.",
+        hint: "Add attribute opens a small editor: name, description, type and a unit from the catalog. New elements of this type get a copy of its attributes.",
         signal: "attribute-added",
         scope: "metamodel",
       },

@@ -62,6 +62,8 @@ the summary above is from established, widely published material.*
 | O8 | Element editor | Attributes are headed "Attribute 1/2" instead of their names; the "Inherit" button gives no hint what it does. | 6 |
 | O9 | Save button | The button label shows state ("No Changes") rather than the action. | 1, 4 |
 | O11 | Canvas | An element near the top edge puts its edit/copy/delete bar over the canvas toolbar. | 8 |
+| O12 | Sidebar (instance) | Types in the Metamodels palette can only be dragged; clicking does nothing, unlike the metamodel palette where a click places the element. | 4, 7 |
+| O13 | Canvas | Opening an instance diagram whose typed elements were stored without their type's style marks it as changed ("Save Diagram" enabled) because the style is filled in on load. Seen with API-created diagrams. | 1 |
 | O10 | Tutorial coach | Step text is set larger than the lesson text around it; the orange "This happens in …" line reads like a warning. | 8 |
 
 ## Findings from the drone tutorial walk-through
@@ -73,9 +75,15 @@ the summary above is from established, widely published material.*
 | F3 | Element editor | In the demo project the Type list showed every built-in type twice: "Object (Default)" and again as "Object". | Fixed: the built-ins were listed twice, with the same value. |
 | F5 | Element card | Requirements engineers need the description on the card as much as the name: show it per element/type, and handle long text. | Done (see below). |
 | F6 | Vocabulary | Rename the built-in kind "Requirement" to "Need", leaving room for requirement types defined in a metamodel. | Done (see below). |
+| F7 | Element editor, attributes | Units are free text; the description is hidden behind an icon; a new attribute is not focused; every property is editable inline. A type's attributes reach instances only through an unexplained "Inherit" button. | Done (see below). |
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- F7: attributes are listed in short form (name, type, description, value; values editable in place on instance elements).
+  Adding or editing one opens a small editor (name focused, description visible, unit picker over a catalog grouped by
+  quantity, `shared/units.ts`; custom units allowed and marked). Cancel restores the attribute. New typed elements get
+  copies of their type's attributes (`client/src/lib/type-attributes.ts`); elements missing some are offered them.
+  The Inherit button remains only as "Copy from parent…" for untyped elements with a Generalization parent.
 - F6: the built-in kind "Requirement" is called "Need". Stored diagrams are read with the new name
   (`currentKindLabel` in `shared/metamodel-setup.ts`): metamodel elements of the kind and untyped instance elements;
   instance elements typed by a metamodel type that someone named "Requirement" keep that name.

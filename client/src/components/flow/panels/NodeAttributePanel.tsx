@@ -33,6 +33,9 @@ import {
   type FormulaAutocompleteState,
 } from "./node-attribute/formula-utils";
 import { AttributeRowEditor } from "./node-attribute/AttributeRowEditor";
+import { AttributeEditorDialog } from "./node-attribute/AttributeEditorDialog";
+import { AttributeSummaryRow } from "./node-attribute/AttributeSummaryRow";
+import { missingTypeAttributes } from "@/lib/type-attributes";
 import { InheritAttributesDialog } from "./node-attribute/InheritAttributesDialog";
 import { NodeStyleTab } from "./node-attribute/NodeStyleTab";
 import { isNeedKindLabel } from "@shared/metamodel-setup";
@@ -81,8 +84,10 @@ export function NodeAttributePanel({
   const [ownStyle, setOwnStyle] = useState<ElementStyle>({});
   const [inheritStyle, setInheritStyle] = useState(false);
   const [inheritDialogOpen, setInheritDialogOpen] = useState(false);
-  const [openDescriptions, setOpenDescriptions] = useState<Set<string>>(new Set());
-  const [collapsedAttributes, setCollapsedAttributes] = useState<Set<string>>(new Set());
+  /** The attribute open in the attribute editor, and the list as it was before (for Cancel). */
+  const [editingAttribute, setEditingAttribute] = useState<
+    { id: string; isNew: boolean; before: NodeAttribute[] } | null
+  >(null);
   const [selectedParentId, setSelectedParentId] = useState<string>("");
   const [selectedInherited, setSelectedInherited] = useState<Set<string>>(new Set());
   const [listOptionDrafts, setListOptionDrafts] = useState<Record<string, string>>({});
@@ -99,7 +104,7 @@ export function NodeAttributePanel({
   const requirementTypeValue = "__default_requirement__";
   const eventTypeValue = "__default_event__";
   const capabilityTypeValue = "__default_capability__";
-  const attributeValueLabel = node?.type === "part" ? "Value" : "Default Value";
+  const attributeValueLabel = node?.type === "part" ? "Value" : "Default value";
 
   useEffect(() => {
     if (node) {
@@ -120,8 +125,7 @@ export function NodeAttributePanel({
     } else {
       setFormulaDrafts({});
     }
-    setOpenDescriptions(new Set());
-    setCollapsedAttributes(new Set());
+    setEditingAttribute(null);
     setListOptionDrafts({});
     setFormulaAutocomplete(null);
   }, [node]);
@@ -285,10 +289,12 @@ export function NodeAttributePanel({
   const getAttributeKey = (attr: NodeAttribute) => attr.id;
 
   const handleAddAttribute = () => {
+    const id = `attr_${Date.now()}`;
+    setEditingAttribute({ id, isNew: true, before: attributes });
     const nextAttributes = [
       ...attributes,
       {
-        id: `attr_${Date.now()}`,
+        id,
         name: "",
         description: "",
         value: "",
@@ -583,52 +589,43 @@ export function NodeAttributePanel({
     setInheritDialogOpen(false);
   };
 
-  const toggleDescription = (id: string) => {
-    setOpenDescriptions((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
+  /** Attributes of the element's type it does not have (created earlier, or the type gained them since). */
+  const missingFromType = useMemo(() => {
+    if (node?.type !== "part" || !nodeTypeId) return [];
+    const typeNode = availablePartDefNodes.find((candidate) => candidate.id === nodeTypeId);
+    return missingTypeAttributes(attributes, nodeTypeId, typeNode?.data?.attributes);
+  }, [attributes, availablePartDefNodes, node?.type, nodeTypeId]);
+
+  const addMissingFromType = () => {
+    const nextAttributes = [...attributes, ...missingFromType];
+    setAttributes(nextAttributes);
+    setFormulaDrafts((prev) => syncFormulaDrafts(prev, nextAttributes));
   };
 
-  const toggleAttributeCollapsed = (id: string) => {
-    setCollapsedAttributes((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  const openAttributeEditor = (id: string) =>
+    setEditingAttribute({ id, isNew: false, before: attributes });
 
-  const formatAttributeSummary = (attr: NodeAttribute) => {
-    const name = attr.name.trim() || "Attribute";
-    const options = sanitizeAttributeOptions(attr.options);
-    const derivedState = attr.type === "derived" ? derivedAttributeState.get(attr.id) : undefined;
-    let value =
-      attr.type === "derived"
-        ? derivedState?.error
-          ? "Invalid formula"
-          : derivedState?.value || ""
-        : attr.value?.trim() || "";
-
-    if (attr.type === "boolean") {
-      value = value === "true" ? "Yes" : "No";
-    } else if (attr.type === "list" && value && !options.includes(value)) {
-      value = options[0] ?? value;
+  const closeAttributeEditor = (keep: boolean) => {
+    if (!editingAttribute) return;
+    if (!keep) {
+      const restored = editingAttribute.before;
+      setAttributes(restored);
+      setFormulaDrafts(buildFormulaDrafts(restored));
     }
-
-    const unit = (attr.type === "number" || attr.type === "derived") && attr.unit.trim()
-      ? ` ${attr.unit.trim()}`
-      : "";
-    return `${name}: ${value || "-"}${unit}`;
+    setFormulaAutocomplete(null);
+    setEditingAttribute(null);
   };
+
+  const editedAttribute = editingAttribute
+    ? attributes.find((attr) => attr.id === editingAttribute.id)
+    : undefined;
+  const editedAttributeProblem = !editedAttribute
+    ? null
+    : !editedAttribute.name.trim()
+      ? "Give the attribute a name."
+      : duplicateAttributeNameSet.has(editedAttribute.name.trim().toLowerCase())
+        ? "Another attribute of this element already has this name."
+        : null;
 
   const hasDerivedFormulaErrors = attributes.some(
     (attr) => attr.type === "derived" && !!derivedAttributeState.get(attr.id)?.error,
@@ -785,22 +782,22 @@ export function NodeAttributePanel({
 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Custom Attributes</Label>
+                <Label>Attributes</Label>
                 <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setInheritDialogOpen(true)}
-                    disabled={parentOptions.length === 0}
-                    title={
-                      parentOptions.length === 0
-                        ? "No parent node available for inheritance"
-                        : "Inherit attributes from a parent node"
-                    }
-                  >
-                    Inherit
-                  </Button>
+                  {/* Typed elements get their type's attributes when created; this copies
+                      attributes from a general type (a Generalization parent). */}
+                  {!nodeTypeId && parentOptions.length > 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setInheritDialogOpen(true)}
+                      title="Copy attributes from the type this one specializes"
+                      data-testid="button-inherit-attributes"
+                    >
+                      Copy from parent…
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"
@@ -809,52 +806,90 @@ export function NodeAttributePanel({
                     data-testid="button-add-attribute"
                   >
                     <Plus className="w-4 h-4 mr-1" />
-                    Add Attribute
+                    Add attribute
                   </Button>
                 </div>
               </div>
 
-              {attributes.length === 0 && (
+              {missingFromType.length > 0 ? (
+                <div
+                  className="flex items-center justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm"
+                  data-testid="attributes-missing-from-type"
+                >
+                  <span>
+                    {nodeTypeLabel} defines {missingFromType.length === 1 ? "an attribute" : `${missingFromType.length} attributes`} this
+                    element does not have: {missingFromType.map((attr) => attr.name).join(", ")}.
+                  </span>
+                  <Button type="button" size="sm" variant="outline" onClick={addMissingFromType} data-testid="button-add-missing-attributes">
+                    Add
+                  </Button>
+                </div>
+              ) : null}
+
+              {attributes.length === 0 && missingFromType.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">
-                  No custom attributes defined. Click "Add Attribute" to create one.
+                  No attributes yet. Add one to describe properties such as mass or range.
                 </p>
               )}
 
-              <TooltipProvider delayDuration={0}>
-              <div className="space-y-3">
-              {attributes.map((attr, index) => (
-                <AttributeRowEditor
-                  key={attr.id}
-                  attr={attr}
-                  index={index}
-                  attributes={attributes}
-                  isCollapsed={collapsedAttributes.has(attr.id)}
-                  isDescriptionOpen={openDescriptions.has(attr.id)}
-                  duplicateAttributeNameSet={duplicateAttributeNameSet}
-                  attributeValueLabel={attributeValueLabel}
-                  listOptionDraft={listOptionDrafts[attr.id] ?? ""}
-                  formulaDrafts={formulaDrafts}
-                  formulaAutocomplete={formulaAutocomplete}
-                  derivedAttributeState={derivedAttributeState}
-                  formulaTextareaRefs={formulaTextareaRefs}
-                  formatAttributeSummary={formatAttributeSummary}
-                  onToggleCollapsed={toggleAttributeCollapsed}
-                  onToggleDescription={toggleDescription}
-                  onRemoveAttribute={handleRemoveAttribute}
-                  onAttributeChange={handleAttributeChange}
-                  onAttributeTypeChange={handleAttributeTypeChange}
-                  onListOptionDraftChange={handleListOptionDraftChange}
-                  onAddListOption={handleAddListOption}
-                  onRemoveListOption={handleRemoveListOption}
-                  onAutoResize={handleAutoResize}
-                  setFormulaDrafts={setFormulaDrafts}
-                  setFormulaAutocomplete={setFormulaAutocomplete}
-                  updateFormulaAutocomplete={updateFormulaAutocomplete}
-                  applyFormulaAutocomplete={applyFormulaAutocomplete}
-                />
-              ))}
+              <div className="space-y-2">
+                {attributes.map((attr, index) =>
+                  editingAttribute?.isNew && editingAttribute.id === attr.id ? null : (
+                    <AttributeSummaryRow
+                      key={attr.id}
+                      attr={attr}
+                      index={index}
+                      valueEditable={node.type === "part"}
+                      valueLabel={attributeValueLabel}
+                      derived={derivedAttributeState.get(attr.id)}
+                      onValueChange={(value) => handleAttributeChange(attr.id, "value", value)}
+                      onEdit={() => openAttributeEditor(attr.id)}
+                      onRemove={() => handleRemoveAttribute(attr.id)}
+                    />
+                  ),
+                )}
               </div>
-              </TooltipProvider>
+
+              <AttributeEditorDialog
+                open={!!editedAttribute}
+                isNew={!!editingAttribute?.isNew}
+                elementLabel={label}
+                problem={editedAttributeProblem}
+                onDone={() => closeAttributeEditor(true)}
+                onCancel={() => closeAttributeEditor(false)}
+                onDelete={() => {
+                  if (editedAttribute) handleRemoveAttribute(editedAttribute.id);
+                  setEditingAttribute(null);
+                }}
+              >
+                {editedAttribute ? (
+                  <TooltipProvider delayDuration={0}>
+                    <AttributeRowEditor
+                      attr={editedAttribute}
+                      index={attributes.indexOf(editedAttribute)}
+                      attributes={attributes}
+                      autoFocusName={editingAttribute?.isNew}
+                      duplicateAttributeNameSet={duplicateAttributeNameSet}
+                      attributeValueLabel={attributeValueLabel}
+                      listOptionDraft={listOptionDrafts[editedAttribute.id] ?? ""}
+                      formulaDrafts={formulaDrafts}
+                      formulaAutocomplete={formulaAutocomplete}
+                      derivedAttributeState={derivedAttributeState}
+                      formulaTextareaRefs={formulaTextareaRefs}
+                      onAttributeChange={handleAttributeChange}
+                      onAttributeTypeChange={handleAttributeTypeChange}
+                      onListOptionDraftChange={handleListOptionDraftChange}
+                      onAddListOption={handleAddListOption}
+                      onRemoveListOption={handleRemoveListOption}
+                      onAutoResize={handleAutoResize}
+                      setFormulaDrafts={setFormulaDrafts}
+                      setFormulaAutocomplete={setFormulaAutocomplete}
+                      updateFormulaAutocomplete={updateFormulaAutocomplete}
+                      applyFormulaAutocomplete={applyFormulaAutocomplete}
+                    />
+                  </TooltipProvider>
+                ) : null}
+              </AttributeEditorDialog>
             </div>
 
           </TabsContent>
