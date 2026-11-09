@@ -18,7 +18,9 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  useCreateStarterProject,
+  useCreateProject,
+  useCreateProjectFromTemplate,
+  useProjectTemplates,
   useDeleteProject,
   useProjects,
   useUpdateProject,
@@ -47,10 +49,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
-  getProjectTemplate,
-  getProjectTemplateViews,
-  PROJECT_TEMPLATES,
-  type ProjectTemplateId,
+  BLANK_TEMPLATE,
+  BLANK_TEMPLATE_ID,
+  findProjectTemplate,
+  withBlankTemplate,
+  type ProjectTemplateOption,
 } from "@/lib/project-templates";
 import {
   getRecentProjects,
@@ -251,10 +254,12 @@ function ProjectCard({
   );
 }
 
-function StarterEmptyState({
+function TemplateEmptyState({
+  templates,
   onSelectTemplate,
 }: {
-  onSelectTemplate: (templateId: ProjectTemplateId) => void;
+  templates: ProjectTemplateOption[];
+  onSelectTemplate: (templateId: string) => void;
 }) {
   return (
     <div className="rounded-3xl border border-dashed border-primary/25 bg-gradient-to-br from-card to-primary/[0.06] p-6 sm:p-10">
@@ -269,12 +274,12 @@ function StarterEmptyState({
           Start with a model that fits your work
         </h3>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-          Choose a starter template with a useful first view, or begin with a
+          Choose a project template with a useful first view, or begin with a
           completely blank project.
         </p>
       </div>
       <div className="mx-auto mt-8 grid max-w-5xl gap-3 md:grid-cols-3">
-        {PROJECT_TEMPLATES.map((template) => (
+        {templates.map((template) => (
           <button
             key={template.id}
             type="button"
@@ -308,16 +313,18 @@ function ProjectGrid({
   onEdit,
   isLoading,
   allProjects,
+  templates = [],
   onSelectTemplate,
-  showStarterState = false,
+  showTemplateState = false,
 }: {
   projects?: Project[];
   onDelete: (id: number) => void;
   onEdit: (project: Project) => void;
   isLoading: boolean;
   allProjects?: Project[];
-  onSelectTemplate?: (templateId: ProjectTemplateId) => void;
-  showStarterState?: boolean;
+  templates?: ProjectTemplateOption[];
+  onSelectTemplate?: (templateId: string) => void;
+  showTemplateState?: boolean;
 }) {
   if (isLoading) {
     return (
@@ -332,8 +339,8 @@ function ProjectGrid({
     );
   }
   if (!projects?.length) {
-    if (showStarterState && onSelectTemplate) {
-      return <StarterEmptyState onSelectTemplate={onSelectTemplate} />;
+    if (showTemplateState && onSelectTemplate) {
+      return <TemplateEmptyState templates={templates} onSelectTemplate={onSelectTemplate} />;
     }
     return (
       <div className="rounded-2xl border border-dashed border-slate-300 bg-white py-24 text-center dark:border-slate-700 dark:bg-slate-900">
@@ -375,7 +382,9 @@ export default function ProjectList() {
   } = useAuth();
   const [, setLocation] = useLocation();
   const { data: projects, isLoading } = useProjects(userId);
-  const createStarterProject = useCreateStarterProject();
+  const createProject = useCreateProject();
+  const createFromTemplate = useCreateProjectFromTemplate();
+  const templates = withBlankTemplate(useProjectTemplates().data);
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
   const { toast } = useToast();
@@ -390,7 +399,7 @@ export default function ProjectList() {
   const [editProjectName, setEditProjectName] = useState("");
   const [editProjectDesc, setEditProjectDesc] = useState("");
   const [recentProjectEntries, setRecentProjectEntries] = useState<RecentProject[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<ProjectTemplateId>("blank");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(BLANK_TEMPLATE_ID);
   const [metamodelPurpose, setMetamodelPurpose] = useState<MetamodelPurpose>("custom");
   const [metamodelSetupDescription, setMetamodelSetupDescription] = useState("");
   const [selectedMagicNodeTypes, setSelectedMagicNodeTypes] = useState<MagicNodeType[]>(
@@ -427,7 +436,7 @@ export default function ProjectList() {
     ) {
       return;
     }
-    const template = getProjectTemplate("blank");
+    const template = BLANK_TEMPLATE;
     setSelectedTemplateId(template.id);
     setNewProjectType(template.projectType);
     setNewProjectName(template.projectName);
@@ -439,8 +448,8 @@ export default function ProjectList() {
   if (authLoading) return null;
   if (!user) return <WorkspaceUnavailable onRetry={() => void refreshSession()} />;
 
-  const openCreateDialog = (templateId: ProjectTemplateId = "blank") => {
-    const template = getProjectTemplate(templateId);
+  const openCreateDialog = (templateId: string = BLANK_TEMPLATE_ID) => {
+    const template = findProjectTemplate(templates, templateId);
     setSelectedTemplateId(template.id);
     setNewProjectType(template.projectType);
     setNewProjectName(template.projectName);
@@ -455,14 +464,13 @@ export default function ProjectList() {
     setNewProjectName("");
     setNewProjectDesc("");
     setNewProjectType("metamodel");
-    setSelectedTemplateId("blank");
+    setSelectedTemplateId(BLANK_TEMPLATE_ID);
     applyMetamodelSetup(getMetamodelPurposeRecommendation("custom"));
   };
 
   const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!newProjectName.trim() || !userId) return;
-    const template = getProjectTemplate(selectedTemplateId);
     const metamodelSetup =
       newProjectType === "metamodel"
         ? normalizeMetamodelSetup({
@@ -474,23 +482,31 @@ export default function ProjectList() {
           })
         : null;
     try {
-      const result = await createStarterProject.mutateAsync({
-        project: {
-          userId,
-          name: newProjectName.trim(),
-          description: newProjectDesc.trim(),
-          projectType: newProjectType,
-          metamodelSetup,
-        },
-        views: getProjectTemplateViews(template),
-      });
+      const result =
+        selectedTemplateId === BLANK_TEMPLATE_ID
+          ? {
+              project: await createProject.mutateAsync({
+                userId,
+                name: newProjectName.trim(),
+                description: newProjectDesc.trim(),
+                projectType: newProjectType,
+                metamodelSetup,
+              }),
+              firstViewId: null,
+            }
+          : await createFromTemplate.mutateAsync({
+              templateId: selectedTemplateId,
+              name: newProjectName.trim(),
+              description: newProjectDesc.trim(),
+              ...(newProjectType === "metamodel" ? { metamodelSetup } : {}),
+            });
       rememberRecentProject(userId, result.project.id);
       setIsCreateOpen(false);
       resetCreateForm();
       toast({
         title: "Project created",
         description: result.firstViewId
-          ? `${result.project.name} is ready with a starter view.`
+          ? `${result.project.name} is ready with its first diagram.`
           : `${result.project.name} is ready for modeling.`,
       });
       setLocation(
@@ -638,8 +654,9 @@ export default function ProjectList() {
                 onEdit={setEditingProject}
                 isLoading={isLoading}
                 allProjects={visibleProjects}
+                templates={templates}
                 onSelectTemplate={openCreateDialog}
-                showStarterState={!visibleProjects?.length}
+                showTemplateState={!visibleProjects?.length}
               />
             </TabsContent>
           ))}
@@ -651,12 +668,13 @@ export default function ProjectList() {
         projectName={newProjectName}
         projectDescription={newProjectDesc}
         projectType={newProjectType}
+        templates={templates}
         selectedTemplateId={selectedTemplateId}
         metamodelPurpose={metamodelPurpose}
         metamodelSetupDescription={metamodelSetupDescription}
         selectedMagicNodeTypes={selectedMagicNodeTypes}
         selectedMagicRelationTypes={selectedMagicRelationTypes}
-        isCreating={createStarterProject.isPending}
+        isCreating={createProject.isPending || createFromTemplate.isPending}
         onOpenChange={setIsCreateOpen}
         onSubmit={handleCreate}
         onTemplateSelect={openCreateDialog}

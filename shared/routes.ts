@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { insertProjectSchema, insertViewSchema } from './contracts';
-import { magicRelationTypeEnum } from './metamodel-setup';
+import { magicRelationTypeEnum, metamodelSetupSchema } from './metamodel-setup';
+import { projectTemplateSummarySchema } from './project-file';
 import { handleInputSchema, relationshipDataSchema } from './relationships';
 import type { projects, views, nodes, users } from './schema';
 import { aiMetamodelProposalSchema, aiMetamodelRequestSchema } from './ai-metamodel';
@@ -167,13 +168,6 @@ export const flowRecoveryResponseSchema = z.object({
 
 export type FlowRecoveryResponse = z.infer<typeof flowRecoveryResponseSchema>;
 
-const starterViewSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  nodes: z.array(flowNodeInputSchema),
-  edges: z.array(flowEdgeInputSchema),
-});
-
 /**
  * What clients may set when creating a project. The owner is always the
  * current user and `templateId` is set by the server only (the tutorial uses
@@ -190,8 +184,11 @@ const projectUpdateInputSchema = projectCreateInputSchema
   .partial()
   .extend({ referencedMetamodels: z.array(z.number().int().positive()).optional() });
 
-const createStarterProjectSchema = projectCreateInputSchema.extend({
-  views: z.array(starterViewSchema),
+/** Choices for the main project when creating a project from a template. */
+const createFromTemplateInputSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  description: z.string().optional(),
+  metamodelSetup: metamodelSetupSchema.nullable().optional(),
 });
 
 // ============================================
@@ -296,19 +293,6 @@ export const api = {
       responses: {
         201: z.custom<typeof projects.$inferSelect>(),
         400: errorSchemas.validation,
-      },
-    },
-    createStarter: {
-      method: 'POST' as const,
-      path: '/api/projects/starter',
-      input: createStarterProjectSchema,
-      responses: {
-        201: z.object({
-          project: z.custom<typeof projects.$inferSelect>(),
-          firstViewId: z.number().nullable(),
-        }),
-        400: errorSchemas.validation,
-        500: errorSchemas.internal,
       },
     },
     get: {
@@ -430,6 +414,29 @@ export const api = {
       path: '/api/nodes/:nodeId',
       responses: {
         200: z.custom<typeof nodes.$inferSelect>().nullable(),
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  projectTemplates: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/project-templates',
+      responses: {
+        200: z.array(projectTemplateSummarySchema),
+      },
+    },
+    /** Creates the template's projects (a bundle: e.g. a metamodel and a model typed by it). */
+    create: {
+      method: 'POST' as const,
+      path: '/api/project-templates/:templateId/projects',
+      input: createFromTemplateInputSchema,
+      responses: {
+        201: z.object({
+          project: z.custom<typeof projects.$inferSelect>(),
+          firstViewId: z.number().nullable(),
+        }),
+        400: errorSchemas.validation,
         404: errorSchemas.notFound,
       },
     },

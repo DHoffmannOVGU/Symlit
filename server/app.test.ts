@@ -314,54 +314,6 @@ describe("demo seed", () => {
 });
 
 describe("element identity and lifecycle", () => {
-  const starterBody = (name: string) => ({
-    userId: localUserId,
-    name,
-    projectType: "instance",
-    views: [
-      {
-        name: "Overview",
-        nodes: [
-          { id: "tpl-a", type: "part", position: { x: 0, y: 0 }, data: { label: "A", type: "Object" } },
-          { id: "tpl-b", type: "part", position: { x: 300, y: 0 }, data: { label: "B", type: "Object" } },
-        ],
-        edges: [
-          { id: "tpl-ab", source: "tpl-a", target: "tpl-b", edgeType: "association", sourceHandle: null, targetHandle: null },
-        ],
-      },
-      {
-        name: "Detail",
-        nodes: [{ id: "tpl-c", type: "part", position: { x: 50, y: 50 }, data: { label: "C", type: "Object" } }],
-        edges: [],
-      },
-    ],
-  });
-
-  test("the same template can be instantiated repeatedly", async () => {
-    const first = await request("POST", "/api/projects/starter", starterBody("Template 1"));
-    const second = await request("POST", "/api/projects/starter", starterBody("Template 2"));
-    assert.equal(first.status, 201, first.text);
-    assert.equal(second.status, 201, second.text);
-
-    const viewsOf = async (projectId: number) =>
-      (await request("GET", `/api/projects/${projectId}/views`)).json as Array<{ id: number; name: string }>;
-    const [firstOverview, firstDetail] = (await viewsOf(first.json.project.id)).sort((a, b) => a.id - b.id);
-    const [secondOverview] = (await viewsOf(second.json.project.id)).sort((a, b) => a.id - b.id);
-
-    const firstFlow = (await request("GET", `/api/views/${firstOverview.id}/flow`)).json;
-    const detailFlow = (await request("GET", `/api/views/${firstDetail.id}/flow`)).json;
-    const secondFlow = (await request("GET", `/api/views/${secondOverview.id}/flow`)).json;
-
-    const firstIds = firstFlow.nodes.map((n: { id: string }) => n.id);
-    const secondIds = secondFlow.nodes.map((n: { id: string }) => n.id);
-    assert.equal(firstIds.length, 2);
-    assert.ok(!firstIds.includes("tpl-a"), "template ids are replaced");
-    assert.equal(firstIds.filter((id: string) => secondIds.includes(id)).length, 0);
-    assert.equal(detailFlow.nodes.length, 1);
-    assert.ok(!firstIds.includes(detailFlow.nodes[0].id));
-    assert.ok(firstIds.includes(firstFlow.edges[0].source));
-  });
-
   test("an element is deleted once it is removed from its last diagram", async () => {
     const project = await createProject();
     const first = await createView(project.id, "First");
@@ -484,9 +436,9 @@ describe("guided tutorial", () => {
     const res = await request("POST", "/api/tutorial");
     assert.equal(res.status, 201, res.text);
     const { metamodel, instance, metamodelViewId, instanceViewId } = res.json;
-    assert.equal(metamodel.templateId, "tutorial-metamodel");
+    assert.equal(metamodel.templateId, "tutorial");
     assert.equal(metamodel.projectType, "metamodel");
-    assert.equal(instance.templateId, "tutorial-instance");
+    assert.equal(instance.templateId, "tutorial");
     assert.deepEqual(instance.referencedMetamodels, [metamodel.id]);
 
     const types = (await request("GET", `/api/views/${metamodelViewId}/flow`)).json;
@@ -595,7 +547,7 @@ describe("server-controlled project fields", () => {
     const created = await request("POST", "/api/projects", {
       name: "Not a tutorial",
       projectType: "metamodel",
-      templateId: "tutorial-metamodel",
+      templateId: "tutorial",
     });
     assert.equal(created.status, 201, created.text);
     assert.equal(created.json.templateId, null, "templateId is ignored on create");
@@ -603,7 +555,7 @@ describe("server-controlled project fields", () => {
     const patched = await request("PATCH", `/api/projects/${created.json.id}`, {
       name: "Renamed",
       projectType: "instance",
-      templateId: "tutorial-metamodel",
+      templateId: "tutorial",
     });
     assert.equal(patched.status, 200, patched.text);
     assert.equal(patched.json.name, "Renamed");
@@ -613,26 +565,5 @@ describe("server-controlled project fields", () => {
     // Removing the tutorial therefore never touches this project.
     await request("DELETE", "/api/tutorial");
     assert.equal((await request("GET", `/api/projects/${created.json.id}`)).status, 200);
-  });
-
-  test("starter projects can only reference the user's own metamodels", async () => {
-    const stranger = await storage.getOrCreateUser("starter-reference-stranger");
-    const foreign = await storage.createProject({ userId: stranger.id, name: "Foreign MM", projectType: "metamodel" });
-    const res = await request("POST", "/api/projects/starter", {
-      name: "Sneaky",
-      projectType: "instance",
-      referencedMetamodels: [foreign.id],
-      views: [],
-    });
-    assert.equal(res.status, 400, res.text);
-
-    const own = await createProject({ name: "Own MM", projectType: "metamodel" });
-    const ok = await request("POST", "/api/projects/starter", {
-      name: "Fine",
-      projectType: "instance",
-      referencedMetamodels: [own.id],
-      views: [],
-    });
-    assert.equal(ok.status, 201, ok.text);
   });
 });

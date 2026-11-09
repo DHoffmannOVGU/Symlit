@@ -61,39 +61,6 @@ export function registerProjectRoutes(app: Express) {
     }
   });
 
-  app.post(api.projects.createStarter.path, async (req, res) => {
-    try {
-      const input = api.projects.createStarter.input.parse(req.body);
-      const { views: starterViews, ...projectData } = input;
-      await assertValidMetamodelReferences(req.workspaceUser!, null, projectData.referencedMetamodels);
-      const result = await storage.createStarterProject(
-        { ...projectData, userId: req.workspaceUser!.id },
-        starterViews,
-      );
-      res.status(201).json(result);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        return res.status(400).json({ message: err.errors[0].message });
-      }
-      if (err instanceof InvalidReferenceError) {
-        return res.status(400).json({ message: err.message });
-      }
-      console.error("Failed to create starter project:", err);
-      const errorCode =
-        typeof err === "object" && err !== null && "code" in err
-          ? (err as { code?: unknown }).code
-          : undefined;
-      res.status(500).json({
-        message:
-          err instanceof Error && err.message.startsWith("Starter template")
-            ? `${err.message}. No partial project was saved.`
-            : errorCode === "23505"
-              ? "A starter element conflicts with existing model data. No partial project was saved."
-            : "Starter project could not be created. No partial project was saved.",
-      });
-    }
-  });
-
   app.get(api.projects.get.path, async (req, res) => {
     const project = await storage.getProject(Number(req.params.id));
     if (!project) return res.status(404).json({ message: "Project not found" });

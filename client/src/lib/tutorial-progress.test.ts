@@ -70,8 +70,8 @@ test("stored progress is normalised", () => {
 test("finds both projects of a tutorial run from either side", async () => {
   const { findTutorialProjects, latestTutorialRun } = await import("./tutorial-projects");
   const base = { userId: 1, description: null, createdAt: null, metamodelSetup: null };
-  const mm = { ...base, id: 10, name: "MM", projectType: "metamodel", referencedMetamodels: [], templateId: "tutorial-metamodel" };
-  const inst = { ...base, id: 11, name: "I", projectType: "instance", referencedMetamodels: [10], templateId: "tutorial-instance" };
+  const mm = { ...base, id: 10, name: "MM", projectType: "metamodel", referencedMetamodels: [], templateId: "tutorial" };
+  const inst = { ...base, id: 11, name: "I", projectType: "instance", referencedMetamodels: [10], templateId: "tutorial" };
   const other = { ...base, id: 12, name: "Mine", projectType: "instance", referencedMetamodels: [10], templateId: null };
   const all = [mm, inst, other];
   assert.deepEqual(findTutorialProjects(mm, all), { metamodel: mm, instance: inst });

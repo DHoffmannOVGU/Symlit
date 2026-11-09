@@ -162,13 +162,22 @@ SQL migration to `migrations/`. Commit both. CI fails if the schema and migratio
 | API | `server/app.test.ts` (real app on a random port) | same as above |
 | Browser | `e2e/*.spec.ts` (Playwright) | real server with an in-memory database. Some specs mock the API to cover edge cases |
 
+## Project templates and project files
+
+- A project file is the JSON export (`shared/project-file.ts`): a main project, the metamodels it
+  references and their patterns. `server/services/project-import.ts` imports one with fresh ids,
+  rewiring references, types, rules and pattern origins.
+- Built-in project templates are project files in `server/templates/` (bundled into the server
+  build). `GET /api/project-templates` lists them, `POST /api/project-templates/:id/projects`
+  creates their projects. See `docs/decisions/project-templates.md`.
+
 ## Guided tutorial
 
-- `shared/tutorial.ts` defines the lessons and steps and the content of the two tutorial projects
-  (a *Drone types* metamodel and a *Delivery drone* instance model typed by it).
-- `POST /api/tutorial` (`server/services/tutorial.ts`) creates both projects, marked with
-  `projects.template_id` (`tutorial-metamodel` / `tutorial-instance`); `DELETE /api/tutorial`
-  removes them.
+- `shared/tutorial.ts` defines the lessons and steps. The two tutorial projects (a *Drone types*
+  metamodel and a *Delivery drone* instance model typed by it) are the project template
+  `server/templates/tutorial.json`.
+- `POST /api/tutorial` (`server/services/tutorial.ts`) creates both projects from that template,
+  marked with `projects.template_id = "tutorial"`; `DELETE /api/tutorial` removes them.
 - Steps wait for *signals*: element/relationship created and save requests come from the existing
   diagram events; everything else is reported with `emitTutorialSignal()` (`client/src/lib/tutorial-signals.ts`)
   where the action happens (validation, model rules, table view, auto layout, pattern, export,

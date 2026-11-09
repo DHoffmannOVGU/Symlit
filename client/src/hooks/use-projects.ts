@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { apiCall } from "@/lib/api-client";
 import type { InsertProject } from "@shared/schema";
-import type { FlowEdgeInput, SyncFlowNodeInput } from "@shared/flow-inputs";
+import type { MetamodelSetup } from "@shared/metamodel-setup";
 
 export function useProjects(userId: number | undefined) {
   return useQuery({
@@ -37,28 +37,26 @@ export function useCreateProject() {
   });
 }
 
-export function useCreateStarterProject() {
+/** The project templates offered when creating a project (without "Blank project"). */
+export function useProjectTemplates() {
+  return useQuery({
+    queryKey: [api.projectTemplates.list.path],
+    queryFn: async () => apiCall(api.projectTemplates.list),
+    staleTime: Infinity,
+  });
+}
+
+/** Creates a project (with any metamodels the template brings) from a project template. */
+export function useCreateProjectFromTemplate() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
-      project,
-      views,
-    }: {
-      project: InsertProject;
-      views: Array<{
-        name: string;
-        description: string;
-        nodes: SyncFlowNodeInput[];
-        edges: FlowEdgeInput[];
-      }>;
-    }) =>
-      apiCall(api.projects.createStarter, {
-        body: { ...project, views },
-      }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [api.projects.list.path, variables.project.userId],
-      });
+      templateId,
+      ...body
+    }: { templateId: string; name?: string; description?: string; metamodelSetup?: MetamodelSetup | null }) =>
+      apiCall(api.projectTemplates.create, { params: { templateId }, body }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
     },
   });
 }

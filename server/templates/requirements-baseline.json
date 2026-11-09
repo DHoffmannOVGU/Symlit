@@ -1,0 +1,126 @@
+{
+  "template": {
+    "id": "requirements-baseline",
+    "name": "Requirements baseline",
+    "description": "A small requirements model ready for traceability work.",
+    "listed": true
+  },
+  "export": {
+    "version": 1,
+    "kind": "metamodel"
+  },
+  "project": {
+    "id": 2,
+    "name": "Requirements Baseline",
+    "description": "A starter requirements baseline for organizing needs, constraints, and verification.",
+    "projectType": "metamodel",
+    "referencedMetamodels": [],
+    "metamodelSetup": {
+      "purpose": "requirements",
+      "version": 1,
+      "nodeTypes": [
+        "requirementdef",
+        "partdef",
+        "agentdef",
+        "capabilitydef"
+      ],
+      "description": "",
+      "relationTypes": [
+        "association",
+        "generalization"
+      ]
+    }
+  },
+  "views": [
+    {
+      "id": 2,
+      "projectId": 2,
+      "name": "Requirements Baseline",
+      "description": "Initial requirements and verification context.",
+      "viewType": "view",
+      "modelRules": [],
+      "nodes": [
+        {
+          "id": "node_a239480d-87d1-4044-974c-c2508e2bfcb7",
+          "projectId": 2,
+          "type": "requirementdef",
+          "data": {
+            "icon": "BadgeCheck",
+            "type": "Requirement",
+            "color": "#7c3aed",
+            "label": "Stakeholder Need",
+            "description": "A need expressed by a stakeholder"
+          },
+          "position": {
+            "x": 70,
+            "y": 150
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_30b6a4da-f77a-4146-855a-f42814665d30",
+          "projectId": 2,
+          "type": "requirementdef",
+          "data": {
+            "icon": "FileCheck2",
+            "type": "Requirement",
+            "color": "#2563eb",
+            "label": "System Requirement",
+            "description": "A measurable system-level requirement"
+          },
+          "position": {
+            "x": 350,
+            "y": 150
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_8587afca-6991-4bea-958e-df17c363d438",
+          "projectId": 2,
+          "type": "partdef",
+          "data": {
+            "icon": "ClipboardCheck",
+            "type": "Verification",
+            "color": "#059669",
+            "label": "Verification",
+            "description": "Evidence that a requirement is satisfied"
+          },
+          "position": {
+            "x": 660,
+            "y": 150
+          },
+          "parentId": null
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge_7deebe16-80ef-408d-8518-6950c16d6cf2",
+          "viewId": 2,
+          "source": "node_a239480d-87d1-4044-974c-c2508e2bfcb7",
+          "target": "node_30b6a4da-f77a-4146-855a-f42814665d30",
+          "edgeType": "association",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "label": "refines",
+            "edgeType": "association"
+          }
+        },
+        {
+          "id": "edge_da2c5785-f3cd-4709-b3a2-940c2320c065",
+          "viewId": 2,
+          "source": "node_30b6a4da-f77a-4146-855a-f42814665d30",
+          "target": "node_8587afca-6991-4bea-958e-df17c363d438",
+          "edgeType": "association",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "label": "verified by",
+            "edgeType": "association"
+          }
+        }
+      ]
+    }
+  ],
+  "patterns": []
+}
