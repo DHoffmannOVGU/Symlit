@@ -16,7 +16,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SidebarGroup, SidebarGroupContent } from "@/components/ui/sidebar";
+import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { BASE_INSTANCE_TYPE_ITEMS, BASE_METAMODEL_ID, type SidebarNodeTransfer } from "../sidebar/SidebarConstants";
+
+
+/**
+ * Clicking a type (or pressing Enter/Space on it) places a new element of it
+ * in the middle of the canvas, like the palette in metamodels; dragging places
+ * it where it is dropped.
+ */
+const placeOnClick = (payload: SidebarNodeTransfer | null) =>
+  payload
+    ? {
+        role: "button" as const,
+        tabIndex: 0,
+        title: "Click to place in the middle of the diagram, or drag it to a spot",
+        onClick: () => dispatchDiagramEvent("insert-node-into-view", payload),
+        onKeyDown: (event: React.KeyboardEvent<HTMLElement>) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          dispatchDiagramEvent("insert-node-into-view", payload);
+        },
+      }
+    : {};
 
 export interface ReferencedNodePaletteContext {
   referencedProjects: Project[];
@@ -239,6 +261,7 @@ export function ReferencedNodePalette({
                             key={typeId}
                             aria-disabled={!currentViewId || alreadyInCurrentView}
                             draggable={Boolean(dragPayload && !alreadyInCurrentView)}
+                            {...placeOnClick(dragPayload && !alreadyInCurrentView ? dragPayload : null)}
                             onDragStart={(event) =>
                               dragPayload && !alreadyInCurrentView
                                 ? handleMetamodelNodeDragStart(event, dragPayload)
@@ -312,6 +335,7 @@ export function ReferencedNodePalette({
                       key={item.id}
                       aria-disabled={!currentViewId}
                       draggable={Boolean(dragPayload)}
+                      {...placeOnClick(dragPayload)}
                       onDragStart={(event) =>
                         dragPayload
                           ? handleMetamodelNodeDragStart(event, dragPayload)

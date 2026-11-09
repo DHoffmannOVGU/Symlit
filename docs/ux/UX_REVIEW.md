@@ -79,6 +79,8 @@ the summary above is from established, widely published material.*
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- O12: clicking a type in an instance model's Metamodels palette (or pressing Enter/Space on it) places an element in the
+  middle of the canvas, as in metamodels; dragging still places it where it is dropped.
 - F7: attributes are listed in short form (name, type, description, value; values editable in place on instance elements).
   Adding or editing one opens a small editor (name focused, description visible, unit picker over a catalog grouped by
   quantity, `shared/units.ts`; custom units allowed and marked). Cancel restores the attribute. New typed elements get

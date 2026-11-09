@@ -158,3 +158,23 @@ test("new typed elements get copies of their type's attributes; older ones are o
   await expect(page.getByTestId("attributes-missing-from-type")).toHaveCount(0);
   await expect(page.getByTestId("attribute-name-0")).toHaveText("capacity");
 });
+
+test("clicking a type in the Metamodels palette places an element of it, like in metamodels", async ({ page, request }) => {
+  const { instanceUrl, batteryTypeId } = await createProjects(request, "click");
+  await page.goto(instanceUrl);
+  await expect(page.locator(".react-flow__node")).toHaveCount(1);
+
+  const paletteItem = page.getByTestId(`button-insert-referenced-class-${batteryTypeId}`);
+  await paletteItem.click();
+  await expect(page.locator(".react-flow__node")).toHaveCount(2);
+  await expect(page.locator(".react-flow__node", { hasText: "New Battery" })).toBeInViewport();
+
+  // The keyboard works too.
+  await paletteItem.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".react-flow__node")).toHaveCount(3);
+
+  // Placing is undoable like any other edit.
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.locator(".react-flow__node")).toHaveCount(2);
+});

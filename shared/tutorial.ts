@@ -141,7 +141,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
         title: "Add a typed element",
         instruction:
           "In Delivery drone, open the Metamodels tab in the sidebar and drag one of the Drone types onto the canvas, for example your new Camera.",
-        hint: "The Metamodels tab lists the types of every metamodel this model references. The Reference Metamodels menu at the top manages those references.",
+        hint: "Clicking a type places it in the middle of the canvas instead. The Metamodels tab lists the types of every metamodel this model references; the Reference Metamodels menu at the top manages those references.",
         signal: "typed-node-created",
         scope: "instance",
         highlight: ['[data-testid^="button-insert-referenced-class-"]', '[data-testid="button-metamodel-selector"]'],
