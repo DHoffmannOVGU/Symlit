@@ -147,7 +147,7 @@ export function SidebarViewNodeList({
               <span
                 draggable
                 className="cursor-grab text-white/35 opacity-0 transition-opacity hover:text-white/70 group-hover/item:opacity-100 active:cursor-grabbing"
-                title="Drag to reorder view"
+                title="Drag to reorder"
                 aria-label={`Reorder ${view.name}`}
                 onClick={(event) => {
                   event.preventDefault();
@@ -183,7 +183,7 @@ export function SidebarViewNodeList({
             "right-7 opacity-100 hover:bg-white/10 text-white/60 hover:text-white",
             expandedViews.has(view.id) && "text-white",
           )}
-          title={expandedViews.has(view.id) ? "Hide nodes" : "Show nodes"}
+          title={expandedViews.has(view.id) ? "Hide elements" : "Show elements"}
         >
           <ChevronRight
             className={cn(
@@ -196,7 +196,7 @@ export function SidebarViewNodeList({
           <SidebarMenuAction
             onClick={() => setEditingView(view)}
             className="opacity-0 group-hover/item:opacity-100 transition-opacity hover:bg-white/10 text-white/60 hover:text-white"
-            title="Configure view"
+            title="Diagram settings"
             data-testid={`button-configure-view-${view.id}`}
           >
             <Settings2 className="w-4 h-4" />
@@ -222,7 +222,7 @@ export function SidebarViewNodeList({
                   size="sm"
                   className="text-white/50"
                 >
-                  <span>Loading nodes...</span>
+                  <span>Loading elements…</span>
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>
             )}
@@ -233,7 +233,7 @@ export function SidebarViewNodeList({
                   size="sm"
                   className="text-red-300"
                 >
-                  <span>Failed to load nodes</span>
+                  <span>Failed to load elements</span>
                 </SidebarMenuSubButton>
               </SidebarMenuSubItem>
             )}
@@ -246,7 +246,7 @@ export function SidebarViewNodeList({
                     size="sm"
                     className="text-white/40"
                   >
-                    <span>No nodes yet</span>
+                    <span>No elements yet</span>
                   </SidebarMenuSubButton>
                 </SidebarMenuSubItem>
               )}

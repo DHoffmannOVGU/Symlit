@@ -84,8 +84,8 @@ export function EditViewDialog({ view, open, onOpenChange }: EditViewDialogProps
         ...data,
       });
       toast({
-        title: "View updated",
-        description: "The diagram view has been updated successfully.",
+        title: "Diagram updated",
+        description: "Your changes to the diagram are saved.",
       });
       onOpenChange(false);
     } catch (error) {
@@ -102,8 +102,8 @@ export function EditViewDialog({ view, open, onOpenChange }: EditViewDialogProps
     try {
       await deleteView.mutateAsync({ id: view.id, projectId: view.projectId });
       toast({
-        title: "View deleted",
-        description: "The diagram view has been deleted.",
+        title: "Diagram deleted",
+        description: "The diagram has been deleted.",
       });
       onOpenChange(false);
       // If we are currently on this view's page, redirect to project overview
@@ -122,7 +122,7 @@ export function EditViewDialog({ view, open, onOpenChange }: EditViewDialogProps
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent>
           <DialogHeader className="flex flex-row items-center justify-between gap-4">
-            <DialogTitle>{isPattern ? "Edit Pattern" : "Edit Diagram View"}</DialogTitle>
+            <DialogTitle>{isPattern ? "Pattern settings" : "Diagram settings"}</DialogTitle>
             <Button
               type="button"
               variant="ghost"

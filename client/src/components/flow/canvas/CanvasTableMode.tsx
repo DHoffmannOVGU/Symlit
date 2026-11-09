@@ -142,7 +142,7 @@ export function CanvasTableMode({
         </div>
         <Card className="border-slate-200 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Nodes</CardTitle>
+            <CardTitle className="text-base">Elements</CardTitle>
             <CardDescription>
               {filteredNodeTableRows.length} of {nodeTableRows.length} node
               {nodeTableRows.length === 1 ? "" : "s"}
@@ -153,7 +153,7 @@ export function CanvasTableMode({
               <Input
                 value={nodeTableFilter}
                 onChange={(event) => onNodeTableFilterChange(event.target.value)}
-                placeholder="Filter nodes by name, id, type, description, or parent"
+                placeholder="Filter elements by name, id, type, description, or parent"
                 data-testid="input-node-table-filter"
               />
             </div>
@@ -179,8 +179,8 @@ export function CanvasTableMode({
                         className="text-center text-muted-foreground"
                       >
                         {nodeTableRows.length === 0
-                          ? "No nodes in this diagram."
-                          : "No nodes match the current filter."}
+                          ? "No elements in this diagram."
+                          : "No elements match the filter."}
                       </TableCell>
                     </TableRow>
                   ) : (

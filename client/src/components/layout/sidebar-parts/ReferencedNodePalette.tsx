@@ -376,7 +376,7 @@ export function ReferencedNodePalette({
 
             {!currentViewId && (
               <div className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-white/45">
-                Select a diagram view to drop referenced classes into it.
+                Open a diagram to add elements.
               </div>
             )}
           </div>

@@ -313,8 +313,8 @@ export function NodeStyleTab({
             />
             <p className="text-xs text-muted-foreground">
               {style.descriptionOnCard
-                ? "Ignores the canvas setting \u201cShow node descriptions\u201d."
-                : "Follows the canvas setting \u201cShow node descriptions\u201d."}
+                ? "Ignores the canvas setting \u201cShow descriptions\u201d."
+                : "Follows the canvas setting \u201cShow descriptions\u201d."}
             </p>
           </div>
         </SettingRow>

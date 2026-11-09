@@ -23,7 +23,7 @@ export function useElementSelection() {
       if (isExternalNode(nodeId)) {
         selectNode(nodeId);
         setNodePanelOpen(false);
-        toast({ title: "Referenced node", description: "Referenced metamodel nodes are read-only." });
+        toast({ title: "Read-only type", description: "Types from a referenced metamodel are edited in their own metamodel." });
         return;
       }
       openNodePanelInStore(nodeId);

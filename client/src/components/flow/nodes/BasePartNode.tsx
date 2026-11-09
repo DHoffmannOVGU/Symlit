@@ -216,7 +216,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
                       inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-slate-700 transition-colors
                       ${isReadOnly ? "cursor-not-allowed opacity-40" : "hover:bg-slate-100"}
                     `}
-                    title={isReadOnly ? "Referenced nodes are read-only" : "Edit node"}
+                    title={isReadOnly ? "Types from a referenced metamodel are read-only" : "Edit"}
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       if (isReadOnly) return;
@@ -229,7 +229,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
                   <button
                     type="button"
                     className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-slate-700 transition-colors hover:bg-slate-100"
-                    title="Copy node"
+                    title="Duplicate"
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => handleAction(event, "copy")}
                   >
@@ -241,7 +241,7 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
                       inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-rose-600 transition-colors
                       ${isReadOnly ? "cursor-not-allowed opacity-40" : "hover:bg-rose-50"}
                     `}
-                    title={isReadOnly ? "Referenced nodes cannot be deleted" : "Delete node"}
+                    title={isReadOnly ? "Types from a referenced metamodel cannot be deleted here" : "Delete"}
                     onMouseDown={(event) => event.stopPropagation()}
                     onClick={(event) => {
                       if (isReadOnly) return;

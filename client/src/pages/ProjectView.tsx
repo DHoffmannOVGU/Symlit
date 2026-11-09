@@ -326,7 +326,7 @@ export default function ProjectView() {
                         Views
                       </h2>
                       <p className="text-muted-foreground mt-1">
-                        Select or create a diagram view to start modeling.
+                        Open a diagram or create one to start modeling.
                       </p>
                     </div>
                     <Button
@@ -336,7 +336,7 @@ export default function ProjectView() {
                       data-testid="button-create-view-hero"
                     >
                       <Plus className="w-5 h-5" />
-                      Create New View
+                      New diagram
                     </Button>
                   </div>
 
@@ -399,10 +399,10 @@ export default function ProjectView() {
                         <Layers className="w-8 h-8 opacity-50" />
                       </div>
                       <h3 className="text-xl font-medium">
-                        No views created yet
+                        No diagrams yet
                       </h3>
                       <p className="text-muted-foreground mt-1 max-w-sm mx-auto">
-                        This project is empty. Create your first diagram view to
+                        This project is empty. Create your first diagram to
                         get started.
                       </p>
                     </div>

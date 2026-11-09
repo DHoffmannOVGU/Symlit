@@ -140,8 +140,7 @@ export function MetamodelCreatePalette({
             )}
             {selectedMetamodelCreateProjectId === BASE_METAMODEL_ID ? (
               <p className="mt-3 text-xs text-white/50">
-                Create one of the {visibleMetamodelNodeTypes.length} enabled
-                magic node types.
+                {visibleMetamodelNodeTypes.length} kinds are enabled for this metamodel. Click one to place a new type.
               </p>
             ) : (
               <p className="mt-3 text-xs text-white/50">
@@ -151,7 +150,7 @@ export function MetamodelCreatePalette({
           </div>
         ) : (
           <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/70">
-            These are the 7 standard node types that can be used in the metamodel.
+            Seven built-in kinds. Click one to place a new type, or drag it to a spot.
           </div>
         )}
 
@@ -333,7 +332,7 @@ export function MetamodelCreatePalette({
 
         {!currentViewId && (
           <div className="rounded-md border border-dashed border-white/10 px-3 py-2 text-xs text-white/45">
-            Select a diagram view to create node types.
+            Open a diagram to add types.
           </div>
         )}
       </div>

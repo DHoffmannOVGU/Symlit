@@ -85,13 +85,13 @@ export function SidebarTabsContent({
                       value="metamodels"
                       className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
                     >
-                      Metamodels
+                      Add elements
                     </TabsTrigger>
                     <TabsTrigger
                       value="diagrams"
                       className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
                     >
-                      Diagram Views
+                      Diagrams
                     </TabsTrigger>
                   </TabsList>
     
@@ -157,13 +157,13 @@ export function SidebarTabsContent({
                       value="node-types"
                       className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
                     >
-                      Create Nodes
+                      Add elements
                     </TabsTrigger>
                     <TabsTrigger
                       value="diagrams"
                       className="text-xs font-semibold uppercase tracking-wide data-[state=active]:bg-white data-[state=active]:text-slate-900"
                     >
-                      Show Views
+                      Diagrams
                     </TabsTrigger>
                   </TabsList>
     
@@ -182,14 +182,14 @@ export function SidebarTabsContent({
                                   setIncludeReferencedMetamodelViews(checked === true)
                                 }
                               />
-                              <span>Include referenced metamodel views</span>
+                              <span>Include referenced metamodel diagrams</span>
                             </label>
                           </div>
                         )}
                         <SidebarMenu>
                           {views.length === 0 ? (
                             <div className="px-4 py-8 text-center text-white/30 text-xs italic">
-                              No views yet.
+                              No diagrams yet.
                             </div>
                           ) : (
                             orderedViews.map((view) => {
@@ -236,7 +236,7 @@ export function SidebarTabsContent({
                                         asChild
                                         className="text-red-300"
                                       >
-                                        <span>Failed to load referenced views</span>
+                                        <span>Failed to load referenced diagrams</span>
                                       </SidebarMenuButton>
                                     </SidebarMenuItem>
                                   )}
@@ -246,7 +246,7 @@ export function SidebarTabsContent({
                                         asChild
                                         className="text-white/40"
                                       >
-                                        <span>No views available</span>
+                                        <span>No diagrams available</span>
                                       </SidebarMenuButton>
                                     </SidebarMenuItem>
                                   )}

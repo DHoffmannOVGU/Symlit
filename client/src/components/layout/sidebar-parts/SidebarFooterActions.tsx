@@ -58,7 +58,7 @@ export function SidebarFooterActions({
                   data-testid="button-model-rules"
                 >
                   <ListChecksIcon className="w-4 h-4 mr-2" />
-                  {projectType === "instance" ? "Instance Rules" : "Model Rules"}
+                  Model rules
                 </Button>
               ) : null}
               <Button
@@ -82,7 +82,7 @@ export function SidebarFooterActions({
                       onClick={(event) => handleLinkClick(event, "/projects")}
                     >
                       <Home className="w-4 h-4" />
-                      <span className="font-medium">Projects Overview</span>
+                      <span className="font-medium">All projects</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

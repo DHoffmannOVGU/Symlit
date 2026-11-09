@@ -641,15 +641,15 @@ export function NodeAttributePanel({
         <SheetHeader className="relative">
           <div className="flex items-center justify-between pr-8">
             <div>
-              <SheetTitle>Configure Node</SheetTitle>
-              <SheetDescription>Edit the properties and appearance of this node.</SheetDescription>
+              <SheetTitle>{node.type === "part" ? "Edit element" : "Edit type"}</SheetTitle>
+              <SheetDescription>{node.type === "part" ? "Name, attributes and appearance of this element." : "Name, attributes and appearance of this type. Elements of this type start from it."}</SheetDescription>
             </div>
             <Button 
               variant="ghost" 
               size="icon"
               className="text-muted-foreground hover:text-destructive"
               onClick={handleDelete}
-              title="Delete node"
+              title="Delete"
               data-testid="button-delete-node"
             >
               <Trash2 className="w-5 h-5" />
@@ -671,7 +671,7 @@ export function NodeAttributePanel({
                   id="node-label"
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
-                  placeholder="Enter node name"
+                  placeholder="Name"
                   data-testid="input-node-label"
                 />
               </div>

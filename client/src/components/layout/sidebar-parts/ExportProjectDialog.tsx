@@ -103,7 +103,7 @@ export function ExportProjectDialog({
             Export {modelLabel}
           </DialogTitle>
           <DialogDescription>
-            Choose the views, content, and download format you need.
+            Choose the diagrams, content and file format.
           </DialogDescription>
         </DialogHeader>
 
@@ -138,7 +138,7 @@ export function ExportProjectDialog({
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Views</Label>
+              <Label>Diagrams</Label>
               <div className="flex gap-1">
                 <Button
                   type="button"
@@ -160,7 +160,7 @@ export function ExportProjectDialog({
             </div>
             <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border p-3">
               {views.length === 0 ? (
-                <div className="text-xs text-muted-foreground">No views yet.</div>
+                <div className="text-xs text-muted-foreground">No diagrams yet.</div>
               ) : (
                 views.map((view) => {
                   const viewId = Number(view.id);

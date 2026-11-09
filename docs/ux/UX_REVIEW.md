@@ -38,6 +38,17 @@ like `docs/BACKLOG.md`.
 *Note: the source pages (nngroup.com, lawsofux.com) could not be fetched from this environment;
 the summary above is from established, widely published material.*
 
+## Vocabulary
+
+One word per concept in everything a user reads (labels, tooltips, help, tutorial):
+
+- **element**: anything placed on a diagram. In a metamodel its elements are **types**; built-in kinds are Object,
+  Behavior, Concern, Performer, Need, Event and Capability.
+- **relationship**: a connection between two elements.
+- **diagram**: never "view" (the code and API still say view).
+- Sidebar, the same in both project kinds: **Add elements** and **Diagrams** tabs, **Model rules** and
+  **Export Project** below, **All projects** at the bottom.
+
 ## Current state (snapshot, 2026-11-09, v0.1.0)
 
 - **Project list:** hero greeting, tutorial card, three count tiles, search + filter, project cards.
@@ -79,6 +90,9 @@ the summary above is from established, widely published material.*
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- O4, O5: one vocabulary (above) across the sidebar, the element editor ("Edit element" / "Edit type"), element
+  buttons, table view, help, dialogs, toasts and tutorial text.
+- O8: covered by F7 (attributes show their names; the Inherit button is gone for typed elements).
 - O13: the type style the canvas copies onto matching instance elements after loading no longer counts as an unsaved
   change (`normalizeFlow` leaves it out for elements that match their type); choosing an own style or matching again still does.
 - Placing an element by click (either palette) puts it at the nearest free spot around the middle instead of on top of

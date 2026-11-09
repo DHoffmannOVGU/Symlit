@@ -271,7 +271,7 @@ export function DiagramToolbar(props: Props) {
                     checked={showNodeDescriptions}
                     onCheckedChange={() => onToggleNodeDescriptions()}
                   >
-                    Show node descriptions
+                    Show descriptions
                   </DropdownMenuCheckboxItem>
                 )}
                 {onToggleAlwaysShowAccent && (

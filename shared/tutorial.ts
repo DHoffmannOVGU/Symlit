@@ -96,8 +96,8 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
         id: "add-type",
         title: "Add a new type",
         instruction:
-          "In Drone types, open the Create Nodes tab in the sidebar and drag an Object onto the canvas. It will become a Camera.",
-        hint: "Clicking a node type in the sidebar places it in the middle of the canvas instead.",
+          "In Drone types, open the Add elements tab in the sidebar and drag an Object onto the canvas. It will become a Camera.",
+        hint: "Clicking a kind in the sidebar places it in a free spot instead.",
         signal: "node-created",
         scope: "metamodel",
         highlight: ['[data-testid^="button-create-sidebar-"]', '[data-sidebar="sidebar"] [role="tablist"]'],
@@ -140,8 +140,8 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
         id: "insert-typed",
         title: "Add a typed element",
         instruction:
-          "In Delivery drone, open the Metamodels tab in the sidebar and drag one of the Drone types onto the canvas, for example your new Camera.",
-        hint: "Clicking a type places it in the middle of the canvas instead. The Metamodels tab lists the types of every metamodel this model references; the Reference Metamodels menu at the top manages those references.",
+          "In Delivery drone, open the Add elements tab in the sidebar and drag one of the Drone types onto the canvas, for example your new Camera.",
+        hint: "Clicking a type places it in the middle of the canvas instead. The Add elements tab lists the types of every metamodel this model references; the Reference Metamodels menu at the top manages those references.",
         signal: "typed-node-created",
         scope: "instance",
         highlight: ['[data-testid^="button-insert-referenced-class-"]', '[data-testid="button-metamodel-selector"]'],
@@ -181,7 +181,7 @@ export const TUTORIAL_LESSONS: TutorialLesson[] = [
         id: "open-rules",
         title: "Open the model rules",
         instruction:
-          "Open Instance Rules from the bottom of the sidebar. Rules can tag elements or report issues when a condition holds.",
+          "Open Model rules at the bottom of the sidebar. Rules can tag elements or report issues when a condition holds.",
         signal: "rules-opened",
         scope: "instance",
         highlight: ['[data-testid="button-model-rules"]'],
