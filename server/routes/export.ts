@@ -3,8 +3,26 @@ import { z } from "zod";
 import { api } from "@shared/routes";
 import { projectRole } from "../auth";
 import { buildProjectExport } from "../services/project-export";
+import { importProjectFile, ProjectFileError } from "../services/project-import";
 
 export function registerExportRoutes(app: Express) {
+  app.post(api.projects.import.path, async (req, res) => {
+    try {
+      const result = await importProjectFile(req.body, { userId: req.workspaceUser!.id });
+      res.status(201).json({
+        project: result.project,
+        firstViewId: result.firstViewId,
+        createdProjects: result.projects.size,
+      });
+    } catch (err) {
+      if (err instanceof ProjectFileError) {
+        return res.status(400).json({ message: err.message });
+      }
+      console.error("Failed to import a project file:", err);
+      res.status(500).json({ message: "The file could not be imported. Nothing was saved." });
+    }
+  });
+
   app.post(api.projects.export.path, async (req, res) => {
     const projectId = Number(req.params.id);
     try {

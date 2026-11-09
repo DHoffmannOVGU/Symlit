@@ -330,6 +330,21 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+    /** Creates the projects of a project file (the JSON export), with fresh ids. */
+    import: {
+      method: 'POST' as const,
+      path: '/api/projects/import',
+      input: z.unknown(),
+      responses: {
+        201: z.object({
+          project: z.custom<typeof projects.$inferSelect>(),
+          firstViewId: z.number().nullable(),
+          /** How many projects were created (the project and the metamodels it brought). */
+          createdProjects: z.number(),
+        }),
+        400: errorSchemas.validation,
+      },
+    },
     access: {
       method: 'GET' as const,
       path: '/api/projects/:id/access',

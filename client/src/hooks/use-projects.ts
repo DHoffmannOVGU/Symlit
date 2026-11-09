@@ -61,6 +61,17 @@ export function useCreateProjectFromTemplate() {
   });
 }
 
+/** Imports a project file (a JSON export): the project and the metamodels it brings. */
+export function useImportProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: unknown) => apiCall(api.projects.import, { body: file }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
+    },
+  });
+}
+
 export function useUpdateProject() {
   const queryClient = useQueryClient();
   return useMutation({

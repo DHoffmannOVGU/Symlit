@@ -631,3 +631,50 @@ describe("requests from other websites", () => {
     assert.equal(res.status, 201);
   });
 });
+
+describe("project import", () => {
+  test("a JSON export imports as a new project with the same content", async () => {
+    const metamodel = await createProject({ name: "Import types", projectType: "metamodel" });
+    const metaView = await createView(metamodel.id);
+    await request("POST", `/api/views/${metaView.id}/sync`, sampleFlow(`impmeta${metamodel.id}`));
+    const project = await createProject({
+      name: "Import me",
+      projectType: "instance",
+      referencedMetamodels: [metamodel.id],
+    });
+    const view = await createView(project.id);
+    await request("POST", `/api/views/${view.id}/sync`, sampleFlow(`imp${project.id}`));
+
+    const exported = await request("POST", `/api/projects/${project.id}/export`, {
+      format: "json",
+      includeReferencedMetamodels: true,
+    });
+    assert.equal(exported.status, 200, exported.text);
+
+    const imported = await request("POST", "/api/projects/import", exported.json);
+    assert.equal(imported.status, 201, imported.text);
+    assert.equal(imported.json.createdProjects, 2);
+    assert.notEqual(imported.json.project.id, project.id);
+    assert.equal(imported.json.project.name, "Import me");
+    assert.equal(imported.json.project.referencedMetamodels.length, 1);
+    assert.notEqual(imported.json.project.referencedMetamodels[0], metamodel.id);
+
+    const original = (await request("GET", `/api/views/${view.id}/flow`)).json;
+    const copy = (await request("GET", `/api/views/${imported.json.firstViewId}/flow`)).json;
+    assert.equal(copy.nodes.length, original.nodes.length);
+    assert.equal(copy.edges.length, original.edges.length);
+    const labels = (flow: { nodes: Array<{ data: { label?: string } }> }) =>
+      flow.nodes.map((node) => node.data.label).sort();
+    assert.deepEqual(labels(copy), labels(original));
+  });
+
+  test("rejects files that are not project files, saving nothing", async () => {
+    const before = (await request("GET", "/api/projects")).json.length;
+    for (const body of [{}, { hello: "world" }, [1, 2, 3]]) {
+      const res = await request("POST", "/api/projects/import", body);
+      assert.equal(res.status, 400, JSON.stringify(body));
+      assert.match(res.json.message, /Not a valid project file/);
+    }
+    assert.equal((await request("GET", "/api/projects")).json.length, before);
+  });
+});

@@ -1,7 +1,7 @@
 import { DEFAULT_LOCAL_USER_NAME } from "@shared/authorization";
 import { TutorialCard } from "@/components/tutorial/TutorialCard";
 import { WorkspaceUnavailable } from "@/components/WorkspaceUnavailable";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { format, formatDistanceToNow } from "date-fns";
@@ -16,6 +16,7 @@ import {
   Search,
   Settings2,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -23,6 +24,7 @@ import {
   useCreateProjectFromTemplate,
   useProjectTemplates,
   useDeleteProject,
+  useImportProject,
   useProjects,
   useUpdateProject,
 } from "@/hooks/use-projects";
@@ -389,6 +391,8 @@ export default function ProjectList() {
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
   const { toast } = useToast();
+  const importProject = useImportProject();
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -448,6 +452,42 @@ export default function ProjectList() {
 
   if (authLoading) return null;
   if (!user) return <WorkspaceUnavailable onRetry={() => void refreshSession()} />;
+
+  const handleImport = async (file: File) => {
+    let content: unknown;
+    try {
+      content = JSON.parse(await file.text());
+    } catch {
+      toast({
+        title: "Not a project file",
+        description: `"${file.name}" is not JSON. Import the file written by Export Project → JSON.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const result = await importProject.mutateAsync(content);
+      const extra = result.createdProjects - 1;
+      toast({
+        title: `Imported "${result.project.name}"`,
+        description:
+          extra > 0
+            ? `It brought ${extra} metamodel${extra === 1 ? "" : "s"} along; they were added as new projects.`
+            : "It was added as a new project.",
+      });
+      setLocation(
+        result.firstViewId
+          ? `/project/${result.project.id}/view/${result.firstViewId}`
+          : `/project/${result.project.id}`,
+      );
+    } catch (error) {
+      toast({
+        title: "Import failed",
+        description: error instanceof Error ? error.message : "The file could not be imported.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const openCreateDialog = (templateId: string = BLANK_TEMPLATE_ID) => {
     const template = findProjectTemplate(templates, templateId);
@@ -589,7 +629,32 @@ export default function ProjectList() {
                 Keep your system models organized, connected, and ready for the next engineering decision.
               </p>
             </div>
-            <div>
+            <div className="flex flex-col gap-2 sm:flex-row md:items-center">
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                aria-label="Project file to import"
+                data-testid="input-import-project"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  if (file) void handleImport(file);
+                }}
+              />
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full md:w-auto"
+                disabled={importProject.isPending}
+                onClick={() => importInputRef.current?.click()}
+                title="Open a project file (a JSON export) as a new project"
+                data-testid="button-import-project"
+              >
+                <Upload className="mr-2 h-5 w-5" />
+                {importProject.isPending ? "Importing…" : "Import"}
+              </Button>
               <Button
                 onClick={() => openCreateDialog()}
                 size="lg"
