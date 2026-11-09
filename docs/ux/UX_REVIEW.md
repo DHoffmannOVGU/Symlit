@@ -90,6 +90,8 @@ One word per concept in everything a user reads (labels, tooltips, help, tutoria
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- O9: the header button always says "Save"; the state is shown next to it ("Unsaved changes", "Saving…", "All changes
+  saved"). Ctrl+S / Cmd+S saves the open diagram (it used to open the browser's "save page" dialog).
 - O6: palette entries are compact (one-line description, full text on hover) and the sidebar footer is tighter, so all
   seven kinds fit at 900 px and five or six at 720 px; scrolling sidebar tabs fade out at the bottom while more is below
   (`ScrollingTabsContent`).
