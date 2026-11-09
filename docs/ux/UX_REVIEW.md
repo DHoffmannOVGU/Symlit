@@ -90,6 +90,9 @@ One word per concept in everything a user reads (labels, tooltips, help, tutoria
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
 ## Done
+- O6: palette entries are compact (one-line description, full text on hover) and the sidebar footer is tighter, so all
+  seven kinds fit at 900 px and five or six at 720 px; scrolling sidebar tabs fade out at the bottom while more is below
+  (`ScrollingTabsContent`).
 - O11: an element near the top of the canvas shows its edit/duplicate/delete bar below itself, so the bar never covers
   the canvas toolbar (`e2e/canvas-chrome.spec.ts`).
 - O2: the canvas toolbar shows text on its main actions (Diagram, Table, Auto layout, Validate, Save pattern) at 1280 px and

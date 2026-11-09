@@ -1,3 +1,4 @@
+import { ScrollingTabsContent } from "./ScrollingTabsContent";
 import type { FlowQuery, NodeMeta, ReferencedViewGroup } from "./types";
 import type { ProjectType } from "@shared/schema";
 import type { View } from "@shared/schema";
@@ -10,7 +11,7 @@ import { Plus } from "lucide-react";
 import type { FlowNode } from "@shared/schema";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   SidebarContent,
   SidebarGroup,
@@ -95,7 +96,7 @@ export function SidebarTabsContent({
                     </TabsTrigger>
                   </TabsList>
     
-                  <TabsContent
+                  <ScrollingTabsContent
                     value="diagrams"
                     className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1"
                   >
@@ -132,14 +133,14 @@ export function SidebarTabsContent({
                       }}
                       onNavigate={handleLinkClick}
                     />
-                  </TabsContent>
+                  </ScrollingTabsContent>
     
-                  <TabsContent
+                  <ScrollingTabsContent
                     value="metamodels"
                     className="mt-3 flex-1 space-y-3 overflow-y-auto pr-1"
                   >
                     {renderReferencedNodePalette()}
-                  </TabsContent>
+                  </ScrollingTabsContent>
                 </Tabs>
               ) : (
                 <Tabs
@@ -167,7 +168,7 @@ export function SidebarTabsContent({
                     </TabsTrigger>
                   </TabsList>
     
-                  <TabsContent
+                  <ScrollingTabsContent
                     value="diagrams"
                     className="mt-3 flex-1 overflow-y-auto pr-1"
                   >
@@ -295,9 +296,9 @@ export function SidebarTabsContent({
                         </div>
                       </SidebarGroupContent>
                     </SidebarGroup>
-                  </TabsContent>
+                  </ScrollingTabsContent>
     
-                  <TabsContent
+                  <ScrollingTabsContent
                     value="node-types"
                     className="mt-3 flex-1 overflow-y-auto pr-1"
                   >
@@ -306,7 +307,7 @@ export function SidebarTabsContent({
                         {renderMetamodelCreatePalette()}
                       </SidebarGroupContent>
                     </SidebarGroup>
-                  </TabsContent>
+                  </ScrollingTabsContent>
                 </Tabs>
               )}
             </SidebarContent>
