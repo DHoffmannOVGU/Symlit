@@ -16,6 +16,7 @@ commit that fixed them.
   the same node id in several views, although the data model supports it.
 
 ### Features
+- **Patterns, next steps (v0.2):** authoring instance-level patterns inside a metamodel (server ready, no editor yet), re-applying a pattern to its copies, importing exported patterns. Then the starter-project issues (rename `project-templates`/`templateId`; reuse one element in two views).
 - **SysML v2 textual export (later import).** The vocabulary already follows SysML v2; export
   makes models diffable and usable in SysML v2 tools. See
   `docs/decisions/diagram-editor-state-and-libraries.md`.
@@ -27,6 +28,7 @@ commit that fixed them.
   the canvas, the sidebar and Radix.
 
 ## Done
+- Patterns follow the decisions in `docs/decisions/patterns.md` (tested in `server/patterns.test.ts`, `e2e/patterns.spec.ts`): single-element patterns; relationships and nesting must stay inside the pattern; types must be known when saving and inserting; copies record their origin; patterns of every referenced metamodel (whole chain) are offered insert-only. Inserting a pattern used to save on the server and reload the diagram, which dropped unsaved edits and the undo history; the server now only builds the copy and the editor adds it as one undo step. Pattern route errors no longer hang requests.
 - Element ids were `node_${Date.now()}`, and template ids were fixed strings: creating a template
   twice failed with a 500, and two elements created in the same millisecond collided.
 - Elements were never deleted when removed from diagrams; they now are once they are in no

@@ -15,7 +15,7 @@ import {
 // Mirrors client/src/components/flow/hooks/useMetamodelParts.ts's node-type
 // filter and default-type fallback for "instance" projects with no
 // referenced metamodel.
-const METAMODEL_NODE_TYPES = new Set([
+export const METAMODEL_NODE_TYPES = new Set([
   "partdef",
   "actiondef",
   "concerndef",
@@ -69,7 +69,12 @@ function localRelationEdges(
 // project's own views when no metamodel is referenced, otherwise walk the
 // referencedMetamodels graph (BFS over nested references) and load each
 // referenced project's views via storage.getFlow.
-async function resolveMetamodel(project: Project): Promise<{
+//
+// `project.id` may be null to resolve what a consumer of the referenced
+// metamodels sees, without any local types (used for metamodel patterns).
+export async function resolveMetamodel(
+  project: Pick<Project, "projectType" | "referencedMetamodels"> & { id: number | null },
+): Promise<{
   typeNodes: ValidationTypeNode[];
   relationEdges: ValidationRelationEdge[];
   typeParents: { id: string; data?: { typeId?: string | null } }[];
@@ -78,7 +83,7 @@ async function resolveMetamodel(project: Project): Promise<{
     ? project.referencedMetamodels
     : [];
 
-  const ownViews = await storage.getViews(project.id);
+  const ownViews = project.id === null ? [] : await storage.getViews(project.id);
   const ownNodesById = new Map<string, FlowNodeWithPosition>();
   const ownEdges: FlowEdge[] = [];
   for (const view of ownViews) {

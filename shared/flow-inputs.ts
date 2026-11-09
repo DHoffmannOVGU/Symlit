@@ -35,6 +35,7 @@ export type PatternNodeInput = {
   type: string;
   position: { x: number; y: number };
   data?: unknown;
+  parentId?: string | null;
 };
 
 export type PatternEdgeInput = {

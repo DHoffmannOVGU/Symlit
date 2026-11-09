@@ -262,7 +262,9 @@ function FlowInner({
   });
 
   const { selectedNodes, selectedNodeIds } = useSelectedNodes();
-  const canSavePattern = selectedNodes.length >= 2;
+  // Patterns hold instance-level elements; metamodels get them once pattern
+  // editing in metamodels exists (docs/decisions/patterns.md).
+  const canSavePattern = projectType === "instance" && selectedNodes.length >= 1;
 
   const patternCreation = usePatternCreation({
     selectedNodes,
