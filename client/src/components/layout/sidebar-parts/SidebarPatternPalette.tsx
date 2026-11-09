@@ -135,7 +135,7 @@ export function SidebarPatternPalette({
                   )}
                   title={
                     currentViewId
-                      ? "Insert pattern into current view"
+                      ? "Insert pattern into this diagram"
                       : "Open a diagram to insert"
                   }
                 >

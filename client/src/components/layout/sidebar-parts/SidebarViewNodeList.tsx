@@ -351,8 +351,8 @@ export function SidebarViewNodeList({
                           }}
                           title={
                             alreadyInCurrentView
-                              ? "Already in current view"
-                              : "Insert into current view"
+                              ? "Already in this diagram"
+                              : "Insert into this diagram"
                           }
                           data-testid={`button-insert-node-${node.id}`}
                           disabled={alreadyInCurrentView}
