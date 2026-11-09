@@ -11,14 +11,20 @@
   overwritten unnoticed; you choose which version to keep.
 - Switching between diagrams right after saving no longer shows the old state.
 - A diagram address under the wrong project no longer mixes two projects.
+- A relationship id that already exists in another diagram gives a clear
+  message instead of a database error.
 
 ### Added
+- F2 renames the selected element right on its card.
 - Import: open a JSON export as a new project (project list → Import).
 - The project list shows when a project was last edited and can be sorted;
   project cards are real links.
 - Deleting a metamodel warns about the projects that use it.
 
 ### Changed
+- The project list's welcome block shrinks to one line once there are projects.
+- Save stays in view in narrow windows; the "Saved" toast is gone (the header
+  already says "All changes saved").
 - The element and relationship panels say "Apply" (they change the diagram;
   Save in the header writes it).
 - Database migration 0007 adds `projects.updated_at` (applied on start).

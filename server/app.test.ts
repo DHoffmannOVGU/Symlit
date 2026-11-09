@@ -760,3 +760,29 @@ describe("last edited", () => {
     assert.deepEqual(await ids(), [older.id, newer.id]);
   });
 });
+
+describe("relationship ids", () => {
+  test("an id used in another diagram is refused with a clear message, not a database error", async () => {
+    const project = await createProject({ name: "Shared relationship id" });
+    const viewA = await createView(project.id);
+    const viewB = await createView(project.id);
+    const flow = sampleFlow(`relid${project.id}`);
+    assert.equal((await request("POST", `/api/views/${viewA.id}/sync`, flow)).status, 200);
+
+    const res = await request("POST", `/api/views/${viewB.id}/sync`, flow);
+    assert.equal(res.status, 400, res.text);
+    assert.match(res.json.message, /same id as one in another diagram/);
+    assert.doesNotMatch(res.text, /constraint|edges_pkey/);
+    // Saving the diagram that owns the id still works.
+    assert.equal((await request("POST", `/api/views/${viewA.id}/sync`, flow)).status, 200);
+  });
+
+  test("diagrams are listed in the order they were created", async () => {
+    const project = await createProject({ name: "Diagram order" });
+    const first = await createView(project.id, "First");
+    const second = await createView(project.id, "Second");
+    await request("PATCH", `/api/views/${first.id}`, { name: "First, renamed" });
+    const listed = (await request("GET", `/api/projects/${project.id}/views`)).json as Array<{ id: number }>;
+    assert.deepEqual(listed.map((view) => view.id), [first.id, second.id]);
+  });
+});

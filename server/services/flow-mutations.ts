@@ -20,7 +20,7 @@ import {
   flowResponseSchema,
   flowSyncInputSchema,
 } from "@shared/routes";
-import { and, eq, inArray, notExists, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, notExists, sql } from "drizzle-orm";
 
 /**
  * Validate flow identity and geometry before any records are written or
@@ -112,6 +112,18 @@ function canonical(value: unknown): unknown {
       .sort()
       .map((key) => [key, canonical((value as Record<string, unknown>)[key])]),
   );
+}
+
+/** A relationship id of the save already belongs to a relationship in another diagram. */
+export class RelationshipIdTakenError extends Error {
+  readonly status = 409;
+  constructor(readonly ids: string[]) {
+    super(
+      ids.length === 1
+        ? "A relationship in this diagram has the same id as one in another diagram. Remove it and draw it again."
+        : `${ids.length} relationships in this diagram have the same ids as relationships in another diagram. Remove them and draw them again.`,
+    );
+  }
 }
 
 /** The diagram changed since the revision a save was based on. */
@@ -301,6 +313,16 @@ export async function syncFlow(
     .from(projects)
     .where(eq(projects.id, view.projectId));
   if (!project) throw new Error("Project not found");
+
+  // Relationship ids are unique across all diagrams (they are the primary
+  // key). Say so instead of failing on the constraint.
+  if (newEdges.length > 0) {
+    const taken = await db
+      .select({ id: edges.id })
+      .from(edges)
+      .where(and(inArray(edges.id, newEdges.map((edge) => edge.id)), ne(edges.viewId, viewId)));
+    if (taken.length > 0) throw new RelationshipIdTakenError(taken.map((row) => row.id));
+  }
 
   const allowedExternalProjectIds = new Set(
     project.referencedMetamodels ?? [],

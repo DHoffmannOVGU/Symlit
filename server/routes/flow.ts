@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { z } from "zod";
 import { api } from "@shared/routes";
 import { storage } from "../storage";
-import { FlowConflictError, flowRevision } from "../services/flow-mutations";
+import { FlowConflictError, flowRevision, RelationshipIdTakenError } from "../services/flow-mutations";
 import { validateView } from "../services/model-validation";
 
 export function registerFlowRoutes(app: Express) {
@@ -55,11 +55,16 @@ export function registerFlowRoutes(app: Express) {
         res.status(400).json({ message: err.errors[0].message });
       } else if (err instanceof FlowConflictError) {
         res.status(409).json({ message: err.message });
-      } else {
-        console.error("Flow sync error:", err);
-        res.status(500).json({
-          message: err instanceof Error ? err.message : "Failed to sync flow",
+      } else if (err instanceof RelationshipIdTakenError) {
+        res.status(400).json({ message: err.message });
+      } else if (err instanceof Error && err.message === "Referenced node does not belong to an allowed metamodel") {
+        res.status(400).json({
+          message: "The diagram contains an element of a project this one does not reference.",
         });
+      } else {
+        // Details (constraint and table names) stay in the server log.
+        console.error("Flow sync error:", err);
+        res.status(500).json({ message: "The diagram could not be saved. Nothing was changed." });
       }
     }
   });

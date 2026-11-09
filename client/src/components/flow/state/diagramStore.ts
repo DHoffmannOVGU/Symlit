@@ -74,6 +74,11 @@ export interface DiagramState {
   /** Signature of the diagram as last loaded or saved (see diagram-serialization.ts); "" before loading. */
   savedSignature: string;
   setSavedSignature: (signature: string) => void;
+  /** The element whose name is being edited on its card (F2), if any. */
+  renamingNodeId: string | null;
+  setRenamingNodeId: (id: string | null) => void;
+  /** Renames an element as one undo step; an empty or unchanged name changes nothing. */
+  renameNode: (id: string, label: string) => void;
   /** Server revision the diagram was loaded or last saved at; sent with a save to detect changes made elsewhere. */
   revision: string | null;
   setRevision: (revision: string | null) => void;
@@ -208,6 +213,19 @@ export function createDiagramStore() {
 
     savedSignature: "",
     setSavedSignature: (signature) => set({ savedSignature: signature }),
+    renamingNodeId: null,
+    setRenamingNodeId: (id) => set({ renamingNodeId: id }),
+    renameNode: (id, label) => {
+      const name = label.trim();
+      const node = get().nodes.find((candidate) => candidate.id === id);
+      if (!node || !name || node.data.label === name) return;
+      get().takeSnapshot();
+      set((state) => ({
+        nodes: state.nodes.map((candidate) =>
+          candidate.id === id ? { ...candidate, data: { ...candidate.data, label: name } } : candidate,
+        ),
+      }));
+    },
     revision: null,
     setRevision: (revision) => set({ revision }),
     saveConflict: false,

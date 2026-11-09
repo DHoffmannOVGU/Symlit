@@ -25,6 +25,7 @@ export function useDiagramHelpContent(
           "Use the metamodel editor to define types and relationships that instance models can build on.",
         shortcuts: [
           { key: "Ctrl/Cmd + S", description: "Save the current diagram." },
+          { key: "F2", description: "Rename the selected element on its card (Enter confirms, Escape cancels)." },
           {
             key: "Delete / Backspace",
             description: "Delete the selected element or relationship.",
@@ -53,6 +54,7 @@ export function useDiagramHelpContent(
           "Use flow mode to simulate and step through the behavior of your instance model.",
         shortcuts: [
           { key: "Ctrl/Cmd + S", description: "Save the current diagram." },
+          { key: "F2", description: "Rename the selected element on its card (Enter confirms, Escape cancels)." },
           {
             key: "Delete / Backspace",
             description: "Delete the selected element or relationship.",
@@ -80,6 +82,7 @@ export function useDiagramHelpContent(
         "Use the instance editor to create concrete models from your referenced metamodel types.",
       shortcuts: [
         { key: "Ctrl/Cmd + S", description: "Save the current diagram." },
+          { key: "F2", description: "Rename the selected element on its card (Enter confirms, Escape cancels)." },
         {
           key: "Delete / Backspace",
           description: "Delete the selected element or relationship.",

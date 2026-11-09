@@ -78,6 +78,7 @@ import { ProjectEditDialog } from "@/components/projects/ProjectEditDialog";
 import { getProjectTypeMeta } from "@/components/projects/project-types";
 
 type ProjectSort = "edited" | "name" | "created";
+const SORT_STORAGE_KEY = "symlit.project-sort";
 
 function sortProjects(projects: Project[], sortBy: ProjectSort): Project[] {
   const time = (value: Date | string | null | undefined) => (value ? new Date(value).getTime() : 0);
@@ -422,7 +423,23 @@ export default function ProjectList() {
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
   const { toast } = useToast();
-  const [sortBy, setSortBy] = useState<ProjectSort>("edited");
+  // The sort choice is a personal preference: remembered in this browser.
+  const [sortBy, setSortByState] = useState<ProjectSort>(() => {
+    try {
+      const stored = window.localStorage.getItem(SORT_STORAGE_KEY);
+      return stored === "name" || stored === "created" ? stored : "edited";
+    } catch {
+      return "edited";
+    }
+  });
+  const setSortBy = (value: ProjectSort) => {
+    setSortByState(value);
+    try {
+      window.localStorage.setItem(SORT_STORAGE_KEY, value);
+    } catch {
+      // Storage can be unavailable (private window); the choice then lasts for this visit.
+    }
+  };
   const importProject = useImportProject();
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -635,33 +652,57 @@ export default function ProjectList() {
     })
     .filter((entry): entry is { project: Project; openedAt: number } => Boolean(entry));
 
+  const hasProjects = Boolean(visibleProjects?.length);
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6 md:p-10">
       <div className="mx-auto max-w-7xl space-y-7">
-        <section className="relative overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-br from-card via-card to-primary/[0.08] p-6 shadow-sm sm:p-8">
-          <div className="absolute -right-24 -top-32 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
-          <div className="relative flex flex-col justify-between gap-7 md:flex-row md:items-end">
-            <div>
-              <div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+        {/* A full welcome for an empty workspace; once there are projects, one line, so they start near the top. */}
+        <section
+          className={`relative overflow-hidden border border-primary/10 bg-gradient-to-br from-card via-card to-primary/[0.08] shadow-sm ${
+            hasProjects ? "rounded-2xl px-5 py-4 sm:px-6" : "rounded-3xl p-6 sm:p-8"
+          }`}
+          data-testid="project-list-header"
+        >
+          {!hasProjects && <div className="absolute -right-24 -top-32 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />}
+          <div className={`relative flex flex-col justify-between md:flex-row ${hasProjects ? "gap-4 md:items-center" : "gap-7 md:items-end"}`}>
+            {hasProjects ? (
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Activity className="h-4 w-4" />
                 </div>
-                Symlit workspace
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                {/* Greet by the configured name (SYMLIT_USER_NAME), not the internal login; the default name is no name. */}
+                <div className="min-w-0">
+                  <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">
+                    {/* Greet by the configured name (SYMLIT_USER_NAME), not the internal login; the default name is no name. */}
                 Good to see you
                 {user.displayName && user.displayName !== DEFAULT_LOCAL_USER_NAME ? `, ${user.displayName}` : ""}.
-              </h1>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium capitalize text-primary">
-                  Local workspace
-                </span>
+                  </h1>
+                  <p className="text-xs text-muted-foreground">Symlit · local workspace</p>
+                </div>
               </div>
-              <p className="mt-3 max-w-xl text-base leading-6 text-muted-foreground">
-                Keep your system models organized, connected, and ready for the next engineering decision.
-              </p>
-            </div>
+            ) : (
+              <div>
+                <div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
+                    <Activity className="h-4 w-4" />
+                  </div>
+                  Symlit workspace
+                </div>
+                <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                  {/* Greet by the configured name (SYMLIT_USER_NAME), not the internal login; the default name is no name. */}
+                Good to see you
+                {user.displayName && user.displayName !== DEFAULT_LOCAL_USER_NAME ? `, ${user.displayName}` : ""}.
+                </h1>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium capitalize text-primary">
+                    Local workspace
+                  </span>
+                </div>
+                <p className="mt-3 max-w-xl text-base leading-6 text-muted-foreground">
+                  Keep your system models organized, connected, and ready for the next engineering decision.
+                </p>
+              </div>
+            )}
             <div className="flex flex-col gap-2 sm:flex-row md:items-center">
               <input
                 ref={importInputRef}
@@ -678,7 +719,7 @@ export default function ProjectList() {
               />
               <Button
                 variant="outline"
-                size="lg"
+                size={hasProjects ? "default" : "lg"}
                 className="w-full md:w-auto"
                 disabled={importProject.isPending}
                 onClick={() => importInputRef.current?.click()}
@@ -690,7 +731,7 @@ export default function ProjectList() {
               </Button>
               <Button
                 onClick={() => openCreateDialog()}
-                size="lg"
+                size={hasProjects ? "default" : "lg"}
                 className="w-full shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30 md:w-auto"
                 data-testid="button-new-project"
               >

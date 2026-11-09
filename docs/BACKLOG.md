@@ -42,12 +42,26 @@ commit that fixed them.
 - **Dark mode is half there.** `dark:` variants exist in about 17 places while about 52 backgrounds are
   light-only (`bg-white`, `bg-slate-50`), and nothing ever sets the `dark` class. A toggle needs a pass over
   those first; turning it on as is gives a half-dark UI.
-- **Header in narrow windows.** Below ~900 px the metamodel selector pushes the save state and the Save button
-  out of view (Ctrl+S still works). The canvas toolbar and tutorial coach are fixed; the header is not.
-- **The diagram editor chunk is 498 kB (gzip ~160 kB).** What remains is mostly React Flow,
-  the canvas, the sidebar and Radix.
+- **The element editor hides the diagram.** It is a modal sheet that dims the canvas. Names can now be changed
+  on the card (F2); attributes, description and style still need the sheet. A non-modal side panel would let
+  people see the neighbours while editing.
+- **Inline rename is keyboard-only.** F2 is in the help dialog and the name's tooltip, but nothing on screen
+  offers it. A slow second click on the name is the usual pointer gesture; it was left out because a click on a
+  selected element followed by Delete would then edit the name instead of deleting the element.
+- **Project card actions appear on hover only** (edit, delete), and sit next to each other.
+- **Toolbar labels disappear below 1280 px**, leaving icon-only buttons (UX review O2 fixed this for wide screens only).
+- **Sidebar header.** "Local user" with a green dot carries no information in a single-user app, and the project
+  name is cut off there while the breadcrumb beside it shows it.
+- **No whole-workspace backup.** Export and import are per project; backing up everything means one export per
+  project or copying the data directory.
 
 ## Done
+- Saving a diagram that contained a relationship id already used in another diagram failed with a 500 that showed the database's constraint error. It answers 400 with what to do; unexpected save errors no longer pass database messages to the browser.
+- In narrow windows the header pushed the save state and the Save button out of view. The names on the left and the metamodel selector give way now; the save state keeps its mark and drops its words.
+- Renaming an element needed the editor sheet and Apply. F2 renames the selected element on its card (Enter confirms, Escape cancels, one undo step).
+- The project list's welcome block took the first 250 px on every visit; with projects it is one line, so the list starts near the top. An empty workspace still gets the full welcome.
+- Diagrams and patterns were listed without a defined order; they come in creation order.
+- Every save showed a "Saved" toast on top of "All changes saved" in the header; the toast is gone. The project list remembers its sort choice.
 - A request with an id that is not a number (`GET /api/projects/abc`) ended the server process: Express 4 does not catch errors from async handlers, and the id went to the database unchecked. Async route errors now reach the error handler and impossible ids answer 404 before any query (`server/http-guards.ts`).
 - Any website could write to the workspace: form posts need no CORS preflight and the server read them, and nothing checked `Origin` or `Host` (DNS rebinding gave read access too). Form bodies are no longer read, writes must come from the app's own origin, and only `localhost`, IP addresses and `SYMLIT_ALLOWED_HOSTS` are served.
 - Export was one-way. `POST /api/projects/import` and an Import button on the project list open a JSON export as a new project (with the metamodels it brings).

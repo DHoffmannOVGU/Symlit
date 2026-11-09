@@ -67,11 +67,7 @@ export function useSyncFlow() {
       void queryClient.invalidateQueries({ queryKey: [api.flow.get.path] });
       // The project list shows and sorts by when a project was last edited.
       void queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
-      toast({
-        title: "Saved",
-        description: "Your diagram has been saved successfully.",
-        duration: 2000,
-      });
+      // No toast: the header already shows "All changes saved".
     },
     onError: (error) => {
       // A conflict is settled in its own dialog (SaveConflictDialog).

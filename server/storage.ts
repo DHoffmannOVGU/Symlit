@@ -183,7 +183,8 @@ export class DatabaseStorage implements IStorage {
     return db
       .select()
       .from(views)
-      .where(and(eq(views.projectId, projectId), eq(views.viewType, "view")));
+      .where(and(eq(views.projectId, projectId), eq(views.viewType, "view")))
+      .orderBy(views.id);
   }
 
   async getView(id: number): Promise<View | undefined> {
@@ -237,7 +238,8 @@ export class DatabaseStorage implements IStorage {
       .from(views)
       .where(
         and(eq(views.projectId, projectId), eq(views.viewType, "pattern")),
-      );
+      )
+      .orderBy(views.id);
   }
 
   // Flow
