@@ -45,7 +45,11 @@ export function usePatternCreation({
   const handleCreatePattern = useCallback(async () => {
     if (!patternName.trim()) return;
     if (!patternSnapshot || patternSnapshot.nodes.length === 0) return;
-    const positions = patternSnapshot.nodes.map((node) => node.position);
+    const selectedIds = new Set(patternSnapshot.nodes.map((node) => node.id));
+    const isNested = (node: Node) => Boolean(node.parentId && selectedIds.has(node.parentId));
+    // Nested elements are positioned relative to their parent; only the
+    // others are moved so the pattern is centred on its origin.
+    const positions = patternSnapshot.nodes.filter((node) => !isNested(node)).map((node) => node.position);
     const minX = Math.min(...positions.map((p) => p.x));
     const maxX = Math.max(...positions.map((p) => p.x));
     const minY = Math.min(...positions.map((p) => p.y));
@@ -54,11 +58,12 @@ export function usePatternCreation({
 
     const patternNodesPayload = patternSnapshot.nodes.map((node) => ({
       nodeId: node.id,
+      // Nesting is kept when the parent is part of the pattern too.
+      parentId: isNested(node) ? node.parentId : null,
       type: node.type || "part",
-      position: {
-        x: node.position.x - center.x,
-        y: node.position.y - center.y,
-      },
+      position: isNested(node)
+        ? node.position
+        : { x: node.position.x - center.x, y: node.position.y - center.y },
       data: node.data,
     }));
 

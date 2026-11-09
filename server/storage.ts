@@ -17,17 +17,13 @@ import {
 } from "@shared/schema";
 import type {
   FlowEdgeInput,
-  PatternEdgeInput,
-  PatternNodeInput,
   SyncFlowNodeInput,
 } from "@shared/flow-inputs";
 import { eq, and } from "drizzle-orm";
-import { createPattern as createPatternService } from "./services/patterns";
 import {
   getFlow as getFlowService,
   getFlowRecovery as getFlowRecoveryService,
   insertNodeIntoView as insertNodeIntoViewService,
-  insertPatternIntoView as insertPatternIntoViewService,
   assignFreshStarterIds,
   deleteUnplacedNodes,
   buildStarterViewRecords,
@@ -82,15 +78,6 @@ export interface IStorage {
 
   // Patterns
   getPatterns(projectId: number): Promise<View[]>;
-  createPattern(
-    projectId: number,
-    pattern: {
-      name: string;
-      description?: string;
-      nodes: PatternNodeInput[];
-      edges: PatternEdgeInput[];
-    },
-  ): Promise<void>;
 
   // Flow (Nodes/Edges)
   getNodeById(nodeId: string): Promise<FlowNode | undefined>;
@@ -106,11 +93,6 @@ export interface IStorage {
   insertNodeIntoView(
     viewId: number,
     nodeId: string,
-    position: { x: number; y: number },
-  ): Promise<void>;
-  insertPatternIntoView(
-    viewId: number,
-    patternId: number,
     position: { x: number; y: number },
   ): Promise<void>;
 }
@@ -307,18 +289,6 @@ export class DatabaseStorage implements IStorage {
       );
   }
 
-  createPattern(
-    projectId: number,
-    pattern: {
-      name: string;
-      description?: string;
-      nodes: PatternNodeInput[];
-      edges: PatternEdgeInput[];
-    },
-  ): Promise<void> {
-    return createPatternService(projectId, pattern);
-  }
-
   // Flow
   async getNodeById(nodeId: string): Promise<FlowNode | undefined> {
     const [node] = await db.select().from(nodes).where(eq(nodes.id, nodeId));
@@ -347,14 +317,6 @@ export class DatabaseStorage implements IStorage {
     position: { x: number; y: number },
   ): Promise<void> {
     return insertNodeIntoViewService(viewId, nodeId, position);
-  }
-
-  insertPatternIntoView(
-    viewId: number,
-    patternId: number,
-    position: { x: number; y: number },
-  ): Promise<void> {
-    return insertPatternIntoViewService(viewId, patternId, position);
   }
 }
 
