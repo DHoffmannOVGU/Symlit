@@ -6,6 +6,7 @@ const NodeAttributePanel = lazyNamed(() => import("../panels/NodeAttributePanel"
 const EdgeAttributePanel = lazyNamed(() => import("../panels/EdgeAttributePanel"), "EdgeAttributePanel");
 import type { CustomEdgeData, NodeData } from "../types";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
+import { getTypeAncestors } from "@shared/metamodel-inheritance";
 import { useDiagramModel } from "../state/DiagramModelProvider";
 
 export interface CanvasInspectorPanelsProps {
@@ -30,8 +31,15 @@ export function CanvasInspectorPanels({
   const edgePanelOpen = useDiagramStore((state) => state.edgePanelOpen);
   const closeNodePanel = useDiagramStore((state) => state.closeNodePanel);
   const closeEdgePanel = useDiagramStore((state) => state.closeEdgePanel);
-  const { availablePartDefs, availablePartDefNodes, availablePartDefEdges, configuredRelationTypes } =
-    useDiagramModel();
+  const {
+    availablePartDefs,
+    availablePartDefNodes,
+    availablePartDefEdges,
+    configuredRelationTypes,
+    projectType,
+    relationEdges,
+    parentMap,
+  } = useDiagramModel();
 
   const node = selectedNodeId ? (nodes.find((n) => n.id === selectedNodeId) ?? null) : null;
   const edge = selectedEdgeId ? (edges.find((e) => e.id === selectedEdgeId) ?? null) : null;
@@ -45,6 +53,36 @@ export function CanvasInspectorPanels({
       nodes.find((candidate) => candidate.id === typeId);
     return parent ? [parent] : [];
   }, [node, nodes, availablePartDefNodes]);
+
+  // In a model: what the metamodel says about how often the selected relationship may occur.
+  const metamodelMultiplicity = useMemo(() => {
+    if (projectType !== "instance" || !edge) return null;
+    const typeIdOf = (nodeId: string) =>
+      (nodes.find((candidate) => candidate.id === nodeId)?.data as NodeData | undefined)?.typeId;
+    const sourceTypeId = typeIdOf(edge.source);
+    const targetTypeId = typeIdOf(edge.target);
+    if (!sourceTypeId || !targetTypeId) return null;
+    const data = edge.data as CustomEdgeData | undefined;
+    const edgeType = edge.type || data?.edgeType || "association";
+    const sourceAncestors = getTypeAncestors(sourceTypeId, parentMap);
+    const targetAncestors = getTypeAncestors(targetTypeId, parentMap);
+    const meta = relationEdges.find(
+      (candidate) =>
+        candidate.edgeType === edgeType &&
+        (candidate.label || "").trim() === (data?.label || "").trim() &&
+        sourceAncestors.has(candidate.sourceTypeId) &&
+        targetAncestors.has(candidate.targetTypeId) &&
+        !!candidate.multiplicity?.trim(),
+    );
+    if (!meta?.multiplicity) return null;
+    const typeName = (id: string) =>
+      (availablePartDefNodes.find((candidate) => candidate.id === id)?.data as NodeData | undefined)?.label || "element";
+    return {
+      text: meta.multiplicity,
+      sourceType: typeName(meta.sourceTypeId),
+      targetType: typeName(meta.targetTypeId),
+    };
+  }, [availablePartDefNodes, edge, nodes, parentMap, projectType, relationEdges]);
 
   return (
     <>
@@ -76,6 +114,8 @@ export function CanvasInspectorPanels({
           onSave={onSaveEdge}
           onDelete={onDeleteEdge}
           allowedEdgeTypes={configuredRelationTypes}
+          projectType={projectType}
+          metamodelMultiplicity={metamodelMultiplicity}
         />
       ) : null}
       </MountWhenOpened>

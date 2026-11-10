@@ -28,6 +28,15 @@ commit that fixed them.
 - **Save conflicts are all-or-nothing.** The dialog offers "my version" or "the other version" for the whole
   diagram; there is no merge or per-element view of what differs.
 
+- **Multiplicities, next steps.** (1) Only the target end has one ("how many targets per source"); the source end
+  ("how many Drones may share a Battery") has no field. (2) They are checked per diagram, because relationships
+  live in diagrams: an element shown in a second diagram without its relationships is reported there. (3)
+  "Variability" (mandatory/optional) on aggregation and composition says nearly the same as a minimum of 1 or 0
+  and is not checked; merge it into the multiplicity or check it. (4) Multiplicity text typed on a model's
+  relationships before this change is still stored and drawn but can no longer be edited.
+- **Model rules are not part of server validation.** `POST /api/views/:viewId/validate` checks types,
+  relationships and multiplicities; model rules run only in the editor.
+
 ### Server
 - **Route error handling is doubled.** `catchAsyncRouteErrors` (server/http-guards.ts) now passes every async
   error to the error handler, so the per-route `try/catch` blocks and the `fail()` helper in `routes/patterns.ts`
@@ -56,6 +65,8 @@ commit that fixed them.
   project or copying the data directory.
 
 ## Done
+- Multiplicity was free text on any relationship that nothing read. It is now a property of a metamodel's relationship with a defined syntax (`shared/multiplicity.ts`): "A —label→ B [1..2]" requires every A in a model to have one to two such relationships to a B (subtypes included). The editor validates the input and says in words what it means; models show the metamodel's value read-only; Validate reports violations in the editor and on the server.
+- A model's JSON export left out its metamodels unless asked, and such a file cannot be imported. They are included by default (API and export dialog).
 - Project creation: two steps (start from an empty metamodel, an empty model or a template; then only the choices that apply), an empty model can be based on a metamodel (also from the metamodel's card), empty projects get a first diagram and open on it, the confirmation names metamodels a template brings, and projects can be duplicated (the copy keeps using the same metamodels).
 - Saving a diagram that contained a relationship id already used in another diagram failed with a 500 that showed the database's constraint error. It answers 400 with what to do; unexpected save errors no longer pass database messages to the browser.
 - In narrow windows the header pushed the save state and the Save button out of view. The names on the left and the metamodel selector give way now; the save state keeps its mark and drops its words.

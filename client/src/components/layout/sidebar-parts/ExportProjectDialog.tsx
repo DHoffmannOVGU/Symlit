@@ -45,8 +45,9 @@ export function ExportProjectDialog({
   const [includeElements, setIncludeElements] = useState(true);
   const [includeRelationships, setIncludeRelationships] = useState(true);
   const [includePatterns, setIncludePatterns] = useState(false);
+  // On by default: without its metamodels a model's file cannot be imported again.
   const [includeReferencedMetamodels, setIncludeReferencedMetamodels] =
-    useState(false);
+    useState(true);
 
   useEffect(() => {
     if (!open) return;
@@ -208,7 +209,7 @@ export function ExportProjectDialog({
                   <ExportOption
                     checked={includeReferencedMetamodels}
                     onChange={setIncludeReferencedMetamodels}
-                    label={`Referenced metamodel definitions (${referencedMetamodelCount})`}
+                    label={`Referenced metamodels (${referencedMetamodelCount}), needed to import this file again`}
                     disabled={referencedMetamodelCount === 0}
                   />
                 )}

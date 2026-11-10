@@ -1,4 +1,5 @@
 import { getTypeAncestors } from "./metamodel-inheritance";
+import { describeMultiplicity, isUnrestricted, parseMultiplicity } from "./multiplicity";
 
 export interface ValidationIssue {
   type: "node" | "edge";
@@ -31,6 +32,8 @@ export interface ValidationRelationEdge {
   targetTypeId?: string;
   edgeType?: string;
   label?: string;
+  /** How many targets each source element needs (shared/multiplicity.ts); empty means any number. */
+  multiplicity?: string;
 }
 
 // The metamodel a model is validated against: available types, the relations
@@ -153,5 +156,87 @@ export function validateInstanceModel(
     }
   });
 
+  issues.push(...validateMultiplicities(model, metamodel, typeLabelById));
+
   return issues;
+}
+
+/**
+ * Multiplicities: a metamodel relationship "A —label→ B [min..max]" requires
+ * every element typed A (or a subtype) to have that many such relationships
+ * to elements typed B (or a subtype). Checked per diagram, like everything
+ * else here: relationships live in diagrams.
+ */
+function validateMultiplicities(
+  model: { nodes: ValidationModelNode[]; edges: ValidationModelEdge[] },
+  metamodel: ValidationMetamodel,
+  typeLabelById: Map<string, string>,
+): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  const restricted = metamodel.relationEdges.flatMap((meta) => {
+    if (!meta.sourceTypeId || !meta.targetTypeId) return [];
+    const multiplicity = parseMultiplicity(meta.multiplicity);
+    // Text that is not a multiplicity restricts nothing; the metamodel's own validation reports it.
+    if (!multiplicity || isUnrestricted(multiplicity)) return [];
+    return [{ meta, multiplicity, sourceTypeId: meta.sourceTypeId, targetTypeId: meta.targetTypeId }];
+  });
+  if (restricted.length === 0) return issues;
+
+  const ancestorsOf = new Map<string, Set<string>>();
+  const ancestors = (typeId: string) => {
+    let known = ancestorsOf.get(typeId);
+    if (!known) {
+      known = getTypeAncestors(typeId, metamodel.parentMap);
+      ancestorsOf.set(typeId, known);
+    }
+    return known;
+  };
+  const typed = model.nodes.filter((node) => node.type === "part" && node.data?.typeId);
+  const nodeById = new Map(typed.map((node) => [node.id, node]));
+
+  for (const { meta, multiplicity, sourceTypeId, targetTypeId } of restricted) {
+    const edgeType = meta.edgeType || "association";
+    const label = (meta.label || "").trim();
+    const targetType = typeLabelById.get(targetTypeId) || targetTypeId;
+    const relationship = label ? `"${label}" relationship` : `${edgeType} relationship`;
+
+    for (const node of typed) {
+      if (!ancestors(node.data!.typeId!).has(sourceTypeId)) continue;
+      const targets = model.edges
+        .filter((edge) => {
+          if (edge.source !== node.id) return false;
+          if ((edge.edgeType || "association") !== edgeType) return false;
+          if ((edge.data?.label || "").trim() !== label) return false;
+          const target = nodeById.get(edge.target);
+          return !!target && ancestors(target.data!.typeId!).has(targetTypeId);
+        })
+        .map((edge) => edge.target);
+      const count = targets.length;
+      const tooFew = count < multiplicity.min;
+      const tooMany = multiplicity.max !== null && count > multiplicity.max;
+      if (!tooFew && !tooMany) continue;
+      issues.push({
+        type: "node",
+        id: node.id,
+        message: `"${node.data?.label || node.id}" needs ${describeMultiplicity(multiplicity)} ${relationship}${
+          multiplicity.max === 1 ? "" : "s"
+        } to ${targetType}, but has ${count === 0 ? "none" : count}.`,
+        ...(targets.length > 0 ? { relatedNodeIds: targets } : {}),
+      });
+    }
+  }
+  return issues;
+}
+
+/** A metamodel relationship whose multiplicity text cannot be read. */
+export function invalidMultiplicityIssues(
+  edges: Array<{ id: string; label?: string; multiplicity?: string }>,
+): ValidationIssue[] {
+  return edges
+    .filter((edge) => parseMultiplicity(edge.multiplicity) === null)
+    .map((edge) => ({
+      type: "edge" as const,
+      id: edge.id,
+      message: `Relationship "${edge.label || "unnamed"}" has the multiplicity "${edge.multiplicity}", which is not understood and is not checked. Use a number (1), a range (0..1) or an open range (1..*).`,
+    }));
 }

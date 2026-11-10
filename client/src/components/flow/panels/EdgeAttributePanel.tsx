@@ -49,9 +49,22 @@ interface EdgeAttributePanelProps {
   onSave: (edgeId: string, data: CustomEdgeData) => void;
   onDelete: (edgeId: string) => void;
   allowedEdgeTypes?: MagicRelationType[];
+  /** Multiplicities are set on a metamodel's relationships and checked in the models built from it. */
+  projectType?: ProjectType;
+  /** In a model: the multiplicity the metamodel gives this relationship, and the type names it is about. */
+  metamodelMultiplicity?: { text: string; sourceType: string; targetType: string } | null;
 }
 
 import { Slider } from "@/components/ui/slider";
+import type { ProjectType } from "@shared/schema";
+import {
+  describeMultiplicity,
+  formatMultiplicity,
+  isUnrestricted,
+  MULTIPLICITY_HELP,
+  MULTIPLICITY_PRESETS,
+  parseMultiplicity,
+} from "@shared/multiplicity";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -73,6 +86,8 @@ export function EdgeAttributePanel({
   onSave,
   onDelete,
   allowedEdgeTypes,
+  projectType = "metamodel",
+  metamodelMultiplicity = null,
 }: EdgeAttributePanelProps) {
   const [edgeType, setEdgeType] =
     useState<CustomEdgeData["edgeType"]>("association");
@@ -118,14 +133,25 @@ export function EdgeAttributePanel({
     }
   }, [edge, nodes]);
 
+  const parsedMultiplicity = parseMultiplicity(multiplicity);
+  const endpointName = (nodeId: string | undefined, fallback: string) => {
+    const data = nodes.find((node) => node.id === nodeId)?.data as { label?: string } | undefined;
+    return data?.label || fallback;
+  };
+
   const handleSave = () => {
     if (!edge) return;
+    // A multiplicity that cannot be read would silently check nothing.
+    if (projectType === "metamodel" && !parsedMultiplicity) return;
 
     const data: CustomEdgeData = {
       edgeType,
       flowType: edgeType === "association" ? flowType : undefined,
       label: label.trim() || undefined,
-      multiplicity: multiplicity.trim() || undefined,
+      multiplicity:
+        projectType === "metamodel" && parsedMultiplicity && multiplicity.trim()
+          ? formatMultiplicity(parsedMultiplicity)
+          : multiplicity.trim() || undefined,
       variability:
         edgeType === "aggregation" || edgeType === "composition"
           ? variability || undefined
@@ -371,19 +397,75 @@ export function EdgeAttributePanel({
           </TabsContent>
 
           <TabsContent value="cardinality" className="space-y-6 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edge-multiplicity">Multiplicity</Label>
-              <Input
-                id="edge-multiplicity"
-                value={multiplicity}
-                onChange={(e) => setMultiplicity(e.target.value)}
-                placeholder="e.g., 1, 0..*, 1..12"
-                data-testid="input-edge-multiplicity"
-              />
-              <p className="text-xs text-muted-foreground">
-                Define how many target elements can participate in this relationship.
-              </p>
-            </div>
+            {projectType === "metamodel" ? (
+              <div className="space-y-2">
+                <Label htmlFor="edge-multiplicity">
+                  How many {endpointName(edge?.target, "targets")} per {endpointName(edge?.source, "source")}
+                </Label>
+                <Input
+                  id="edge-multiplicity"
+                  value={multiplicity}
+                  onChange={(e) => setMultiplicity(e.target.value)}
+                  placeholder="any number"
+                  aria-invalid={!parsedMultiplicity}
+                  aria-describedby="edge-multiplicity-help"
+                  className={parsedMultiplicity ? "" : "border-destructive focus-visible:ring-destructive"}
+                  data-testid="input-edge-multiplicity"
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {MULTIPLICITY_PRESETS.map((preset) => (
+                    <Button
+                      key={preset}
+                      type="button"
+                      variant={multiplicity.replace(/\s+/g, "") === preset ? "default" : "outline"}
+                      size="sm"
+                      className="h-7 px-2 font-mono text-xs"
+                      onClick={() => setMultiplicity(preset)}
+                      data-testid={`button-multiplicity-${preset}`}
+                    >
+                      {preset}
+                    </Button>
+                  ))}
+                  <Button
+                    type="button"
+                    variant={multiplicity.trim() === "" ? "default" : "outline"}
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => setMultiplicity("")}
+                  >
+                    any
+                  </Button>
+                </div>
+                <p
+                  id="edge-multiplicity-help"
+                  className={`text-xs ${parsedMultiplicity ? "text-muted-foreground" : "text-destructive"}`}
+                  data-testid="text-multiplicity-meaning"
+                >
+                  {parsedMultiplicity
+                    ? isUnrestricted(parsedMultiplicity)
+                      ? `A ${endpointName(edge?.source, "source")} may have any number of these relationships. Nothing is checked.`
+                      : `In a model, every ${endpointName(edge?.source, "source")} needs ${describeMultiplicity(parsedMultiplicity)} of these relationships to a ${endpointName(edge?.target, "target")}. Validate reports elements that do not.`
+                    : MULTIPLICITY_HELP}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 rounded-md border bg-muted/40 p-3 text-sm" data-testid="text-multiplicity-from-metamodel">
+                <p className="font-medium">Multiplicity</p>
+                {metamodelMultiplicity ? (
+                  <p className="text-muted-foreground">
+                    The metamodel sets <span className="font-mono text-foreground">{metamodelMultiplicity.text}</span>:
+                    every {metamodelMultiplicity.sourceType} needs{" "}
+                    {describeMultiplicity(parseMultiplicity(metamodelMultiplicity.text) ?? { min: 0, max: null })} of
+                    these relationships to a {metamodelMultiplicity.targetType}. Validate checks it.
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    The metamodel sets no limit for this relationship. Multiplicities are defined on a
+                    metamodel's relationships and checked here when you validate.
+                  </p>
+                )}
+              </div>
+            )}
 
             {(edgeType === "aggregation" || edgeType === "composition") && (
               <div className="space-y-2">
@@ -567,7 +649,12 @@ export function EdgeAttributePanel({
           <Button variant="outline" onClick={onClose} data-testid="button-cancel-edge">
             Cancel
           </Button>
-          <Button onClick={handleSave} data-testid="button-save-edge">
+          <Button
+            onClick={handleSave}
+            disabled={projectType === "metamodel" && !parsedMultiplicity}
+            title={projectType === "metamodel" && !parsedMultiplicity ? "The multiplicity is not valid" : undefined}
+            data-testid="button-save-edge"
+          >
             Apply
           </Button>
         </div>

@@ -786,3 +786,81 @@ describe("relationship ids", () => {
     assert.deepEqual(listed.map((view) => view.id), [first.id, second.id]);
   });
 });
+
+describe("multiplicities", () => {
+  test("server validation checks a metamodel relationship's multiplicity in a model", async () => {
+    const metamodel = await createProject({ name: "Multiplicity types", projectType: "metamodel" });
+    const metaView = await createView(metamodel.id);
+    const drone = `mult-drone-${metamodel.id}`;
+    const battery = `mult-battery-${metamodel.id}`;
+    const sync = await request("POST", `/api/views/${metaView.id}/sync`, {
+      nodes: [
+        { id: drone, type: "partdef", position: { x: 0, y: 0 }, data: { label: "Drone", attributes: [] } },
+        { id: battery, type: "partdef", position: { x: 300, y: 0 }, data: { label: "Battery", attributes: [] } },
+      ],
+      edges: [
+        {
+          id: `mult-rel-${metamodel.id}`,
+          source: drone,
+          target: battery,
+          edgeType: "composition",
+          data: { label: "powered by", multiplicity: "1..2" },
+        },
+      ],
+    });
+    assert.equal(sync.status, 200, sync.text);
+
+    const model = await createProject({
+      name: "Multiplicity model",
+      projectType: "instance",
+      referencedMetamodels: [metamodel.id],
+    });
+    const view = await createView(model.id);
+    const element = (id: string, label: string, typeId: string) => ({
+      id: `${id}-${model.id}`,
+      type: "part",
+      position: { x: 0, y: 0 },
+      // Types of a referenced metamodel are addressed as mm:<project>:<element>.
+      data: { label, typeId: `mm:${metamodel.id}:${typeId}`, attributes: [] },
+    });
+    const powered = (index: number) => ({
+      id: `mult-e${index}-${model.id}`,
+      source: `d-${model.id}`,
+      target: `b${index}-${model.id}`,
+      edgeType: "composition",
+      data: { label: "powered by" },
+    });
+    const validateWith = async (batteries: number) => {
+      const saved = await request("POST", `/api/views/${view.id}/sync`, {
+        nodes: [
+          element("d", "Courier X1", drone),
+          ...Array.from({ length: batteries }, (_, index) => element(`b${index}`, `Pack ${index}`, battery)),
+        ],
+        edges: Array.from({ length: batteries }, (_, index) => powered(index)),
+      });
+      assert.equal(saved.status, 200, saved.text);
+      return (await request("POST", `/api/views/${view.id}/validate`)).json.issues as Array<{ message: string }>;
+    };
+
+    assert.match((await validateWith(0))[0].message, /needs 1 to 2 "powered by" relationships to Battery, but has none/);
+    assert.deepEqual(await validateWith(1), []);
+    assert.match((await validateWith(3))[0].message, /but has 3/);
+  });
+});
+
+describe("export defaults", () => {
+  test("a model's default JSON export brings its metamodels and can be imported", async () => {
+    const metamodel = await createProject({ name: "Default export types", projectType: "metamodel" });
+    const model = await createProject({
+      name: "Default export model",
+      projectType: "instance",
+      referencedMetamodels: [metamodel.id],
+    });
+    const exported = await request("POST", `/api/projects/${model.id}/export`, { format: "json" });
+    assert.equal(exported.status, 200, exported.text);
+    assert.equal(exported.json.referencedMetamodels.length, 1);
+    const imported = await request("POST", "/api/projects/import", exported.json);
+    assert.equal(imported.status, 201, imported.text);
+    assert.equal(imported.json.createdProjects, 2);
+  });
+});

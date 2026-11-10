@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { CustomEdgeData } from "../edges/CustomEdges";
 import type {
 } from "../types";
-import { validateInstanceModel, type ValidationIssue } from "@shared/model-validation";
+import { invalidMultiplicityIssues, validateInstanceModel, type ValidationIssue } from "@shared/model-validation";
 import type { ModelRule } from "@shared/schema";
 import { evaluateModelRules } from "../rules/model-rules";
 
@@ -107,6 +107,15 @@ export function useDiagramValidation({
           id: violation.nodeId,
           message: `${violation.ruleName}: ${violation.message}`,
         }),
+      );
+      // A multiplicity nobody can read would silently check nothing in the models.
+      issues.push(
+        ...invalidMultiplicityIssues(
+          edges.map((edge) => {
+            const data = edge.data as CustomEdgeData | undefined;
+            return { id: edge.id, label: data?.label, multiplicity: data?.multiplicity };
+          }),
+        ),
       );
       showResult(issues);
       return;

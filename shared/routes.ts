@@ -223,7 +223,8 @@ export const projectExportInputSchema = z.object({
   includeElements: z.boolean().default(true),
   includeRelationships: z.boolean().default(true),
   includePatterns: z.boolean().default(false),
-  includeReferencedMetamodels: z.boolean().default(false),
+  // On by default: a model's file is only importable together with its metamodels.
+  includeReferencedMetamodels: z.boolean().default(true),
 });
 
 export type ProjectExportInput = z.infer<typeof projectExportInputSchema>;

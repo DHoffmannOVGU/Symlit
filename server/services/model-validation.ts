@@ -59,6 +59,7 @@ function localRelationEdges(
       targetTypeId: e.target,
       edgeType: e.edgeType || "association",
       label: ((e.data ?? {}) as Record<string, unknown>).label as string | undefined,
+      multiplicity: ((e.data ?? {}) as Record<string, unknown>).multiplicity as string | undefined,
     }));
 }
 
@@ -164,6 +165,7 @@ export async function resolveMetamodel(
             targetTypeId: `mm:${targetProjectId}:${e.target}`,
             edgeType: e.edgeType || "association",
             label: ((e.data ?? {}) as Record<string, unknown>).label as string | undefined,
+            multiplicity: ((e.data ?? {}) as Record<string, unknown>).multiplicity as string | undefined,
           };
         });
       allRelationEdges.push(...mmRelationEdges);

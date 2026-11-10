@@ -33,6 +33,8 @@ export type PartDefEdge = {
   edgeType: CustomEdgeData["edgeType"];
   flowType?: CustomEdgeData["flowType"];
   label?: string;
+  /** How many targets each source element needs (shared/multiplicity.ts). */
+  multiplicity?: string;
   sourceTypeId: string;
   targetTypeId: string;
 };
@@ -203,6 +205,7 @@ export function useMetamodelParts({
               edgeType,
               flowType: data?.flowType as CustomEdgeData["flowType"] | undefined,
               label: data?.label,
+              multiplicity: data?.multiplicity,
               sourceTypeId: edge.source,
               targetTypeId: edge.target,
             };
@@ -287,6 +290,7 @@ export function useMetamodelParts({
               edgeType,
               flowType: data?.flowType as CustomEdgeData["flowType"] | undefined,
               label: data?.label,
+              multiplicity: data?.multiplicity,
               sourceTypeId: edge.source,
               targetTypeId: edge.target,
             };

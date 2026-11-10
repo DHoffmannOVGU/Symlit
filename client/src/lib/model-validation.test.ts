@@ -137,3 +137,74 @@ test("builds a usable parent map from type nodes", () => {
   assert.deepEqual(parentMap.get("device"), new Set(["component"]));
   assert.equal(parentMap.has("component"), false);
 });
+// --- Multiplicities -------------------------------------------------------
+
+const droneMetamodel = (multiplicity?: string) => ({
+  typeNodes: [
+    { id: "drone", label: "Drone" },
+    { id: "battery", label: "Battery" },
+    { id: "cargo-drone", label: "Cargo drone" },
+  ],
+  relationEdges: [
+    { sourceTypeId: "drone", targetTypeId: "battery", edgeType: "composition", label: "powered by", multiplicity },
+  ],
+  parentMap: new Map<string, Set<string>>([["cargo-drone", new Set(["drone"])]]),
+});
+
+const droneModel = (batteries: number, droneType = "drone") => ({
+  nodes: [
+    { id: "d", type: "part", data: { label: "Courier X1", typeId: droneType } },
+    ...Array.from({ length: batteries }, (_, index) => ({
+      id: `b${index}`,
+      type: "part",
+      data: { label: `Pack ${index}`, typeId: "battery" },
+    })),
+  ],
+  edges: Array.from({ length: batteries }, (_, index) => ({
+    id: `e${index}`,
+    source: "d",
+    target: `b${index}`,
+    edgeType: "composition",
+    data: { label: "powered by" },
+  })),
+});
+
+test("a multiplicity is checked per source element", () => {
+  const within = validateInstanceModel(droneModel(2), droneMetamodel("1..2"));
+  assert.deepEqual(within, []);
+
+  const tooFew = validateInstanceModel(droneModel(0), droneMetamodel("1..2"));
+  assert.equal(tooFew.length, 1);
+  assert.equal(tooFew[0].type, "node");
+  assert.equal(tooFew[0].id, "d");
+  assert.equal(tooFew[0].message, '"Courier X1" needs 1 to 2 "powered by" relationships to Battery, but has none.');
+
+  const tooMany = validateInstanceModel(droneModel(3), droneMetamodel("1..2"));
+  assert.equal(tooMany.length, 1);
+  assert.match(tooMany[0].message, /but has 3\.$/);
+  assert.deepEqual(tooMany[0].relatedNodeIds, ["b0", "b1", "b2"]);
+
+  assert.match(
+    validateInstanceModel(droneModel(2), droneMetamodel("1"))[0].message,
+    /needs exactly 1 "powered by" relationship to Battery, but has 2\./,
+  );
+});
+
+test("subtypes inherit a multiplicity; the target type is not required to have anything", () => {
+  const issues = validateInstanceModel(droneModel(0, "cargo-drone"), droneMetamodel("1..*"));
+  assert.equal(issues.length, 1);
+  assert.match(issues[0].message, /needs at least 1/);
+  // A battery on its own violates nothing: the multiplicity is about drones.
+  const lonelyBattery = validateInstanceModel(
+    { nodes: [{ id: "b", type: "part", data: { label: "Spare", typeId: "battery" } }], edges: [] },
+    droneMetamodel("1"),
+  );
+  assert.deepEqual(lonelyBattery, []);
+});
+
+test("no multiplicity, `*`, or unreadable text restricts nothing", () => {
+  for (const multiplicity of [undefined, "", "*", "0..*", "lots"]) {
+    assert.deepEqual(validateInstanceModel(droneModel(0), droneMetamodel(multiplicity)), [], String(multiplicity));
+    assert.deepEqual(validateInstanceModel(droneModel(5), droneMetamodel(multiplicity)), [], String(multiplicity));
+  }
+});

@@ -15,6 +15,10 @@
   message instead of a database error.
 
 ### Added
+- Multiplicities mean something: set on a metamodel's relationship ("how many
+  Battery per Drone": `1`, `0..1`, `1..*`, `2..5`), they are checked when a
+  model is validated, in the editor and on the server. Text that is not a
+  multiplicity can no longer be applied.
 - F2 renames the selected element right on its card.
 - Import: open a JSON export as a new project (project list → Import).
 - The project list shows when a project was last edited and can be sorted;
@@ -22,6 +26,8 @@
 - Deleting a metamodel warns about the projects that use it.
 
 ### Changed
+- Exporting a model includes its metamodels by default, so the file can be
+  imported again.
 - Save stays in view in narrow windows.
 - The element and relationship panels say "Apply" (they change the diagram;
   Save in the header writes it).
