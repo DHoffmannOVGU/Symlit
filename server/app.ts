@@ -3,6 +3,7 @@ import { createServer, type Server } from "node:http";
 import { registerRoutes } from "./routes/index";
 import { authorizeWorkspaceApi, createLocalAuth } from "./auth";
 import type { AppConfig } from "./config";
+import { catchAsyncRouteErrors, guardLocalApi, rejectInvalidIds } from "./http-guards";
 import { log } from "./log";
 
 export interface CreatedApp {
@@ -24,8 +25,13 @@ export async function createApp(
   const localAuth = createLocalAuth(config.localUserName);
 
   app.disable("x-powered-by");
+  catchAsyncRouteErrors(app);
+  rejectInvalidIds(app);
+  // The whole app (pages included) is guarded, so a rebound domain gets nothing.
+  app.use(guardLocalApi(config.allowedHosts));
+  // JSON only: form-encoded bodies are what other sites can post without a
+  // CORS preflight, and no client of this API sends them.
   app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ extended: true }));
 
   if (options.requestLogging ?? true) {
     // Log method, path, status and duration only. Response bodies contain

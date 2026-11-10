@@ -15,18 +15,63 @@ commit that fixed them.
 
 ### Features
 - **Patterns, next steps (v0.2):** authoring instance-level patterns inside a metamodel (server ready, no editor yet), re-applying a pattern to its copies, importing exported patterns.
-- **Project templates, next steps (v0.2):** saving projects as templates, user template files, a template library, an "Import project file" action.
+- **Project templates, next steps (v0.2):** saving projects as templates, user template files, a template library.
 - **SysML v2 textual export (later import).** The vocabulary already follows SysML v2; export
   makes models diffable and usable in SysML v2 tools. See
   `docs/decisions/diagram-editor-state-and-libraries.md`.
 
+- **Auto-save and save conflicts.** Auto-save is optional (canvas settings). When an automatic save meets a
+  conflict, the conflict dialog opens and auto-save waits for the next edit; "Decide later" followed by an
+  edit asks again. Nobody has yet used the two together for long.
+- **Import matches nothing that exists.** Importing a file always creates new copies of the metamodels it brings,
+  even when the same metamodel is already in the workspace. Offer "use the existing one" when names/content match.
+- **Save conflicts are all-or-nothing.** The dialog offers "my version" or "the other version" for the whole
+  diagram; there is no merge or per-element view of what differs.
+
 ### Server
+- **Route error handling is doubled.** `catchAsyncRouteErrors` (server/http-guards.ts) now passes every async
+  error to the error handler, so the per-route `try/catch` blocks and the `fail()` helper in `routes/patterns.ts`
+  only exist to map known errors to 4xx. They could become error classes with a `status`. Express 5 would make
+  the wrapper unnecessary.
+- **The save conflict check is not atomic.** The revision is compared just before the transaction, which is fine
+  for one user; a hosted edition should compare inside it (or lock the view row).
+- **`updated_at` misses some writes.** Saving a pattern and inserting an element through
+  `POST /api/views/:viewId/nodes/:nodeId/insert` do not mark the project as edited.
 
 ### Client
-- **The diagram editor chunk is 498 kB (gzip ~160 kB).** What remains is mostly React Flow,
-  the canvas, the sidebar and Radix.
+- **Dark mode is half there.** `dark:` variants exist in about 17 places while about 52 backgrounds are
+  light-only (`bg-white`, `bg-slate-50`), and nothing ever sets the `dark` class. A toggle needs a pass over
+  those first; turning it on as is gives a half-dark UI.
+- **The element editor hides the diagram.** It is a modal sheet that dims the canvas. Names can now be changed
+  on the card (F2); attributes, description and style still need the sheet. A non-modal side panel would let
+  people see the neighbours while editing.
+- **Inline rename is keyboard-only.** F2 is in the help dialog and the name's tooltip, but nothing on screen
+  offers it. A slow second click on the name is the usual pointer gesture; it was left out because a click on a
+  selected element followed by Delete would then edit the name instead of deleting the element.
+- **Project card actions appear on hover only** (edit, delete), and sit next to each other.
+- **Toolbar labels disappear below 1280 px**, leaving icon-only buttons (UX review O2 fixed this for wide screens only).
+- **Sidebar header.** "Local user" with a green dot carries no information in a single-user app, and the project
+  name is cut off there while the breadcrumb beside it shows it.
+- **No whole-workspace backup.** Export and import are per project; backing up everything means one export per
+  project or copying the data directory.
 
 ## Done
+- Saving a diagram that contained a relationship id already used in another diagram failed with a 500 that showed the database's constraint error. It answers 400 with what to do; unexpected save errors no longer pass database messages to the browser.
+- In narrow windows the header pushed the save state and the Save button out of view. The names on the left and the metamodel selector give way now; the save state keeps its mark and drops its words.
+- Renaming an element needed the editor sheet and Apply. F2 renames the selected element on its card (Enter confirms, Escape cancels, one undo step).
+- Diagrams and patterns were listed without a defined order; they come in creation order.
+- The project list remembers its sort choice.
+- A request with an id that is not a number (`GET /api/projects/abc`) ended the server process: Express 4 does not catch errors from async handlers, and the id went to the database unchecked. Async route errors now reach the error handler and impossible ids answer 404 before any query (`server/http-guards.ts`).
+- Any website could write to the workspace: form posts need no CORS preflight and the server read them, and nothing checked `Origin` or `Host` (DNS rebinding gave read access too). Form bodies are no longer read, writes must come from the app's own origin, and only `localhost`, IP addresses and `SYMLIT_ALLOWED_HOSTS` are served.
+- Export was one-way. `POST /api/projects/import` and an Import button on the project list open a JSON export as a new project (with the metamodels it brings).
+- Saving a diagram overwrote whatever was stored, so a second tab, or a shared element edited in another diagram, was silently reverted. Diagrams have a revision; an outdated save answers 409 and the editor asks which version to keep (`e2e/save-conflict.spec.ts`).
+- Cached diagrams were never refreshed after a save: switching to another diagram and back within 30 s showed the diagram from before the save.
+- Deleting a metamodel that other projects use gave no warning; the dialog now names them and says what they lose.
+- `/project/1/view/3` showed project 1's sidebar around a diagram of another project. Such addresses, and missing projects, now redirect with a notice.
+- Project cards were `div role="link"`; they are real links now (new tab, middle click). Projects record `updated_at` (migration 0007); the list shows "Edited …", sorts by it (or name, or creation) and the API returns a defined order. The three count tiles that repeated the filter counts are gone.
+- No error boundary: a render error left a blank page. There is a page-level one now with Reload and All projects.
+- The canvas toolbar's width was measured against the window, not the canvas, so it ran over undo/redo in narrow windows; the tutorial coach starts minimised in small windows.
+- The message for a damaged diagram told users to "contact support".
 - Project templates (`docs/decisions/project-templates.md`): templates are project files in the export format, shipped in `server/templates/`, and can be bundles (a model with its metamodels and patterns). The browser used to send each template's whole content to `POST /api/projects/starter`; it now picks a template by id. A new importer creates a file's projects with fresh ids and rewires references, so the tutorial is an ordinary template and its special id-preserving code is gone. Templates can show one element in several diagrams (previously refused). Every project created from a template records it; migration 0006 merges the two tutorial template ids into `tutorial`. The JSON export now also includes the referenced metamodels' patterns.
 - Patterns follow the decisions in `docs/decisions/patterns.md` (tested in `server/patterns.test.ts`, `e2e/patterns.spec.ts`): single-element patterns; relationships and nesting must stay inside the pattern; types must be known when saving and inserting; copies record their origin; patterns of every referenced metamodel (whole chain) are offered insert-only. Inserting a pattern used to save on the server and reload the diagram, which dropped unsaved edits and the undo history; the server now only builds the copy and the editor adds it as one undo step. Pattern route errors no longer hang requests.
 - Element ids were `node_${Date.now()}`, and template ids were fixed strings: creating a template

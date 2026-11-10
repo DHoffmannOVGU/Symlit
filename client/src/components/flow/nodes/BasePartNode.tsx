@@ -1,4 +1,5 @@
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useDiagramStore } from "../state/DiagramStoreProvider";
 
 /** Space the canvas toolbar takes at the top of the canvas, plus the bar itself. */
 const ACTION_BAR_CLEARANCE = 110;
@@ -109,6 +110,24 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
   // up to a few lines; in both cases text that is still too long gets smaller, then cut.
   const fixedSize = Boolean(nodeData.hasFixedSize);
   const labelRef = useRef<HTMLDivElement>(null);
+  // Renaming on the card (F2): the name becomes a text field until Enter, Escape or a click elsewhere.
+  const renameRequested = useDiagramStore((state) => state.renamingNodeId === id);
+  const setRenamingNodeId = useDiagramStore((state) => state.setRenamingNodeId);
+  const renameNode = useDiagramStore((state) => state.renameNode);
+  const isRenaming = renameRequested && !isReadOnly;
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  // Set by Enter and Escape, so the blur that follows them does not apply the text a second time (or at all).
+  const renameSettled = useRef(false);
+  useEffect(() => {
+    // Types from a referenced metamodel are renamed in their own project.
+    if (renameRequested && isReadOnly) setRenamingNodeId(null);
+  }, [isReadOnly, renameRequested, setRenamingNodeId]);
+  useEffect(() => {
+    if (!isRenaming) return;
+    renameSettled.current = false;
+    renameInputRef.current?.focus();
+    renameInputRef.current?.select();
+  }, [isRenaming]);
   const cardRef = useRef<HTMLDivElement>(null);
   // The edit/duplicate/delete bar sits above the element, unless that would put
   // it under the canvas toolbar at the top: then it goes below.
@@ -336,20 +355,49 @@ const BasePartNode = ({ id, data, selected, config }: BasePartNodeProps) => {
         <div
           className={`flex min-h-0 flex-1 flex-col ${hasVisibleDescription ? "" : "justify-center min-h-[42px]"}`}
         >
-          <div
-            ref={labelRef}
-            className={`shrink-0 overflow-hidden break-words font-semibold ${onSolid ? "text-white" : "text-foreground"}`}
-            style={{
-              maxHeight: fixedSize && !hasVisibleDescription
-                ? "100%"
-                // With a description, the name gets at most two lines so the description keeps room.
-                : `${(hasVisibleDescription ? 2 : 3) * labelMax * 1.25}px`,
-            }}
-            title={nodeData.label}
-            data-testid="element-label"
-          >
-            {nodeData.label}
-          </div>
+          {isRenaming ? (
+            <input
+              ref={renameInputRef}
+              defaultValue={nodeData.label}
+              aria-label="Element name"
+              data-testid="input-rename-element"
+              // nodrag/nopan: selecting text must not move the element or the canvas.
+              className="nodrag nopan w-full min-w-0 rounded border border-primary bg-background px-1 py-0.5 text-sm font-semibold text-foreground outline-none ring-2 ring-primary/30"
+              onKeyDown={(event) => {
+                event.stopPropagation();
+                if (event.key === "Enter") {
+                  renameSettled.current = true;
+                  renameNode(id, event.currentTarget.value);
+                  setRenamingNodeId(null);
+                } else if (event.key === "Escape") {
+                  renameSettled.current = true;
+                  setRenamingNodeId(null);
+                }
+              }}
+              onBlur={(event) => {
+                if (!renameSettled.current) {
+                  renameNode(id, event.currentTarget.value);
+                  setRenamingNodeId(null);
+                }
+              }}
+              onDoubleClick={(event) => event.stopPropagation()}
+            />
+          ) : (
+            <div
+              ref={labelRef}
+              className={`shrink-0 overflow-hidden break-words font-semibold ${onSolid ? "text-white" : "text-foreground"}`}
+              style={{
+                maxHeight: fixedSize && !hasVisibleDescription
+                  ? "100%"
+                  // With a description, the name gets at most two lines so the description keeps room.
+                  : `${(hasVisibleDescription ? 2 : 3) * labelMax * 1.25}px`,
+              }}
+              title={selected && !isReadOnly ? `${nodeData.label} (F2 to rename)` : nodeData.label}
+              data-testid="element-label"
+            >
+              {nodeData.label}
+            </div>
+          )}
           {hasVisibleDescription ? (
             <div
               ref={descriptionRef}

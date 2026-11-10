@@ -15,6 +15,7 @@ const config: AppConfig = {
   database: { driver: "pglite", dataDir: null },
   seedDemo: false,
   localUserName: "Test Engineer",
+  allowedHosts: [],
   features: { ai: false },
 };
 
@@ -565,5 +566,223 @@ describe("server-controlled project fields", () => {
     // Removing the tutorial therefore never touches this project.
     await request("DELETE", "/api/tutorial");
     assert.equal((await request("GET", `/api/projects/${created.json.id}`)).status, 200);
+  });
+});
+
+describe("malformed requests", () => {
+  test("ids that cannot exist answer 404 and the server keeps running", async () => {
+    for (const path of [
+      "/api/projects/abc",
+      "/api/projects/99999999999999",
+      "/api/projects/1.5",
+      "/api/views/abc",
+      "/api/views/abc/flow",
+      "/api/views/99999999999999/flow",
+      "/api/projects/abc/views",
+    ]) {
+      assert.equal((await request("GET", path)).status, 404, path);
+    }
+    assert.equal((await request("PATCH", "/api/projects/abc", { name: "x" })).status, 404);
+    assert.equal((await request("DELETE", "/api/views/0")).status, 404);
+    assert.equal((await request("GET", "/api/config")).status, 200);
+  });
+});
+
+describe("requests from other websites", () => {
+  const raw = (method: string, path: string, headers: Record<string, string>, body?: string) =>
+    fetch(`${baseUrl}${path}`, { method, headers, body });
+
+  test("form posts and cross-origin writes are refused", async () => {
+    const before = (await request("GET", "/api/projects")).json.length;
+    const form = await raw(
+      "POST",
+      "/api/projects",
+      { "Content-Type": "application/x-www-form-urlencoded", Origin: "https://evil.example" },
+      "name=pwned&projectType=metamodel",
+    );
+    assert.equal(form.status, 403);
+    const json = await raw(
+      "POST",
+      "/api/projects",
+      { "Content-Type": "application/json", Origin: "https://evil.example" },
+      JSON.stringify({ name: "pwned", projectType: "metamodel" }),
+    );
+    assert.equal(json.status, 403);
+    const noBody = await raw("POST", "/api/tutorial", { "Sec-Fetch-Site": "cross-site" });
+    assert.equal(noBody.status, 403);
+    // Without an Origin, a form body is simply not read.
+    const plainForm = await raw(
+      "POST",
+      "/api/projects",
+      { "Content-Type": "application/x-www-form-urlencoded" },
+      "name=pwned&projectType=metamodel",
+    );
+    assert.equal(plainForm.status, 400);
+    assert.equal((await request("GET", "/api/projects")).json.length, before);
+  });
+
+  test("the app's own origin may write", async () => {
+    const res = await raw(
+      "POST",
+      "/api/projects",
+      { "Content-Type": "application/json", Origin: baseUrl },
+      JSON.stringify({ name: "Same origin", projectType: "metamodel" }),
+    );
+    assert.equal(res.status, 201);
+  });
+});
+
+describe("project import", () => {
+  test("a JSON export imports as a new project with the same content", async () => {
+    const metamodel = await createProject({ name: "Import types", projectType: "metamodel" });
+    const metaView = await createView(metamodel.id);
+    await request("POST", `/api/views/${metaView.id}/sync`, sampleFlow(`impmeta${metamodel.id}`));
+    const project = await createProject({
+      name: "Import me",
+      projectType: "instance",
+      referencedMetamodels: [metamodel.id],
+    });
+    const view = await createView(project.id);
+    await request("POST", `/api/views/${view.id}/sync`, sampleFlow(`imp${project.id}`));
+
+    const exported = await request("POST", `/api/projects/${project.id}/export`, {
+      format: "json",
+      includeReferencedMetamodels: true,
+    });
+    assert.equal(exported.status, 200, exported.text);
+
+    const imported = await request("POST", "/api/projects/import", exported.json);
+    assert.equal(imported.status, 201, imported.text);
+    assert.equal(imported.json.createdProjects, 2);
+    assert.notEqual(imported.json.project.id, project.id);
+    assert.equal(imported.json.project.name, "Import me");
+    assert.equal(imported.json.project.referencedMetamodels.length, 1);
+    assert.notEqual(imported.json.project.referencedMetamodels[0], metamodel.id);
+
+    const original = (await request("GET", `/api/views/${view.id}/flow`)).json;
+    const copy = (await request("GET", `/api/views/${imported.json.firstViewId}/flow`)).json;
+    assert.equal(copy.nodes.length, original.nodes.length);
+    assert.equal(copy.edges.length, original.edges.length);
+    const labels = (flow: { nodes: Array<{ data: { label?: string } }> }) =>
+      flow.nodes.map((node) => node.data.label).sort();
+    assert.deepEqual(labels(copy), labels(original));
+  });
+
+  test("rejects files that are not project files, saving nothing", async () => {
+    const before = (await request("GET", "/api/projects")).json.length;
+    for (const body of [{}, { hello: "world" }, [1, 2, 3]]) {
+      const res = await request("POST", "/api/projects/import", body);
+      assert.equal(res.status, 400, JSON.stringify(body));
+      assert.match(res.json.message, /Not a valid project file/);
+    }
+    assert.equal((await request("GET", "/api/projects")).json.length, before);
+  });
+});
+
+describe("saving over changes made elsewhere", () => {
+  test("a save based on an outdated revision is refused; overwriting is explicit", async () => {
+    const project = await createProject({ name: "Conflicts" });
+    const view = await createView(project.id);
+    const flow = sampleFlow(`rev${project.id}`);
+    const first = await request("POST", `/api/views/${view.id}/sync`, flow);
+    assert.equal(first.status, 200, first.text);
+    const loaded = await request("GET", `/api/views/${view.id}/flow`);
+    assert.equal(loaded.json.revision, first.json.revision);
+
+    // Saving what was loaded, twice: each save hands out the next revision.
+    const second = await request("POST", `/api/views/${view.id}/sync`, {
+      ...flow,
+      baseRevision: loaded.json.revision,
+    });
+    assert.equal(second.status, 200, second.text);
+    assert.equal(second.json.revision, loaded.json.revision, "unchanged content keeps its revision");
+
+    // "Another tab" renames an element.
+    const renamed = structuredClone(flow);
+    renamed.nodes[0].data.label = "Renamed elsewhere";
+    const other = await request("POST", `/api/views/${view.id}/sync`, {
+      ...renamed,
+      baseRevision: loaded.json.revision,
+    });
+    assert.equal(other.status, 200, other.text);
+    assert.notEqual(other.json.revision, loaded.json.revision);
+
+    const stale = await request("POST", `/api/views/${view.id}/sync`, {
+      ...flow,
+      baseRevision: loaded.json.revision,
+    });
+    assert.equal(stale.status, 409, stale.text);
+    const stored = await request("GET", `/api/views/${view.id}/flow`);
+    assert.ok(stored.json.nodes.some((node: any) => node.data.label === "Renamed elsewhere"));
+
+    const overwrite = await request("POST", `/api/views/${view.id}/sync`, flow);
+    assert.equal(overwrite.status, 200, "a save without a revision overwrites");
+  });
+
+  test("an element edited in another diagram makes this diagram's save conflict", async () => {
+    const project = await createProject({ name: "Shared element" });
+    const viewA = await createView(project.id);
+    const viewB = await createView(project.id);
+    const flow = sampleFlow(`shared${project.id}`);
+    await request("POST", `/api/views/${viewA.id}/sync`, flow);
+    await request("POST", `/api/views/${viewB.id}/sync`, { nodes: [flow.nodes[0]], edges: [] });
+    const loadedB = await request("GET", `/api/views/${viewB.id}/flow`);
+
+    const renamed = structuredClone(flow);
+    renamed.nodes[0].data.label = "Renamed in A";
+    assert.equal((await request("POST", `/api/views/${viewA.id}/sync`, renamed)).status, 200);
+
+    const staleB = await request("POST", `/api/views/${viewB.id}/sync`, {
+      nodes: [{ ...flow.nodes[0], position: { x: 500, y: 500 } }],
+      edges: [],
+      baseRevision: loadedB.json.revision,
+    });
+    assert.equal(staleB.status, 409, "saving B would have reverted the rename");
+  });
+});
+
+describe("last edited", () => {
+  test("saving a diagram moves its project to the top of the list", async () => {
+    const older = await createProject({ name: "Edited later" });
+    const newer = await createProject({ name: "Created later" });
+    const ids = async () =>
+      ((await request("GET", "/api/projects")).json as Array<{ id: number }>)
+        .map((project) => project.id)
+        .filter((id) => id === older.id || id === newer.id);
+    assert.deepEqual(await ids(), [newer.id, older.id]);
+
+    const before = (await request("GET", `/api/projects/${older.id}`)).json.updatedAt;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const view = await createView(older.id);
+    await request("POST", `/api/views/${view.id}/sync`, sampleFlow(`edited${older.id}`));
+    const after = (await request("GET", `/api/projects/${older.id}`)).json.updatedAt;
+    assert.ok(new Date(after) > new Date(before));
+    assert.deepEqual(await ids(), [older.id, newer.id]);
+  });
+});
+
+describe("relationship ids", () => {
+  test("an id used in another diagram is refused with a clear message, not a database error", async () => {
+    const project = await createProject({ name: "Shared relationship id" });
+    const viewA = await createView(project.id);
+    const viewB = await createView(project.id);
+    const flow = sampleFlow(`relid${project.id}`);
+    assert.equal((await request("POST", `/api/views/${viewA.id}/sync`, flow)).status, 200);
+
+    const res = await request("POST", `/api/views/${viewB.id}/sync`, flow);
+    assert.equal(res.status, 400, res.text);
+    assert.match(res.json.message, /same id as one in another diagram/);
+    assert.doesNotMatch(res.text, /constraint|edges_pkey/);
+    // Saving the diagram that owns the id still works.
+    assert.equal((await request("POST", `/api/views/${viewA.id}/sync`, flow)).status, 200);
+  });
+
+  test("diagrams are listed in the order they were created", async () => {
+    const project = await createProject({ name: "Diagram order" });
+    const first = await createView(project.id, "First");
+    const second = await createView(project.id, "Second");
+    await request("PATCH", `/api/views/${first.id}`, { name: "First, renamed" });
+    const listed = (await request("GET", `/api/projects/${project.id}/views`)).json as Array<{ id: number }>;
+    assert.deepEqual(listed.map((view) => view.id), [first.id, second.id]);
   });
 });

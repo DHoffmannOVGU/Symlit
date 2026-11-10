@@ -46,6 +46,15 @@ import { TutorialCoach } from "@/components/tutorial/TutorialCoach";
 import { useTutorialCoach } from "@/components/tutorial/useTutorialCoach";
 import { WorkspaceUnavailable } from "@/components/WorkspaceUnavailable";
 
+/** Leaves a page that cannot be shown, saying why instead of silently landing elsewhere. */
+function RedirectWithNotice({ to, title, description }: { to: string; title: string; description: string }) {
+  const { toast } = useToast();
+  useEffect(() => {
+    toast({ title, description });
+  }, [description, title, toast]);
+  return <Redirect to={to} />;
+}
+
 export default function ProjectView() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -167,7 +176,27 @@ export default function ProjectView() {
   }
 
   // Not found handling
-  if (!project) return <Redirect to="/projects" />;
+  if (!project) {
+    return (
+      <RedirectWithNotice
+        to="/projects"
+        title="Project not found"
+        description="It may have been deleted. Here are your projects."
+      />
+    );
+  }
+  // The address names a diagram that does not exist or belongs to another
+  // project: showing it here would mix two projects (this one's sidebar and
+  // types around the other one's diagram).
+  if (viewId && currentView !== undefined && (currentView === null || currentView.projectId !== project.id)) {
+    return (
+      <RedirectWithNotice
+        to={`/project/${project.id}`}
+        title="Diagram not found"
+        description={`"${project.name}" has no such diagram.`}
+      />
+    );
+  }
 
   const availableMetamodels = (
     allProjects?.filter(
@@ -191,6 +220,7 @@ export default function ProjectView() {
           templateId: null,
           metamodelSetup: null,
           createdAt: null,
+          updatedAt: null,
         }),
       ),
   );
@@ -231,9 +261,10 @@ export default function ProjectView() {
         <SidebarInset className="flex flex-col flex-1 overflow-hidden">
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4 bg-card sticky top-0 z-10">
             <SidebarTrigger className="-ml-1" />
-            <div className="flex items-center justify-between flex-1 gap-4 overflow-hidden">
-              <div className="flex items-center gap-2 overflow-hidden shrink-0">
-                <span className="text-sm font-semibold truncate max-w-[150px] md:max-w-[300px]">
+            {/* When space runs out the names on the left shrink; Save on the right always stays in view. */}
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+                <span className="min-w-0 shrink text-sm font-semibold truncate max-w-[150px] md:max-w-[300px]">
                   {project.name}
                 </span>
                 {viewId && (
@@ -244,46 +275,48 @@ export default function ProjectView() {
                         Pattern
                       </span>
                     )}
-                    <span className="text-sm text-muted-foreground truncate max-w-[100px] md:max-w-[200px]">
+                    <span className="min-w-0 shrink-[2] text-sm text-muted-foreground truncate max-w-[100px] md:max-w-[200px]">
                       {currentView?.name ?? views?.find((v) => v.id === viewId)?.name}
                     </span>
                   </>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
-
-
+              <div className="flex shrink-0 items-center gap-2">
                 {project.projectType === "instance" && (
-                  <MetamodelSelector
-                    availableMetamodels={availableMetamodels}
-                    selectedIds={selectedMetamodelIds}
-                    onSelectionChange={handleMetamodelChange}
-                    unavailableMetamodelIds={unavailableMetamodelIds}
-                  />
+                  // Set once per project: in narrow windows it gives way to the names on the left.
+                  <div className="max-w-[9.5rem] lg:max-w-none [&_button]:w-full [&_button]:min-w-0 lg:[&_button]:min-w-[200px]">
+                    <MetamodelSelector
+                      availableMetamodels={availableMetamodels}
+                      selectedIds={selectedMetamodelIds}
+                      onSelectionChange={handleMetamodelChange}
+                      unavailableMetamodelIds={unavailableMetamodelIds}
+                    />
+                  </div>
                 )}
 
                 {viewId && (
                   <div className="order-last flex items-center gap-3">
                     <span
-                      className="hidden items-center gap-1.5 text-xs text-muted-foreground sm:flex"
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground"
                       aria-live="polite"
                       data-testid="diagram-save-status"
                     >
+                      {/* Narrow windows keep the mark and drop the words (still read to screen readers). */}
                       {activeDiagramSaveState ? (
                         <>
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          Saving…
+                          <span className="sr-only xl:not-sr-only">Saving…</span>
                         </>
                       ) : activeDiagramDirtyState ? (
                         <>
                           <span className="h-2 w-2 rounded-full bg-amber-500" />
-                          Unsaved changes
+                          <span className="sr-only xl:not-sr-only">Unsaved changes</span>
                         </>
                       ) : (
                         <>
                           <Check className="h-3.5 w-3.5 text-emerald-600" />
-                          All changes saved
+                          <span className="sr-only xl:not-sr-only">All changes saved</span>
                         </>
                       )}
                     </span>

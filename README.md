@@ -76,6 +76,7 @@ Everything is optional. Set variables in the environment or in a `.env` file
 | `SYMLIT_DATA_DIR` | `./data` | Where the embedded database is stored (`:memory:` for a throwaway one). |
 | `HOST` / `PORT` | `127.0.0.1` / `5000` | Listen address. The default is only reachable from this machine. |
 | `SYMLIT_USER_NAME` | `Local user` | Display name of the local user. |
+| `SYMLIT_ALLOWED_HOSTS` | – | Extra host names the app may be opened under (comma-separated), e.g. `symlit.lan`. `localhost` and IP addresses always work; other names are refused to stop other websites from reaching the app. |
 | `SYMLIT_SEED_DEMO` | `true` | Create a demo project when the workspace is empty. |
 | `GEMINI_API_KEY` | – | Enables the AI metamodel assistant. |
 | `GEMINI_MODEL` | built-in list | Gemini model, or a comma-separated fallback list. |

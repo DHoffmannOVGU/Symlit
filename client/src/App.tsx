@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DiagramEventBusProvider } from "@/lib/diagram-events";
 import NotFound from "@/pages/not-found";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Pages are loaded on demand so the project list does not download the
 // diagram editor (React Flow, panels, layout engines) up front.
@@ -47,9 +48,11 @@ function App() {
       <DiagramEventBusProvider>
         <TooltipProvider>
           <Toaster />
-          <Suspense fallback={<PageLoading />}>
-            <Router />
-          </Suspense>
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoading />}>
+              <Router />
+            </Suspense>
+          </ErrorBoundary>
         </TooltipProvider>
       </DiagramEventBusProvider>
     </QueryClientProvider>

@@ -3,6 +3,7 @@ import { SavePatternDialog } from "./SavePatternDialog";
 import { DiagramHelpDialog } from "./DiagramHelpDialog";
 import { ValidationResultsDialog } from "./ValidationResultsDialog";
 import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
+import { SaveConflictDialog } from "./SaveConflictDialog";
 import { useCanvasInsertion } from "./useCanvasInsertion";
 import { useCanvasAiProposal } from "./useCanvasAiProposal";
 import { useCanvasDropInsertion } from "./useCanvasDropInsertion";
@@ -113,7 +114,7 @@ function FlowInner({
   const [suspendFlowLoad, setSuspendFlowLoad] = useState(false);
   const canvasShellRef = useRef<HTMLDivElement | null>(null);
 
-  const { isLoading, isError, reload: reloadDiagram } = useDiagramLoading(suspendFlowLoad);
+  const { isLoading, isError, reload: reloadDiagram, discardAndReload } = useDiagramLoading(suspendFlowLoad);
   const {
     save: handleSave,
     saveAsync: handleSaveAsync,
@@ -519,6 +520,11 @@ function FlowInner({
       <ValidationResultsDialog {...validation} />
 
       <UnsavedChangesDialog {...leaveConfirmation} isSaving={isSaving} />
+      <SaveConflictDialog
+        isSaving={isSaving}
+        onOverwrite={() => void handleSaveAsync({ overwrite: true }).catch(() => undefined)}
+        onReload={() => void discardAndReload()}
+      />
 
       <CanvasDeleteDialog />
     </div>

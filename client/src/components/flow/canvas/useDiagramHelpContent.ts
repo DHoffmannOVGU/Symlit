@@ -23,6 +23,7 @@ export function useDiagramHelpContent(
       { key: "Ctrl/Cmd + S", description: "Save the diagram." },
       { key: "Ctrl/Cmd + Z", description: "Undo. Add Shift (or use Ctrl + Y) to redo." },
       { key: "Ctrl/Cmd + C / V", description: "Copy and paste the selected elements." },
+      { key: "F2", description: "Rename the selected element on its card (Enter confirms, Esc cancels)." },
       { key: "Delete / Backspace", description: "Delete the selected elements or relationships." },
       { key: "Double-click", description: "Open the editor of an element or relationship." },
       { key: "Shift + drag", description: "Select several elements with a box. Ctrl/Cmd-click adds one at a time." },

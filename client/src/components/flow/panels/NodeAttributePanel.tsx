@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Trash2, Save, X } from "lucide-react";
+import { Plus, Trash2, Check, X } from "lucide-react";
 import { sanitizeAttributeOptions } from "./node-attribute/style-presets";
 import type { DiagramNode as Node } from "../types";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -931,10 +931,14 @@ export function NodeAttributePanel({
             disabled={hasDerivedFormulaErrors || hasDuplicateAttributeNames}
             data-testid="button-save-attributes"
           >
-            <Save className="w-4 h-4 mr-1" />
-            Save Changes
+            <Check className="w-4 h-4 mr-1" />
+            Apply
           </Button>
         </SheetFooter>
+        {/* Applying changes the diagram on screen; only "Save" in the header writes it. */}
+        <p className="pt-2 text-right text-xs text-muted-foreground" data-testid="text-apply-hint">
+          Apply updates the diagram. Use Save in the header to keep it.
+        </p>
       </SheetContent>
       </Sheet>
       <InheritAttributesDialog

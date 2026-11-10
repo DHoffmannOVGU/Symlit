@@ -31,6 +31,8 @@ export const projects = pgTable("projects", {
   templateId: text("template_id"),
   metamodelSetup: jsonb("metamodel_setup").$type<MetamodelSetup | null>().default(sql`'null'::jsonb`),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  /** Last change to the project, its diagrams or their content. */
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 }, (table) => ({
   userIdIdx: index("projects_user_id_idx").on(table.userId),
 }));

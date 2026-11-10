@@ -12,7 +12,7 @@ import { metamodelSetupSchema } from "./metamodel-setup";
 // What the schemas used to be: generated from the tables, with the JSON
 // columns narrowed.
 const generatedProject = createInsertSchema(projects)
-  .omit({ id: true, createdAt: true })
+  .omit({ id: true, createdAt: true, updatedAt: true })
   .extend({
     projectType: z.enum(projectTypeEnum).optional(),
     referencedMetamodels: z.array(z.number()).optional(),

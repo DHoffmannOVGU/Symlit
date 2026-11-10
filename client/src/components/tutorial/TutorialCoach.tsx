@@ -38,6 +38,8 @@ interface TutorialCoachProps {
   onRemoveTutorial: () => void;
 }
 
+const SMALL_WINDOW = "(max-width: 899px), (max-height: 599px)";
+
 const projectLabel = (scope: "metamodel" | "instance") =>
   scope === "metamodel" ? "Drone types" : "Delivery drone";
 
@@ -65,6 +67,17 @@ export function TutorialCoach({
   const [whyOpen, setWhyOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const previousDone = useRef(done);
+  // In a small window the open coach covers most of the canvas, so it starts
+  // minimised there until the learner opens it.
+  const [smallWindow, setSmallWindow] = useState(() => window.matchMedia(SMALL_WINDOW).matches);
+  const [openedInSmallWindow, setOpenedInSmallWindow] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(SMALL_WINDOW);
+    const onChange = () => setSmallWindow(query.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  const minimised = progress.collapsed || (smallWindow && !openedInSmallWindow && !finished);
 
   // Follow the learner: jump to the lesson they are in when it changes.
   useEffect(() => setViewedLesson(activeLesson), [activeLesson]);
@@ -72,7 +85,7 @@ export function TutorialCoach({
   // appears or changes between open and minimised.
   useEffect(() => {
     announceCanvasOverlayChange();
-  }, [progress.collapsed, finished]);
+  }, [minimised, finished]);
   useEffect(() => setShowHint(false), [activeStep?.id]);
   useEffect(() => setWhyOpen(false), [viewedLesson]);
   useEffect(() => {
@@ -90,11 +103,14 @@ export function TutorialCoach({
 
   const percent = Math.round((done / total) * 100);
 
-  if (progress.collapsed) {
+  if (minimised) {
     return (
       <button
         type="button"
-        onClick={() => onCollapsedChange(false)}
+        onClick={() => {
+          setOpenedInSmallWindow(true);
+          onCollapsedChange(false);
+        }}
         className="fixed bottom-4 right-4 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border bg-card px-4 py-2.5 text-left text-sm shadow-xl transition hover:shadow-2xl"
         data-testid="button-tutorial-expand"
       >
@@ -142,7 +158,10 @@ export function TutorialCoach({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => onCollapsedChange(true)}
+            onClick={() => {
+              setOpenedInSmallWindow(false);
+              onCollapsedChange(true);
+            }}
             title="Minimise the tutorial"
             data-testid="button-tutorial-collapse"
           >

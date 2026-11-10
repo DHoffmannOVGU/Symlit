@@ -1,8 +1,8 @@
 import { DEFAULT_LOCAL_USER_NAME } from "@shared/authorization";
 import { TutorialCard } from "@/components/tutorial/TutorialCard";
 import { WorkspaceUnavailable } from "@/components/WorkspaceUnavailable";
-import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { format, formatDistanceToNow } from "date-fns";
 import {
@@ -16,6 +16,7 @@ import {
   Search,
   Settings2,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -23,6 +24,7 @@ import {
   useCreateProjectFromTemplate,
   useProjectTemplates,
   useDeleteProject,
+  useImportProject,
   useProjects,
   useUpdateProject,
 } from "@/hooks/use-projects";
@@ -35,6 +37,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -74,6 +77,18 @@ import { ProjectCreateDialog } from "@/components/projects/ProjectCreateDialog";
 import { ProjectEditDialog } from "@/components/projects/ProjectEditDialog";
 import { getProjectTypeMeta } from "@/components/projects/project-types";
 
+type ProjectSort = "edited" | "name" | "created";
+const SORT_STORAGE_KEY = "symlit.project-sort";
+
+function sortProjects(projects: Project[], sortBy: ProjectSort): Project[] {
+  const time = (value: Date | string | null | undefined) => (value ? new Date(value).getTime() : 0);
+  return [...projects].sort((a, b) => {
+    if (sortBy === "name") return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    if (sortBy === "created") return time(b.createdAt) - time(a.createdAt) || b.id - a.id;
+    return time(b.updatedAt ?? b.createdAt) - time(a.updatedAt ?? a.createdAt) || b.id - a.id;
+  });
+}
+
 function RecentProjectCard({
   project,
   openedAt,
@@ -81,27 +96,12 @@ function RecentProjectCard({
   project: Project;
   openedAt: number;
 }) {
-  const [, setLocation] = useLocation();
   const typeMeta = getProjectTypeMeta(project.projectType);
   const TypeIcon = typeMeta.icon;
-  const openProject = () => {
-    rememberRecentProject(project.userId, project.id);
-    setLocation(`/project/${project.id}`);
-  };
 
   return (
     <Card
-      className="group min-w-[245px] cursor-pointer border-border/60 bg-card/80 p-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg sm:min-w-[270px]"
-      role="link"
-      tabIndex={0}
-      aria-label={`Open recent project ${project.name}`}
-      onClick={openProject}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          openProject();
-        }
-      }}
+      className="group relative min-w-[245px] border-border/60 bg-card/80 p-4 transition-all focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-ring hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg sm:min-w-[270px]"
       data-testid={`recent-project-${project.id}`}
     >
       <div className="flex items-start gap-3">
@@ -109,7 +109,17 @@ function RecentProjectCard({
           <TypeIcon className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{project.name}</p>
+          <p className="truncate text-sm font-semibold">
+            {/* A real link (opens in a new tab, shows its address); it covers the whole card. */}
+            <Link
+              href={`/project/${project.id}`}
+              className="outline-none after:absolute after:inset-0 after:rounded-[inherit]"
+              aria-label={`Open recent project ${project.name}`}
+              onClick={() => rememberRecentProject(project.userId, project.id)}
+            >
+              {project.name}
+            </Link>
+          </p>
           <div className="mt-2 flex items-center gap-2">
             <Badge
               variant="outline"
@@ -141,39 +151,32 @@ function ProjectCard({
   onEdit: (project: Project) => void;
   allProjects?: Project[];
 }) {
-  const [, setLocation] = useLocation();
   const referencedMetamodels =
     allProjects?.filter((candidate) =>
       (project.referencedMetamodels ?? []).includes(candidate.id),
     ) ?? [];
   const typeMeta = getProjectTypeMeta(project.projectType);
   const TypeIcon = typeMeta.icon;
-  const openProject = () => {
-    rememberRecentProject(project.userId, project.id);
-    setLocation(`/project/${project.id}`);
-  };
+  // Projects that would lose their types when this metamodel is deleted.
+  const dependents =
+    project.projectType === "metamodel"
+      ? (allProjects?.filter((candidate) =>
+          (candidate.referencedMetamodels ?? []).includes(project.id),
+        ) ?? [])
+      : [];
+  const changedAt = project.updatedAt ?? project.createdAt;
 
   return (
     <Card
-      className="group flex h-full cursor-pointer flex-col overflow-hidden border-border/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+      className="group relative flex h-full flex-col overflow-hidden border-border/60 transition-all duration-300 focus-within:ring-2 focus-within:ring-ring hover:-translate-y-1 hover:shadow-xl"
       data-testid={`card-project-${project.id}`}
-      role="link"
-      tabIndex={0}
-      aria-label={`Open project ${project.name}`}
-      onClick={openProject}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          openProject();
-        }
-      }}
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-2">
           <div className={`mb-3 rounded-xl p-2.5 ${typeMeta.iconClassName}`}>
             <TypeIcon className="h-5 w-5" />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="relative z-10 flex items-center gap-1">
             <Button
               variant="ghost"
               size="icon"
@@ -195,6 +198,7 @@ function ProjectCard({
                   className="text-muted-foreground opacity-100 transition-all hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                   onClick={(event) => event.stopPropagation()}
                   data-testid={`button-delete-project-${project.id}`}
+                  aria-label={`Delete project ${project.name}`}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -206,6 +210,26 @@ function ProjectCard({
                     This will permanently delete "{project.name}" and all its
                     diagrams. This action cannot be undone.
                   </AlertDialogDescription>
+                  {dependents.length > 0 && (
+                    <div
+                      className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+                      data-testid="delete-project-dependents"
+                    >
+                      <p className="font-medium">
+                        {dependents.length === 1 ? "1 project uses" : `${dependents.length} projects use`} this
+                        metamodel:
+                      </p>
+                      <ul className="mt-1 list-disc pl-5">
+                        {dependents.map((dependent) => (
+                          <li key={dependent.id}>{dependent.name}</li>
+                        ))}
+                      </ul>
+                      <p className="mt-2">
+                        Their elements stay, but lose their types, and types from this metamodel placed in
+                        their diagrams disappear. Export this metamodel first if you may need it again.
+                      </p>
+                    </div>
+                  )}
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -225,7 +249,17 @@ function ProjectCard({
             </AlertDialog>
           </div>
         </div>
-        <CardTitle className="text-xl">{project.name}</CardTitle>
+        <CardTitle className="text-xl">
+          {/* A real link (opens in a new tab, shows its address); it covers the whole card. */}
+          <Link
+            href={`/project/${project.id}`}
+            className="outline-none after:absolute after:inset-0"
+            aria-label={`Open project ${project.name}`}
+            onClick={() => rememberRecentProject(project.userId, project.id)}
+          >
+            {project.name}
+          </Link>
+        </CardTitle>
         <CardDescription className="mb-2 line-clamp-2 min-h-[40px]">
           {project.description || "No description provided."}
         </CardDescription>
@@ -244,9 +278,9 @@ function ProjectCard({
         )}
       </CardHeader>
       <CardFooter className="mt-auto flex items-center justify-between gap-2 border-t bg-slate-50/50 pt-4 text-sm text-muted-foreground dark:bg-slate-900/50">
-        <span>
-          {project.createdAt
-            ? format(new Date(project.createdAt), "MMM d, yyyy")
+        <span title={changedAt ? format(new Date(changedAt), "PPp") : undefined}>
+          {changedAt
+            ? `Edited ${formatDistanceToNow(new Date(changedAt), { addSuffix: true })}`
             : "Unknown date"}
         </span>
         <ArrowDownRight className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
@@ -389,6 +423,25 @@ export default function ProjectList() {
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
   const { toast } = useToast();
+  // The sort choice is a personal preference: remembered in this browser.
+  const [sortBy, setSortByState] = useState<ProjectSort>(() => {
+    try {
+      const stored = window.localStorage.getItem(SORT_STORAGE_KEY);
+      return stored === "name" || stored === "created" ? stored : "edited";
+    } catch {
+      return "edited";
+    }
+  });
+  const setSortBy = (value: ProjectSort) => {
+    setSortByState(value);
+    try {
+      window.localStorage.setItem(SORT_STORAGE_KEY, value);
+    } catch {
+      // Storage can be unavailable (private window); the choice then lasts for this visit.
+    }
+  };
+  const importProject = useImportProject();
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
@@ -448,6 +501,42 @@ export default function ProjectList() {
 
   if (authLoading) return null;
   if (!user) return <WorkspaceUnavailable onRetry={() => void refreshSession()} />;
+
+  const handleImport = async (file: File) => {
+    let content: unknown;
+    try {
+      content = JSON.parse(await file.text());
+    } catch {
+      toast({
+        title: "Not a project file",
+        description: `"${file.name}" is not JSON. Import the file written by Export Project → JSON.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const result = await importProject.mutateAsync(content);
+      const extra = result.createdProjects - 1;
+      toast({
+        title: `Imported "${result.project.name}"`,
+        description:
+          extra > 0
+            ? `It brought ${extra} metamodel${extra === 1 ? "" : "s"} along; they were added as new projects.`
+            : "It was added as a new project.",
+      });
+      setLocation(
+        result.firstViewId
+          ? `/project/${result.project.id}/view/${result.firstViewId}`
+          : `/project/${result.project.id}`,
+      );
+    } catch (error) {
+      toast({
+        title: "Import failed",
+        description: error instanceof Error ? error.message : "The file could not be imported.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const openCreateDialog = (templateId: string = BLANK_TEMPLATE_ID) => {
     const template = findProjectTemplate(templates, templateId);
@@ -553,6 +642,7 @@ export default function ProjectList() {
       (activeTab === "all" || project.projectType === activeTab)
     );
   });
+  const sortedProjects = filteredProjects ? sortProjects(filteredProjects, sortBy) : filteredProjects;
   const metamodelCount = visibleProjects?.filter((p) => p.projectType === "metamodel").length ?? 0;
   const instanceCount = visibleProjects?.filter((p) => p.projectType === "instance").length ?? 0;
   const recentProjects = recentProjectEntries
@@ -585,10 +675,36 @@ export default function ProjectList() {
               <p className="text-sm text-muted-foreground">Your Symlit projects: metamodels and the models built from them.</p>
             </div>
           </div>
-          <Button onClick={() => openCreateDialog()} className="w-full sm:w-auto" data-testid="button-new-project">
-            <Plus className="mr-2 h-4 w-4" />
-            New project
-          </Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              aria-label="Project file to import"
+              data-testid="input-import-project"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void handleImport(file);
+              }}
+            />
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              disabled={importProject.isPending}
+              onClick={() => importInputRef.current?.click()}
+              title="Open a project file (a JSON export) as a new project"
+              data-testid="button-import-project"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {importProject.isPending ? "Importing…" : "Import"}
+            </Button>
+            <Button onClick={() => openCreateDialog()} className="w-full sm:w-auto" data-testid="button-new-project">
+              <Plus className="mr-2 h-4 w-4" />
+              New project
+            </Button>
+          </div>
         </header>
 
         <TutorialCard projects={projects} />
@@ -612,7 +728,17 @@ export default function ProjectList() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input className="border-slate-200 bg-background pl-10 dark:border-slate-800" placeholder="Search by name or description..." value={search} onChange={(event) => setSearch(event.target.value)} aria-label="Search projects by name or description" data-testid="input-search-projects" />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as ProjectSort)}>
+                <SelectTrigger className="h-9 w-[170px] text-xs md:text-sm" aria-label="Sort projects" data-testid="select-sort-projects">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="edited">Last edited first</SelectItem>
+                  <SelectItem value="name">Name (A–Z)</SelectItem>
+                  <SelectItem value="created">Newest first</SelectItem>
+                </SelectContent>
+              </Select>
               <span className="hidden text-xs font-medium text-muted-foreground sm:inline">Filter:</span>
               <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-lg bg-muted/50 p-1 md:w-auto">
                 <TabsTrigger value="all" data-testid="tab-all" className="flex-1 whitespace-nowrap px-3 py-2 text-xs md:flex-none md:text-sm">All ({visibleProjects?.length ?? 0})</TabsTrigger>
@@ -624,7 +750,7 @@ export default function ProjectList() {
           {(["all", "metamodel", "instance"] as const).map((tab) => (
             <TabsContent key={tab} value={tab}>
               <ProjectGrid
-                projects={filteredProjects}
+                projects={sortedProjects}
                 onDelete={(id) => userId && deleteProject.mutate({ id, userId })}
                 onEdit={setEditingProject}
                 isLoading={isLoading}

@@ -561,7 +561,7 @@ test("renders configured relationship semantics and preserves them after reload"
     await panel
       .getByRole("radio", { name: change.relationType, exact: true })
       .click();
-    await panel.getByRole("button", { name: "Save Changes" }).click();
+    await panel.getByRole("button", { name: "Apply" }).click();
     await expect(panel).toHaveCount(0);
 
     const edgePath = page.locator(
@@ -668,7 +668,7 @@ test("inherits configured relationship semantics in a referenced instance model"
     await panel
       .getByRole("radio", { name: change.relationType, exact: true })
       .click();
-    await panel.getByRole("button", { name: "Save Changes" }).click();
+    await panel.getByRole("button", { name: "Apply" }).click();
     await expect(panel).toHaveCount(0);
 
     const edgePath = page.locator(

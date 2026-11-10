@@ -19,6 +19,7 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
  * - Ctrl/Cmd+Z undoes, Ctrl/Cmd+Shift+Z or Ctrl+Y redoes (not while typing in a field,
  *   where the browser's own text undo applies)
  * - Delete/Backspace requests deletion of the current selection
+ * - F2 renames the selected element on its card
  *
  * The Ctrl/Cmd+C/V clipboard shortcuts live in `useDiagramClipboard`.
  */
@@ -29,6 +30,21 @@ export function useCanvasKeyboardShortcuts({
   const nodes = useDiagramStore((state) => state.nodes);
   const edges = useDiagramStore((state) => state.edges);
   const requestDelete = useDiagramStore((state) => state.requestDelete);
+  const setRenamingNodeId = useDiagramStore((state) => state.setRenamingNodeId);
+
+  // F2 renames the selected element right on its card.
+  useEffect(() => {
+    const handleRenameShortcut = (event: KeyboardEvent) => {
+      if (event.key !== "F2" || deleteDialogOpen || isEditableTarget(event.target)) return;
+      const selected = nodes.filter((node) => node.selected);
+      if (selected.length !== 1) return;
+      event.preventDefault();
+      setRenamingNodeId(selected[0].id);
+    };
+    window.addEventListener("keydown", handleRenameShortcut);
+    return () => window.removeEventListener("keydown", handleRenameShortcut);
+  }, [deleteDialogOpen, nodes, setRenamingNodeId]);
+
   const undo = useDiagramStore((state) => state.undo);
   const redo = useDiagramStore((state) => state.redo);
   useEffect(() => {

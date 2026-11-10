@@ -214,7 +214,8 @@ export function DiagramToolbar(props: Props) {
           />
         </Panel>
       )}
-      <Panel position="top-right" className="flex max-w-[min(100vw-2rem,900px)] flex-wrap items-start justify-end gap-2">
+      {/* Width is relative to the canvas (not the window, which includes the sidebar) and leaves room for undo/redo. */}
+      <Panel position="top-right" className="flex max-w-[min(calc(100%-7.5rem),900px)] flex-wrap items-start justify-end gap-2">
       {isFlowMode ? (
         <>
           <ToolbarButton icon={Flag} label="Mark Start" onClick={onSetFlowStart} disabled={!canSetFlowStart} />

@@ -1,4 +1,5 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
+import { isDatabaseId } from "./http-guards";
 import { storage } from "./storage";
 import type { WorkspaceRole } from "@shared/authorization";
 import type { Project, User } from "@shared/schema";
@@ -96,9 +97,10 @@ export function authorizeWorkspaceApi(): RequestHandler {
 
     try {
       let projectId: number | undefined;
-      if (parts[1] === "projects" && parts[2] && Number.isFinite(Number(parts[2]))) {
+      if (parts[1] === "projects" && parts[2] && isDatabaseId(parts[2])) {
         projectId = Number(parts[2]);
       } else if (parts[1] === "views" && parts[2]) {
+        if (!isDatabaseId(parts[2])) return res.status(404).json({ message: "View not found" });
         const view = await storage.getView(Number(parts[2]));
         if (!view) return res.status(404).json({ message: "View not found" });
         projectId = view.projectId;
