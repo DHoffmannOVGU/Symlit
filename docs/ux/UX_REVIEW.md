@@ -56,10 +56,11 @@ One word per concept in everything a user reads (labels, tooltips, help, tutoria
   Projects Overview), breadcrumb + save state at the top, icon toolbar on the canvas
   (graph, table, panels, AI, patterns, validate, screenshot, help), undo/redo, zoom controls.
 - **Element editor:** right-hand sheet "Configure Node" with Content and Styling tabs, attributes as cards.
-- **Tutorial:** docked coach card bottom right (bottom left while an editor, the rules panel, the validation
-  results or the table is open); 6 lessons, 26 steps; Hint / Show me / Skip; collapsible; steps complete when
-  the model shows their result (`shared/tutorial.ts`, `client/src/components/tutorial/`; the didactic
-  reasoning is in `docs/ux/TUTORIAL_DIDACTICS.md`).
+- **Tutorials:** two (Symlit basics, Production with PPR), 6 lessons each. Docked coach card bottom right
+  (bottom left while an editor, the rules panel or the table is open; shorter while validation results are
+  open); Hint / Show me / Skip; collapsible; steps complete when the model shows their result
+  (`shared/tutorial.ts`, `client/src/components/tutorial/`; the didactic reasoning is in
+  `docs/ux/TUTORIAL_DIDACTICS.md`).
 
 ## First observations (from screenshots)
 

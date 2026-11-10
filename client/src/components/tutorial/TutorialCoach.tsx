@@ -16,10 +16,9 @@ import {
   Trash2,
 } from "lucide-react";
 import {
-  TUTORIAL_LESSONS,
-  TUTORIAL_NOT_COVERED,
-  TUTORIAL_QUESTION,
-  TUTORIAL_STEPS,
+  TUTORIALS,
+  tutorialSteps,
+  type TutorialDefinition,
   type TutorialLesson,
   type TutorialStep,
 } from "@shared/tutorial";
@@ -41,6 +40,7 @@ import {
 } from "@/lib/tutorial-progress";
 
 interface TutorialCoachProps {
+  tutorial: TutorialDefinition;
   progress: TutorialProgress;
   /** Which tutorial project is open, used to say where a step happens. */
   scope: "metamodel" | "instance";
@@ -55,24 +55,36 @@ interface TutorialCoachProps {
   onRestart: () => Promise<void>;
   onCollapsedChange: (collapsed: boolean) => void;
   onStartOwnProject: () => void;
+  /** Goes to the project list, where the tutorials are offered. */
+  onShowTutorials: () => void;
   onRemoveTutorial: () => void;
 }
-
-const projectLabel = (scope: "metamodel" | "instance") =>
-  scope === "metamodel" ? "Drone types" : "Delivery drone";
 
 const COACH_WIDTH = 340;
 /** Docked left, the coach stays within the sidebar so it does not cover the panel beside it. */
 const COACH_WIDTH_LEFT = 300;
 
+/** Below this height the coach cannot show a step; it then moves instead of shrinking. */
+const COACH_MIN_HEIGHT = 240;
+
+interface CoachPlacement {
+  side: "left" | "right";
+  /** A dialog is open, which would otherwise hide and block the coach. */
+  modal: boolean;
+  /** Room left for the coach below something it shares its corner with. */
+  maxHeight: number | null;
+}
+
 /**
- * Where the coach sits. Its place is the bottom right corner; when something
+ * Where the coach sits. Its place is the bottom right corner. When something
  * the learner has to work in opens there (an editor, the rules panel, the
- * validation results, the table), it moves to the bottom left instead. `modal` is set
- * while a dialog is open, which would otherwise hide and block the coach.
+ * table), it moves to the bottom left, over the sidebar. The validation
+ * results stay open while issues are being fixed, and fixing needs the
+ * sidebar: the coach then stays on the right and makes itself shorter, and
+ * only moves when there is not enough room.
  */
 function useCoachPlacement() {
-  const [placement, setPlacement] = useState<{ side: "left" | "right"; modal: boolean }>({ side: "right", modal: false });
+  const [placement, setPlacement] = useState<CoachPlacement>({ side: "right", modal: false, maxHeight: null });
   useEffect(() => {
     let frame = 0;
     const measure = () => {
@@ -80,23 +92,34 @@ function useCoachPlacement() {
       const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][data-state="open"]'));
       const coversRight = (element: Element) =>
         element.getBoundingClientRect().right > window.innerWidth - COACH_WIDTH - 32;
-      const panel = document.querySelector(
-        '[data-testid="model-rules-panel"], [data-testid="validation-results"], [data-testid="canvas-table-mode"]',
-      );
-      const next = {
-        side: dialogs.some(coversRight) || panel ? ("left" as const) : ("right" as const),
+      const panel = document.querySelector('[data-testid="model-rules-panel"], [data-testid="canvas-table-mode"]');
+      const results = document.querySelector('[data-testid="validation-results"]');
+      const roomBelowResults = results
+        ? Math.floor(window.innerHeight - results.getBoundingClientRect().bottom - 28)
+        : null;
+      const resultsLeaveRoom = roomBelowResults === null || roomBelowResults >= COACH_MIN_HEIGHT;
+      const side = dialogs.some(coversRight) || panel || !resultsLeaveRoom ? ("left" as const) : ("right" as const);
+      const next: CoachPlacement = {
+        side,
         modal: dialogs.length > 0,
+        maxHeight: side === "right" ? roomBelowResults : null,
       };
-      setPlacement((current) => (current.side === next.side && current.modal === next.modal ? current : next));
+      setPlacement((current) =>
+        current.side === next.side && current.modal === next.modal && current.maxHeight === next.maxHeight
+          ? current
+          : next,
+      );
     };
     const schedule = () => {
       if (!frame) frame = window.requestAnimationFrame(measure);
     };
     const observer = new MutationObserver(schedule);
     observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("resize", schedule);
     measure();
     return () => {
       observer.disconnect();
+      window.removeEventListener("resize", schedule);
       if (frame) window.cancelAnimationFrame(frame);
     };
   }, []);
@@ -109,6 +132,7 @@ function useCoachPlacement() {
  * what just happened, and closes each lesson with one question.
  */
 export function TutorialCoach({
+  tutorial,
   progress,
   scope,
   onShowMe,
@@ -121,16 +145,18 @@ export function TutorialCoach({
   onRestart,
   onCollapsedChange,
   onStartOwnProject,
+  onShowTutorials,
   onRemoveTutorial,
 }: TutorialCoachProps) {
-  const done = countDone(progress);
-  const skipped = skippedSteps(progress);
-  const total = TUTORIAL_STEPS.length;
-  const finished = isTutorialFinished(progress);
-  const activeStep = currentStep(progress);
-  const activeLesson = currentLessonIndex(progress);
-  const recap = pendingRecap(progress);
-  const lastDone = lastCompletedStep(progress);
+  const projectLabel = (target: "metamodel" | "instance") => tutorial.projects[target];
+  const done = countDone(tutorial, progress);
+  const skipped = skippedSteps(tutorial, progress);
+  const total = tutorialSteps(tutorial).length;
+  const finished = isTutorialFinished(tutorial, progress);
+  const activeStep = currentStep(tutorial, progress);
+  const activeLesson = currentLessonIndex(tutorial, progress);
+  const recap = pendingRecap(tutorial, progress);
+  const lastDone = lastCompletedStep(tutorial, progress);
   const [viewedLesson, setViewedLesson] = useState(activeLesson);
   const [showHint, setShowHint] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
@@ -157,7 +183,7 @@ export function TutorialCoach({
       rootRef.current?.querySelector('[data-state="current"]')?.scrollIntoView({ block: "nearest" }),
     );
     return () => window.cancelAnimationFrame(frame);
-  }, [activeStep?.id, viewedLesson, progress.collapsed, placement.side]);
+  }, [activeStep?.id, viewedLesson, progress.collapsed, placement.side, placement.maxHeight]);
   useEffect(() => {
     if (done > previousDone.current && lastDone) {
       setAnnouncement(`Done: ${lastDone.title}. ${lastDone.done}`);
@@ -178,8 +204,13 @@ export function TutorialCoach({
     return () => root.removeEventListener("pointerdown", keep);
   }, [placement.modal, progress.collapsed]);
 
+  // On the left the coach sits over the sidebar. Unless a dialog has taken
+  // over the screen, it stays above the sidebar's bottom buttons (Model rules,
+  // Export Project), which steps ask for while a panel is open.
+  const aboveSidebarButtons = placement.side === "left" && !placement.modal;
   const dock = cn(
-    "fixed bottom-4 pointer-events-auto",
+    "fixed pointer-events-auto",
+    aboveSidebarButtons ? "bottom-36" : "bottom-4",
     placement.side === "left" ? "left-2.5" : "right-4",
     placement.modal ? "z-[60]" : "z-40",
   );
@@ -212,9 +243,9 @@ export function TutorialCoach({
     );
   }
 
-  const lesson = TUTORIAL_LESSONS[viewedLesson];
+  const lesson = tutorial.lessons[viewedLesson];
   const viewingActive = viewedLesson === activeLesson;
-  const lessonStarted = lesson.steps.some((step) => stepState(progress, step) === "done");
+  const lessonStarted = lesson.steps.some((step) => stepState(tutorial, progress, step) === "done");
   const whyInFull = whyOpen || !lessonStarted || !viewingActive;
   const showRecap = !finished && recap !== null && viewingActive;
 
@@ -234,9 +265,13 @@ export function TutorialCoach({
       aria-label="Guided tutorial"
       className={cn(
         dock,
-        "flex max-h-[min(540px,calc(100vh-7rem))] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl",
+        aboveSidebarButtons ? "max-h-[min(540px,calc(100vh-15rem))]" : "max-h-[min(540px,calc(100vh-7rem))]",
+        "flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl",
       )}
-      style={{ width: placement.side === "left" ? COACH_WIDTH_LEFT : COACH_WIDTH }}
+      style={{
+        width: placement.side === "left" ? COACH_WIDTH_LEFT : COACH_WIDTH,
+        ...(placement.maxHeight !== null ? { maxHeight: Math.min(540, placement.maxHeight) } : {}),
+      }}
       data-testid="tutorial-coach"
       data-side={placement.side}
     >
@@ -246,7 +281,7 @@ export function TutorialCoach({
             <GraduationCap className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-tight">Guided tutorial</p>
+            <p className="truncate text-sm font-semibold leading-tight" data-testid="tutorial-title">{tutorial.title}</p>
             <p className="text-xs text-muted-foreground">
               <span data-testid="tutorial-progress-count">{done} of {total}</span> done
               {skipped.length > 0 && <span data-testid="tutorial-skipped-count"> · {skipped.length} skipped</span>}
@@ -315,7 +350,9 @@ export function TutorialCoach({
         </div>
       ) : finished ? (
         <FinishedCard
+          tutorial={tutorial}
           progress={progress}
+          onShowTutorials={onShowTutorials}
           onReturnToSkipped={onReturnToSkipped}
           onStartOwnProject={onStartOwnProject}
           onRemoveTutorial={onRemoveTutorial}
@@ -326,11 +363,11 @@ export function TutorialCoach({
           <div className="overflow-y-auto px-4 py-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
-                Lesson {viewedLesson + 1} of {TUTORIAL_LESSONS.length}
+                Lesson {viewedLesson + 1} of {tutorial.lessons.length}
               </p>
               <div className="flex gap-1" aria-hidden>
-                {TUTORIAL_LESSONS.map((candidate, index) => {
-                  const states = candidate.steps.map((step) => stepState(progress, step));
+                {tutorial.lessons.map((candidate, index) => {
+                  const states = candidate.steps.map((step) => stepState(tutorial, progress, step));
                   const passed = states.every((state) => state === "done" || state === "skipped");
                   return (
                     <span
@@ -359,7 +396,7 @@ export function TutorialCoach({
                 lesson={recap}
                 lastStep={lastDone && recap.steps.some((step) => step.id === lastDone.id) ? lastDone : null}
                 chosen={progress.answers[recap.id]}
-                isLast={viewedLesson === TUTORIAL_LESSONS.length - 1}
+                isLast={viewedLesson === tutorial.lessons.length - 1}
                 onAnswer={(option) => onAnswer(recap.id, option)}
                 onContinue={() => onCloseRecap(recap.id)}
               />
@@ -388,7 +425,7 @@ export function TutorialCoach({
 
                 <ol className="mt-2.5 space-y-1">
                   {lesson.steps.map((step) => {
-                    const state = stepState(progress, step);
+                    const state = stepState(tutorial, progress, step);
                     const isCurrent = state === "current";
                     // The explanation of the step just done; all of them when looking back at a lesson.
                     const showDone = state === "done" && (step.id === lastDone?.id || !viewingActive);
@@ -508,8 +545,8 @@ export function TutorialCoach({
             <Button
               variant="ghost"
               size="sm"
-              disabled={viewedLesson === TUTORIAL_LESSONS.length - 1}
-              onClick={() => setViewedLesson((index) => Math.min(TUTORIAL_LESSONS.length - 1, index + 1))}
+              disabled={viewedLesson === tutorial.lessons.length - 1}
+              onClick={() => setViewedLesson((index) => Math.min(tutorial.lessons.length - 1, index + 1))}
               aria-label="Next lesson"
             >
               <ChevronRight className="h-4 w-4" />
@@ -595,26 +632,33 @@ function RecapCard({
 
 /** The end of the tutorial: what was done, the answer, and where to go next. */
 function FinishedCard({
+  tutorial,
   progress,
   onReturnToSkipped,
   onStartOwnProject,
+  onShowTutorials,
   onRemoveTutorial,
   onRestart,
 }: {
+  tutorial: TutorialDefinition;
   progress: TutorialProgress;
   onReturnToSkipped: () => void;
   onStartOwnProject: () => void;
+  onShowTutorials: () => void;
   onRemoveTutorial: () => void;
   onRestart: () => void;
 }) {
-  const done = countDone(progress);
-  const skipped = skippedSteps(progress);
-  const total = TUTORIAL_STEPS.length;
+  const done = countDone(tutorial, progress);
+  const skipped = skippedSteps(tutorial, progress);
+  const total = tutorialSteps(tutorial).length;
   const minutes = tutorialMinutes(progress);
   const hints = totalHelpUsed(progress, "hints");
   const lessonComplete = (lesson: TutorialLesson) =>
-    lesson.steps.every((step) => stepState(progress, step) === "done");
-  const answeredQuestion = stepState(progress, TUTORIAL_STEPS.find((step) => step.id === "answer-question")!) === "done";
+    lesson.steps.every((step) => stepState(tutorial, progress, step) === "done");
+  const answerStep = tutorialSteps(tutorial).find((step) => step.id === tutorial.answerStep);
+  const answeredQuestion = !!answerStep && stepState(tutorial, progress, answerStep) === "done";
+  // The tutorial offered after this one, if there is one.
+  const nextTutorial = TUTORIALS[TUTORIALS.indexOf(tutorial) + 1];
   const allDone = skipped.length === 0;
 
   return (
@@ -632,7 +676,7 @@ function FinishedCard({
         </div>
         <div>
           <p className="font-semibold" data-testid="tutorial-finished-title">
-            {allDone ? "You built, checked and extended a model" : `You reached the end with ${done} of ${total} steps done`}
+            {allDone ? tutorial.finishedTitle : `You reached the end with ${done} of ${total} steps done`}
           </p>
           <p className="mt-1 text-xs text-muted-foreground" data-testid="tutorial-finished-summary">
             {done} of {total} steps done
@@ -645,8 +689,7 @@ function FinishedCard({
 
       {answeredQuestion && (
         <p className="rounded-lg bg-primary/[0.06] px-3 py-2 text-xs leading-5">
-          <span className="font-semibold">{TUTORIAL_QUESTION}</span> Yes: its 18 km of range covers the 15 km route,
-          and your rule keeps checking that.
+          <span className="font-semibold">{tutorial.question}</span> {tutorial.answer}
         </p>
       )}
 
@@ -667,7 +710,7 @@ function FinishedCard({
       <div>
         <p className="text-xs font-semibold">You can now</p>
         <ul className="mt-1 space-y-1 text-xs leading-5">
-          {TUTORIAL_LESSONS.map((lesson) => {
+          {tutorial.lessons.map((lesson) => {
             const complete = lessonComplete(lesson);
             return (
               <li key={lesson.id} className={cn("flex gap-2", !complete && "text-muted-foreground")}>
@@ -686,7 +729,7 @@ function FinishedCard({
       <div>
         <p className="text-xs font-semibold">Not covered here, worth exploring next</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs leading-5 text-muted-foreground">
-          {TUTORIAL_NOT_COVERED.map((item) => (
+          {tutorial.notCovered.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -696,7 +739,16 @@ function FinishedCard({
       </div>
 
       <div className="grid gap-2">
-        <Button onClick={onStartOwnProject} data-testid="button-tutorial-start-own">
+        {nextTutorial && (
+          <>
+            <Button onClick={onShowTutorials} data-testid="button-tutorial-next-tutorial">
+              Next tutorial: {nextTutorial.title}
+              <ArrowRight className="ml-1.5 h-4 w-4" />
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">It starts from the project list.</p>
+          </>
+        )}
+        <Button variant={nextTutorial ? "outline" : "default"} onClick={onStartOwnProject} data-testid="button-tutorial-start-own">
           Start your own project
         </Button>
         <p className="text-center text-xs text-muted-foreground">Blank, or from one of the templates.</p>

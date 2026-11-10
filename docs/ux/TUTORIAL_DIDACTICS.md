@@ -29,6 +29,50 @@ Where the result differs from the plan:
   validation results or the table is open. The old step "pick a relationship such as Composition" described
   a choice the metamodel editor does not offer when drawing a relationship; the new text says what happens.
 
+## The second tutorial: Production with PPR
+
+`shared/tutorial-ppr.ts` and `server/templates/tutorial-ppr.json`. Where the basics tutorial teaches
+the tool, this one teaches a method with it, and assumes the basics: its steps say what to achieve,
+not where to click.
+
+**The structure it follows.** PPR describes production with three kinds of things that are kept
+apart: products (what is made), processes (what is done) and resources (what does it). The metamodel
+*PPR types* has exactly these relationships: a Product goes into a Process, a Process produces a
+Product, a Resource executes a Process. Product, Process and Resource are specializations of *PPR
+element*, so that one relationship, drawn by the learner, lets any of them satisfy a Requirement.
+
+**The requirements analysis** runs through all lessons rather than being a lesson of its own:
+
+| # | Lesson | Requirements view | PPR view |
+| --- | --- | --- | --- |
+| 1 | Product, process, resource | | read one complete step: product in, process, product out, resource |
+| 2 | Start from the requirements | state a requirement with a criterion; trace it to the product | |
+| 3 | Derive the process | a product requirement leads to a process | a process is defined by what goes in and what comes out |
+| 4 | Check completeness | a rule finds requirements nothing satisfies | a rule the learner writes finds processes nobody executes |
+| 5 | Assign the resource | | process and resource are separate, so each can change alone |
+| 6 | Close the last gap | take one open requirement through product, process and resource, unguided | |
+
+**Design choices, and their reasons.**
+
+- The order is requirement, product, process, resource: the order in which an engineer derives one
+  from the other, not the order of the letters in PPR.
+- The model starts incomplete in two ways. Nothing produces the Bracket (lessons 3 and 5 fix that),
+  and nothing satisfies *Corrosion protection* (reported from lesson 4 on, and left open on purpose
+  as the unguided task of lesson 6).
+- The rules are about relationships, not values, which the basics tutorial did not cover. The
+  learner's rule is written before the resource is assigned, so that it visibly reports Bending and
+  then visibly stops doing so.
+- Checks ask for the PPR direction: a trace from the requirement to the product, or a process
+  pointing at the product that should go into it, does not complete a step.
+- In lesson 6 either the coated product or the coating process may satisfy the requirement. Both
+  are defensible, and the check accepts both.
+
+**Limits.** The rule *Every requirement is satisfied* counts any incoming relationship, also one
+the metamodel does not allow; validation reports such a relationship separately. Capabilities
+(matching what a process needs with what a resource can do) and numeric process requirements are
+named at the end as next steps, not taught. Like the basics tutorial, it has not been tried with
+learners.
+
 ## Scope of the review
 
 The guided tutorial (7 lessons, 15 steps) as it was defined in `shared/tutorial.ts`, its two

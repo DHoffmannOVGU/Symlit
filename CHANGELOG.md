@@ -16,8 +16,9 @@ DATABASE_URL. No account, no external requests.
   pattern libraries for the models that use them.
 - Project templates: start from an example; a template can bring its
   metamodel along. Templates use the JSON export format.
-- Guided tutorial (two sample projects, six lessons, 26 steps that check the
-  result in the model) and export (JSON/CSV).
+- Two guided tutorials whose steps check the result in the model: Symlit
+  basics (the tool, 26 steps) and Production with PPR (product, process,
+  resource and requirements tracing, 22 steps). Export (JSON/CSV).
 - Versioned database migrations applied on start; strict server-side
   validation of elements and relationships.
 - Tests: unit, API (PGlite and PostgreSQL 16) and browser (Playwright) in CI.

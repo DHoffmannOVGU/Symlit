@@ -1,26 +1,30 @@
 import { expect, test, type Page } from "@playwright/test";
-import { TUTORIAL_LESSONS, TUTORIAL_STEPS } from "../shared/tutorial";
+import { tutorialSteps, type TutorialDefinition } from "../shared/tutorial";
+import { BASICS_TUTORIAL } from "../shared/tutorial-basics";
+import { PPR_TUTORIAL } from "../shared/tutorial-ppr";
 
 // Full-stack: the real server creates the tutorial projects.
-// The tutorial is per workspace (one database), so these tests run one after
+// Tutorials are per workspace (one database), so these tests run one after
 // the other and must not run concurrently with themselves; avoid
 // `--repeat-each` for this file.
 test.describe.configure({ mode: "serial" });
 
-const TOTAL = TUTORIAL_STEPS.length;
+const TUTORIAL_LESSONS = BASICS_TUTORIAL.lessons;
+const TOTAL = tutorialSteps(BASICS_TUTORIAL).length;
 
 const stepState = (page: Page, id: string) => page.getByTestId(`tutorial-step-${id}`).getAttribute("data-state");
 const expectDone = (page: Page, id: string) => expect.poll(() => stepState(page, id), { message: id }).toBe("done");
-const expectProgress = (page: Page, done: number) =>
-  expect(page.getByTestId("tutorial-progress-count")).toContainText(`${done} of ${TOTAL}`);
+const expectProgress = (page: Page, done: number, total = TOTAL) =>
+  expect(page.getByTestId("tutorial-progress-count")).toContainText(`${done} of ${total}`);
 const card = (page: Page, name: string) => page.locator(".react-flow__node", { hasText: name });
 
-async function startTutorial(page: Page) {
+async function startTutorial(page: Page, tutorial: TutorialDefinition = BASICS_TUTORIAL) {
   await page.request.delete("/api/tutorial");
   await page.goto("/projects");
-  await page.getByTestId("button-tutorial-start").click();
+  await page.getByTestId(`button-tutorial-start-${tutorial.id}`).click();
   await expect(page.getByTestId("tutorial-coach")).toBeVisible();
-  await expect(page.locator(".react-flow__node")).toHaveCount(3);
+  await expect(page.getByTestId("tutorial-title")).toHaveText(tutorial.title);
+  await expect(page.locator(".react-flow__node").first()).toBeVisible();
 }
 
 /** Opens the other tutorial project with the coach's button and waits for its diagram. */
@@ -71,8 +75,13 @@ const saveDiagram = async (page: Page) => {
 };
 
 /** Answers the lesson's question (optionally wrongly first) and moves on. */
-async function finishLesson(page: Page, lessonIndex: number, options: { wrongFirst?: boolean } = {}) {
-  const lesson = TUTORIAL_LESSONS[lessonIndex];
+async function finishLesson(
+  page: Page,
+  lessonIndex: number,
+  options: { wrongFirst?: boolean; tutorial?: TutorialDefinition } = {},
+) {
+  const lessons = (options.tutorial ?? BASICS_TUTORIAL).lessons;
+  const lesson = lessons[lessonIndex];
   const recap = page.getByTestId("tutorial-recap");
   await expect(recap).toContainText(`You can now ${lesson.goal}`);
   // The explanation of the lesson's last step is still shown.
@@ -86,7 +95,7 @@ async function finishLesson(page: Page, lessonIndex: number, options: { wrongFir
   await page.getByTestId(`tutorial-answer-${right}`).click();
   await expect(page.getByTestId("tutorial-answer-feedback")).toHaveText(lesson.question!.options[right].feedback);
   await page.getByTestId("button-tutorial-next-lesson").click();
-  await expect(page.getByTestId("tutorial-lesson-title")).toHaveText(TUTORIAL_LESSONS[lessonIndex + 1].title);
+  await expect(page.getByTestId("tutorial-lesson-title")).toHaveText(lessons[lessonIndex + 1].title);
 }
 
 test("a learner works through the whole tutorial, and every step checks the result", async ({ page }) => {
@@ -257,6 +266,136 @@ test("a learner works through the whole tutorial, and every step checks the resu
   await expect(page.getByTestId("tutorial-finished-summary")).toContainText(`${TOTAL} of ${TOTAL} steps done`);
   await expect(finished).toContainText("Yes: its 18 km of range covers the 15 km route");
   await expect(page.getByTestId("tutorial-skipped-list")).toHaveCount(0);
+  // It points to the tutorial that builds on this one.
+  await expect(page.getByTestId("button-tutorial-next-tutorial")).toContainText(PPR_TUTORIAL.title);
+});
+
+test("the PPR tutorial leads from a requirement to product, process and resource", async ({ page }) => {
+  test.setTimeout(180_000);
+  const P = PPR_TUTORIAL;
+  const total = tutorialSteps(P).length;
+  const lesson = (index: number, options: { wrongFirst?: boolean } = {}) =>
+    finishLesson(page, index, { ...options, tutorial: P });
+  const add = async (type: string, name: string, value?: string) => {
+    await page.getByRole("tab", { name: "Add elements" }).click();
+    await page.locator('[data-testid^="button-insert-referenced-class-"]', { hasText: new RegExp(`^${type}`) }).click();
+    await card(page, `New ${type}`).dblclick();
+    await page.getByTestId("input-node-label").fill(name);
+    if (value !== undefined) await page.getByTestId("input-attr-value-0").fill(value);
+    await saveEditor(page);
+  };
+  const issues = page.getByTestId("validation-results");
+  await startTutorial(page, P);
+  await expect(page.locator(".react-flow__node")).toHaveCount(5);
+  await expectProgress(page, 0, total);
+
+  // --- Lesson 1: product, process, resource ---
+  await card(page, "Process").dblclick();
+  await expectDone(page, "open-process-type");
+  await cancelEditor(page);
+  await openOtherProject(page, "Laser cutting");
+  await expectDone(page, "open-model");
+  await card(page, "Laser cutting").dblclick();
+  await expect(page.getByTestId("tutorial-recap")).toBeVisible();
+  await cancelEditor(page);
+  await lesson(0, { wrongFirst: true });
+
+  // --- Lesson 2: start from the requirements ---
+  // The metamodel first has to allow PPR elements to satisfy requirements.
+  await openOtherProject(page, "PPR element");
+  await connect(page, "PPR element", "top", "Requirement", "bottom");
+  await expectDone(page, "relate-satisfies");
+  await saveDiagram(page);
+  await expectDone(page, "save-metamodel");
+  await openOtherProject(page, "Bracket");
+  // The trace runs from what satisfies to the requirement, not back.
+  await connect(page, "Carries 5 kg", "left", "Bracket", "left");
+  await expect.poll(() => stepState(page, "trace-load")).toBe("current");
+  await connect(page, "Bracket", "top", "Carries 5 kg", "bottom");
+  await expectDone(page, "trace-load");
+  await add("Requirement", "Mounting angle", "90 degrees, plus or minus 1");
+  await expectDone(page, "add-requirement");
+  await connect(page, "Bracket", "right", "Mounting angle", "right");
+  await lesson(1);
+
+  // --- Lesson 3: derive the process ---
+  await add("Process", "Bending", "15");
+  await expectDone(page, "add-process");
+  await connect(page, "Blank", "bottom", "Bending", "top");
+  await expectDone(page, "process-input");
+  await connect(page, "Bending", "left", "Bracket", "top");
+  await lesson(2);
+
+  // --- Lesson 4: check completeness ---
+  // The trace drawn the wrong way round above is not in the metamodel: it is reported.
+  await page.getByTestId("button-toolbar-validate").click();
+  await expect(issues).toContainText("Corrosion protection: Nothing satisfies this requirement yet.");
+  await expect(issues).toContainText("is not allowed");
+  await expectDone(page, "validate");
+  await page.getByTestId("validation-issue-1").click();
+  await page.keyboard.press("Delete");
+  const confirmDelete = page.getByRole("alertdialog").getByRole("button", { name: /delete/i });
+  if (await confirmDelete.isVisible().catch(() => false)) await confirmDelete.click();
+  // The sidebar stays usable while the results are open.
+  await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-side", "right");
+  await page.getByTestId("button-model-rules").click();
+  await expectDone(page, "open-rules");
+  const rules = page.getByTestId("model-rules-panel");
+  await page.getByTestId("button-add-rule").click();
+  await rules.getByLabel("Rule name").last().fill("Every process has a resource");
+  const lists = rules.getByRole("combobox");
+  const firstOfNewRule = (await lists.count()) - 6;
+  const choose = async (offset: number, option: string) => {
+    await lists.nth(firstOfNewRule + offset).click();
+    await page.getByRole("option", { name: option, exact: true }).click();
+  };
+  await choose(0, "Process");
+  await choose(2, "Incoming from");
+  await choose(3, "none");
+  await choose(4, "Resource");
+  await choose(5, "Name");
+  await choose(6, "is set");
+  await choose(7, "report an issue");
+  await page.getByTestId("button-save-rules").click();
+  await expectDone(page, "add-rule");
+  await rules.getByLabel("Close model rules").click();
+  await page.getByTestId("button-toolbar-validate").click();
+  // The learner's rule finds the process nobody executes, and only that one.
+  await expect(issues).toContainText("Every process has a resource: Bending");
+  await expect(issues).not.toContainText("Every process has a resource: Laser cutting");
+  await lesson(3);
+
+  // --- Lesson 5: assign the resource ---
+  await add("Resource", "Press brake", "45");
+  await expectDone(page, "add-resource");
+  await connect(page, "Press brake", "top", "Bending", "right");
+  await expectDone(page, "assign-resource");
+  await page.getByTestId("button-validate-again").click();
+  await expect(issues).not.toContainText("Bending");
+  await lesson(4);
+
+  // --- Lesson 6: close the last gap, without instructions ---
+  await add("Process", "Powder coating");
+  await add("Product", "Coated bracket");
+  await connect(page, "Bracket", "bottom", "Powder coating", "left");
+  // A process with nothing coming out is not finished.
+  await expect.poll(() => stepState(page, "own-process")).toBe("current");
+  await connect(page, "Powder coating", "right", "Coated bracket", "left");
+  await expectDone(page, "own-process");
+  await add("Resource", "Coating booth");
+  await connect(page, "Coating booth", "top", "Powder coating", "bottom");
+  await expectDone(page, "own-resource");
+  await connect(page, "Powder coating", "top", "Corrosion protection", "bottom");
+  await expectDone(page, "own-trace");
+  await page.getByTestId("button-toolbar-validate").click();
+
+  const finished = page.getByTestId("tutorial-finished");
+  await expect(finished).toBeVisible();
+  await expect(page.getByTestId("tutorial-finished-title")).toHaveText(P.finishedTitle);
+  await expect(page.getByTestId("tutorial-finished-summary")).toContainText(`${total} of ${total} steps done`);
+  await expect(finished).toContainText(P.answer);
+  // The last tutorial has no next one to point to.
+  await expect(page.getByTestId("button-tutorial-next-tutorial")).toHaveCount(0);
 });
 
 test("skipping is not doing, the coach stays out of the way, and the tutorial can start over", async ({ page, request }) => {
@@ -350,9 +489,11 @@ test("skipping is not doing, the coach stays out of the way, and the tutorial ca
 
   // The project list shows where to continue, and removing cleans up.
   await page.goto("/projects");
-  await expect(page.getByTestId("tutorial-card")).toContainText(`0 of ${TOTAL} steps done`);
-  await page.getByTestId("tutorial-card").getByRole("button", { name: "Remove" }).click();
-  await expect(page.getByTestId("button-tutorial-start")).toBeVisible();
+  await expect(page.getByTestId("tutorial-card-basics")).toContainText(`0 of ${TOTAL} steps done`);
+  // The other tutorial is offered independently of this one.
+  await expect(page.getByTestId("button-tutorial-start-ppr")).toBeVisible();
+  await page.getByTestId("button-tutorial-remove-basics").click();
+  await expect(page.getByTestId("button-tutorial-start-basics")).toBeVisible();
   const remaining = (await (await request.get("/api/projects")).json()) as Array<{ templateId: string | null }>;
   expect(remaining.filter((project) => project.templateId?.startsWith("tutorial"))).toEqual([]);
 });

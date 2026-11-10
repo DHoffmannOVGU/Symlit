@@ -5,13 +5,16 @@ const SPOTLIGHT_CLASS = "tutorial-spotlight";
 function findVisible(target: TutorialHighlight): HTMLElement | null {
   const selector = typeof target === "string" ? target : target.selector;
   const text = typeof target === "string" ? null : target.text.toLowerCase();
-  const candidates = Array.from(document.querySelectorAll<HTMLElement>(selector));
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>(selector)).filter(
+    (element) => element.getClientRects().length > 0,
+  );
+  if (text === null) return candidates[0] ?? null;
+  const textOf = (element: HTMLElement) => (element.textContent ?? "").trim().toLowerCase();
+  // An entry that starts with the text is the one named so; others only mention it.
   return (
-    candidates.find(
-      (element) =>
-        element.getClientRects().length > 0 &&
-        (text === null || (element.textContent ?? "").toLowerCase().includes(text)),
-    ) ?? null
+    candidates.find((element) => textOf(element).startsWith(text)) ??
+    candidates.find((element) => textOf(element).includes(text)) ??
+    null
   );
 }
 

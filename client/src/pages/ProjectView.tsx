@@ -1,7 +1,4 @@
-import { apiCall } from "@/lib/api-client";
-import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
 import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { useState, useEffect } from "react";
 import { useRoute, Redirect, Link, useLocation } from "wouter";
@@ -47,7 +44,6 @@ import { useTutorialCoach } from "@/components/tutorial/useTutorialCoach";
 import { WorkspaceUnavailable } from "@/components/WorkspaceUnavailable";
 
 export default function ProjectView() {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const {
     user,
@@ -436,8 +432,9 @@ export default function ProjectView() {
           onOpenChange={(open) => !open && setEditingView(null)}
         />
         </MountWhenOpened>
-        {tutorialCoach.active && tutorialCoach.progress && tutorialCoach.scope && (
+        {tutorialCoach.active && tutorialCoach.progress && tutorialCoach.scope && tutorialCoach.definition && (
           <TutorialCoach
+            tutorial={tutorialCoach.definition}
             progress={tutorialCoach.progress}
             scope={tutorialCoach.scope}
             onShowMe={(step) => void tutorialCoach.showMe(step)}
@@ -460,10 +457,10 @@ export default function ProjectView() {
             }}
             onCollapsedChange={tutorialCoach.setCollapsed}
             onStartOwnProject={() => tutorialCoach.navigate("/projects?startTemplate=blank")}
+            onShowTutorials={() => tutorialCoach.navigate("/projects")}
             onRemoveTutorial={async () => {
               try {
-                await apiCall(api.tutorial.delete);
-                await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
+                await tutorialCoach.remove();
                 setLocation("/projects");
               } catch (error) {
                 toast({

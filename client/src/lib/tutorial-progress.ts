@@ -1,6 +1,6 @@
 import {
-  TUTORIAL_LESSONS,
-  TUTORIAL_STEPS,
+  tutorialSteps,
+  type TutorialDefinition,
   type TutorialLesson,
   type TutorialModelState,
   type TutorialScope,
@@ -57,49 +57,49 @@ const stepsPassed = (progress: TutorialProgress, lesson: TutorialLesson) =>
 const recapPending = (progress: TutorialProgress, lesson: TutorialLesson) =>
   !!lesson.question && stepsPassed(progress, lesson) && !progress.recapped.includes(lesson.id);
 
-const activeLessonIndex = (progress: TutorialProgress) =>
-  TUTORIAL_LESSONS.findIndex((lesson) => !stepsPassed(progress, lesson) || recapPending(progress, lesson));
+const activeLessonIndex = (tutorial: TutorialDefinition, progress: TutorialProgress) =>
+  tutorial.lessons.findIndex((lesson) => !stepsPassed(progress, lesson) || recapPending(progress, lesson));
 
-export function isTutorialFinished(progress: TutorialProgress) {
-  return activeLessonIndex(progress) === -1;
+export function isTutorialFinished(tutorial: TutorialDefinition, progress: TutorialProgress) {
+  return activeLessonIndex(tutorial, progress) === -1;
 }
 
 /** The lesson the learner is in; the last one once the tutorial is finished. */
-export function currentLessonIndex(progress: TutorialProgress): number {
-  const index = activeLessonIndex(progress);
-  return index === -1 ? TUTORIAL_LESSONS.length - 1 : index;
+export function currentLessonIndex(tutorial: TutorialDefinition, progress: TutorialProgress): number {
+  const index = activeLessonIndex(tutorial, progress);
+  return index === -1 ? tutorial.lessons.length - 1 : index;
 }
 
 /** The lesson whose closing question is waiting, if any. */
-export function pendingRecap(progress: TutorialProgress): TutorialLesson | null {
-  const lesson = TUTORIAL_LESSONS[activeLessonIndex(progress)];
+export function pendingRecap(tutorial: TutorialDefinition, progress: TutorialProgress): TutorialLesson | null {
+  const lesson = tutorial.lessons[activeLessonIndex(tutorial, progress)];
   return lesson && recapPending(progress, lesson) ? lesson : null;
 }
 
 /** The step to work on, or null while a question is waiting or once finished. */
-export function currentStep(progress: TutorialProgress): TutorialStep | null {
-  const lesson = TUTORIAL_LESSONS[activeLessonIndex(progress)];
+export function currentStep(tutorial: TutorialDefinition, progress: TutorialProgress): TutorialStep | null {
+  const lesson = tutorial.lessons[activeLessonIndex(tutorial, progress)];
   return lesson?.steps.find((step) => !isPassed(progress, step.id)) ?? null;
 }
 
-export function stepState(progress: TutorialProgress, step: TutorialStep): TutorialStepState {
+export function stepState(tutorial: TutorialDefinition, progress: TutorialProgress, step: TutorialStep): TutorialStepState {
   if (isCompleted(progress, step.id)) return "done";
   if (isSkipped(progress, step.id)) return "skipped";
-  return currentStep(progress)?.id === step.id ? "current" : "open";
+  return currentStep(tutorial, progress)?.id === step.id ? "current" : "open";
 }
 
-export function countDone(progress: TutorialProgress) {
-  return TUTORIAL_STEPS.filter((step) => isCompleted(progress, step.id)).length;
+export function countDone(tutorial: TutorialDefinition, progress: TutorialProgress) {
+  return tutorialSteps(tutorial).filter((step) => isCompleted(progress, step.id)).length;
 }
 
-export function skippedSteps(progress: TutorialProgress): TutorialStep[] {
-  return TUTORIAL_STEPS.filter((step) => isSkipped(progress, step.id));
+export function skippedSteps(tutorial: TutorialDefinition, progress: TutorialProgress): TutorialStep[] {
+  return tutorialSteps(tutorial).filter((step) => isSkipped(progress, step.id));
 }
 
 /** The step completed last, whose explanation the coach shows. */
-export function lastCompletedStep(progress: TutorialProgress): TutorialStep | null {
+export function lastCompletedStep(tutorial: TutorialDefinition, progress: TutorialProgress): TutorialStep | null {
   const id = progress.completed[progress.completed.length - 1];
-  return TUTORIAL_STEPS.find((step) => step.id === id) ?? null;
+  return tutorialSteps(tutorial).find((step) => step.id === id) ?? null;
 }
 
 /** Minutes from the first action to the end, once finished. */
@@ -111,9 +111,9 @@ export function tutorialMinutes(progress: TutorialProgress): number | null {
 // --- transitions -------------------------------------------------------------
 
 /** Records start and end times around a change. */
-function stamp(progress: TutorialProgress, now: number): TutorialProgress {
+function stamp(tutorial: TutorialDefinition, progress: TutorialProgress, now: number): TutorialProgress {
   const startedAt = progress.startedAt ?? now;
-  const finishedAt = progress.finishedAt ?? (isTutorialFinished(progress) ? now : null);
+  const finishedAt = progress.finishedAt ?? (isTutorialFinished(tutorial, progress) ? now : null);
   return startedAt === progress.startedAt && finishedAt === progress.finishedAt
     ? progress
     : { ...progress, startedAt, finishedAt };
@@ -124,18 +124,24 @@ function stamp(progress: TutorialProgress, now: number): TutorialProgress {
  * in earlier ones (where they were skipped). Steps of later lessons wait
  * until their lesson is reached, so nobody passes a lesson before seeing it.
  */
-function completable(progress: TutorialProgress): TutorialStep[] {
-  const active = activeLessonIndex(progress);
-  const lessons = active === -1 ? TUTORIAL_LESSONS : TUTORIAL_LESSONS.slice(0, active + 1);
+function completable(tutorial: TutorialDefinition, progress: TutorialProgress): TutorialStep[] {
+  const active = activeLessonIndex(tutorial, progress);
+  const lessons = active === -1 ? tutorial.lessons : tutorial.lessons.slice(0, active + 1);
   return lessons.flatMap((lesson) => lesson.steps).filter((step) => !isCompleted(progress, step.id));
 }
 
-function complete(progress: TutorialProgress, steps: TutorialStep[], now: number): TutorialProgress {
+function complete(
+  tutorial: TutorialDefinition,
+  progress: TutorialProgress,
+  steps: TutorialStep[],
+  now: number,
+): TutorialProgress {
   if (steps.length === 0) return progress;
   const ids = steps.map((step) => step.id);
   const usage = { ...progress.usage };
   for (const id of ids) usage[id] = { ...usage[id], doneAt: now };
   return stamp(
+    tutorial,
     {
       ...progress,
       completed: [...progress.completed, ...ids],
@@ -154,16 +160,17 @@ const checkPasses = (step: TutorialStep, state: TutorialModelState | null) =>
  * in this project completes, if the model also shows what the step asks for.
  */
 export function applySignal(
+  tutorial: TutorialDefinition,
   progress: TutorialProgress,
   signal: TutorialSignal,
   scope: TutorialScope,
   state: TutorialModelState | null,
   now = Date.now(),
 ): TutorialProgress {
-  const step = completable(progress).find(
+  const step = completable(tutorial, progress).find(
     (candidate) => candidate.signal === signal && candidate.scope === scope && checkPasses(candidate, state),
   );
-  return step ? complete(progress, [step], now) : progress;
+  return step ? complete(tutorial, progress, [step], now) : progress;
 }
 
 /**
@@ -171,19 +178,25 @@ export function applySignal(
  * the model complete as soon as the model shows it.
  */
 export function applyModelState(
+  tutorial: TutorialDefinition,
   progress: TutorialProgress,
   state: TutorialModelState,
   now = Date.now(),
 ): TutorialProgress {
-  const steps = completable(progress).filter(
+  const steps = completable(tutorial, progress).filter(
     (candidate) => !candidate.signal && !!candidate.check && checkPasses(candidate, state),
   );
-  return complete(progress, steps, now);
+  return complete(tutorial, progress, steps, now);
 }
 
-export function skipStep(progress: TutorialProgress, stepId: string, now = Date.now()): TutorialProgress {
+export function skipStep(
+  tutorial: TutorialDefinition,
+  progress: TutorialProgress,
+  stepId: string,
+  now = Date.now(),
+): TutorialProgress {
   if (isPassed(progress, stepId)) return progress;
-  return stamp({ ...progress, skipped: [...progress.skipped, stepId] }, now);
+  return stamp(tutorial, { ...progress, skipped: [...progress.skipped, stepId] }, now);
 }
 
 /** Reopens every skipped step; the learner continues at the first of them. */
@@ -196,9 +209,14 @@ export function answerQuestion(progress: TutorialProgress, lessonId: string, opt
 }
 
 /** Leaves a lesson's question behind (answered or not) and moves on. */
-export function closeRecap(progress: TutorialProgress, lessonId: string, now = Date.now()): TutorialProgress {
+export function closeRecap(
+  tutorial: TutorialDefinition,
+  progress: TutorialProgress,
+  lessonId: string,
+  now = Date.now(),
+): TutorialProgress {
   if (progress.recapped.includes(lessonId)) return progress;
-  return stamp({ ...progress, recapped: [...progress.recapped, lessonId] }, now);
+  return stamp(tutorial, { ...progress, recapped: [...progress.recapped, lessonId] }, now);
 }
 
 export function noteHelpUsed(
@@ -216,15 +234,14 @@ export function totalHelpUsed(progress: TutorialProgress, kind: "hints" | "showM
 
 // --- persistence -----------------------------------------------------------
 
-const knownStepIds = new Set(TUTORIAL_STEPS.map((step) => step.id));
-const knownLessonIds = new Set(TUTORIAL_LESSONS.map((lesson) => lesson.id));
-
 /** Progress belongs to one tutorial run, identified by its metamodel project. */
 export const tutorialStorageKey = (metamodelProjectId: number) =>
   `symlit_tutorial:${metamodelProjectId}`;
 
-export function normalizeTutorialProgress(value: unknown): TutorialProgress {
+export function normalizeTutorialProgress(tutorial: TutorialDefinition, value: unknown): TutorialProgress {
   if (!value || typeof value !== "object") return { ...EMPTY_TUTORIAL_PROGRESS };
+  const knownStepIds = new Set(tutorialSteps(tutorial).map((step) => step.id));
+  const knownLessonIds = new Set(tutorial.lessons.map((lesson) => lesson.id));
   const record = value as Partial<TutorialProgress>;
   const ids = (list: unknown, known: Set<string>) =>
     Array.isArray(list)
@@ -263,10 +280,10 @@ export function normalizeTutorialProgress(value: unknown): TutorialProgress {
   };
 }
 
-export function loadTutorialProgress(metamodelProjectId: number): TutorialProgress {
+export function loadTutorialProgress(tutorial: TutorialDefinition, metamodelProjectId: number): TutorialProgress {
   try {
     const stored = window.localStorage.getItem(tutorialStorageKey(metamodelProjectId));
-    return stored ? normalizeTutorialProgress(JSON.parse(stored)) : { ...EMPTY_TUTORIAL_PROGRESS };
+    return stored ? normalizeTutorialProgress(tutorial, JSON.parse(stored)) : { ...EMPTY_TUTORIAL_PROGRESS };
   } catch {
     return { ...EMPTY_TUTORIAL_PROGRESS };
   }

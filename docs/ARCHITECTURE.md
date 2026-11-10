@@ -171,22 +171,32 @@ SQL migration to `migrations/`. Commit both. CI fails if the schema and migratio
   build). `GET /api/project-templates` lists them, `POST /api/project-templates/:id/projects`
   creates their projects. See `docs/decisions/project-templates.md`.
 
-## Guided tutorial
+## Guided tutorials
 
-- `shared/tutorial.ts` defines the lessons and steps. The two tutorial projects (a *Drone types*
-  metamodel and a *Delivery drone* instance model typed by it) are the project template
-  `server/templates/tutorial.json`.
-- `POST /api/tutorial` (`server/services/tutorial.ts`) creates both projects from that template,
-  marked with `projects.template_id = "tutorial"`; `DELETE /api/tutorial` removes them.
-- Steps wait for *signals*: element/relationship created and save requests come from the existing
-  diagram events; everything else is reported with `emitTutorialSignal()` (`client/src/lib/tutorial-signals.ts`)
-  where the action happens (validation, model rules, table view, auto layout, pattern, export,
-  attribute added). A signal completes the first open step waiting for it in the open project.
-- `client/src/lib/tutorial-progress.ts` holds the pure progress logic (unit-tested); progress is
-  stored in the browser per tutorial run. `useTutorialCoach` and `TutorialCoach` render the docked
-  coach on tutorial projects; `TutorialCard` is the entry point on the project list.
-- To add a step: add it to `TUTORIAL_LESSONS`, emit its signal where the action happens, and give
-  it a `highlight` selector for "Show me".
+- `shared/tutorial.ts` lists the tutorials. Each is a `TutorialDefinition` (`shared/tutorial-types.ts`):
+  its lessons and steps, its question, and the project template its two projects come from.
+  *Symlit basics* (`shared/tutorial-basics.ts`, `server/templates/tutorial.json`) uses a *Drone types*
+  metamodel and a *Delivery drone* model; *Production with PPR* (`shared/tutorial-ppr.ts`,
+  `server/templates/tutorial-ppr.json`) a *PPR types* metamodel and a *Bracket production* model.
+- `POST /api/tutorial/:tutorial` (`server/services/tutorial.ts`) creates both projects from the
+  tutorial's template, marked with `projects.template_id`; `DELETE /api/tutorial/:tutorial` removes
+  them. Without an id, `POST /api/tutorial` creates the first tutorial and `DELETE` removes all.
+- A step completes when the model shows its result (`check`), when a feature was used (`signal`), or
+  both. The canvas reports the open diagram to the coach as a `TutorialModelState`
+  (`useTutorialModelReporter`, only in tutorial projects): elements with their type and attribute
+  values, relationships, the open editor, the saved rules, unsaved changes. Signals are reported
+  with `emitTutorialSignal()` (`client/src/lib/tutorial-signals.ts`) where the action happens
+  (validation, model rules, table view, auto layout, patterns, export); saving comes from the
+  existing diagram event.
+- `client/src/lib/tutorial-progress.ts` holds the pure progress logic (unit-tested): which step is
+  current, that steps of a later lesson wait, skipping, the question that closes a lesson. Progress
+  is stored in the browser per tutorial run. `useTutorialCoach` and `TutorialCoach` render the docked
+  coach on tutorial projects; `TutorialCards` is the entry point on the project list.
+- To add a step: add it to a lesson with a `check` on the model state (extend `TutorialModelState`
+  and the reporter if the state lacks what the check needs), a `done` text, and a `highlight` for
+  "Show me". To add a tutorial: write its definition and template, and add it to `TUTORIALS` and
+  to the built-in templates in `server/services/project-templates.ts`.
+- The didactic reasoning is in `docs/ux/TUTORIAL_DIDACTICS.md`.
 
 ## Design decisions
 

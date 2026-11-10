@@ -20,10 +20,13 @@ machine. It needs no accounts and no cloud services.
 - **Multiple views per project:** an element is stored once and can appear in several diagrams.
 - **Patterns:** save a selection as a reusable pattern and insert it elsewhere.
 - **Model rules and validation**, plus a guided recovery dialog for damaged diagrams.
-- **A guided tutorial** built around one question (can the drone fly the city route?): about
-  25 minutes, six hands-on lessons covering types and elements, attributes, typed models, validation,
-  model rules, table view, auto layout and patterns. Steps tick off when the model shows their result,
-  each lesson ends with one question, and the last lesson is done without step-by-step instructions.
+- **Two guided tutorials.** *Symlit basics* (about 25 minutes) teaches the tool around one question,
+  can the drone fly the city route: types and elements, attributes, typed models, validation, model
+  rules, table view, auto layout and patterns. *Production with PPR* (about 30 minutes) teaches a
+  method: modelling production as products, processes and resources, starting from the customer's
+  requirements and tracing each of them to what satisfies it. In both, steps tick off when the model
+  shows their result, each lesson ends with one question, and the last lesson is done without
+  step-by-step instructions.
 - **Project templates:** start from an example; templates can bring their metamodel along.
 - **Export** to JSON or CSV (elements and relationships), and diagram screenshots.
 - **Optional AI metamodel assistant** (Google Gemini, bring your own API key).
@@ -41,7 +44,7 @@ npm run dev
 
 Open http://localhost:5000. That's it: with no configuration, Symlit stores its data in an
 embedded PostgreSQL database ([PGlite](https://pglite.dev)) under `./data/`, and creates a
-demo project on first start. New to Symlit? Press **Start the guided tutorial** on the project list.
+demo project on first start. New to Symlit? Start the **Symlit basics** tutorial on the project list.
 
 ### With a dedicated PostgreSQL server (Docker)
 

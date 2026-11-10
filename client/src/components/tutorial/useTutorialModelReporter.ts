@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import type { ModelRule, ModelRuleCondition } from "@shared/schema";
-import type { TutorialModelState } from "@shared/tutorial";
+import type { TutorialModelState, TutorialRule } from "@shared/tutorial";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { useDiagramModel } from "@/components/flow/state/DiagramModelProvider";
 import { useDiagramStore } from "@/components/flow/state/DiagramStoreProvider";
@@ -15,9 +15,18 @@ const ruleAttributes = (condition: ModelRuleCondition | undefined): string[] =>
         ? [condition.attribute]
         : [];
 
-const describeRule = (rule: ModelRule) => ({
+const hasConnectedCondition = (condition: ModelRuleCondition | undefined): boolean =>
+  !condition
+    ? false
+    : condition.kind === "group"
+      ? condition.conditions.some((child) => hasConnectedCondition(child as ModelRuleCondition))
+      : condition.source === "connected";
+
+const describeRule = (rule: ModelRule, typeName: (typeId: string) => string | undefined): TutorialRule => ({
   reportsIssue: rule.enabled !== false && (rule.outcome ? rule.outcome.kind === "issue" : !!rule.check),
+  target: rule.targetType === "all" ? "" : typeName(rule.targetType) ?? rule.targetType,
   attributes: ruleAttributes(rule.condition),
+  connected: hasConnectedCondition(rule.condition),
 });
 
 /**
@@ -53,7 +62,7 @@ export function useTutorialModelReporter(enabled: boolean, isDirty: boolean) {
       }),
       relationships: edges.map((edge) => ({ from: edge.source, to: edge.target })),
       editingId: nodePanelOpen ? selectedNodeId : null,
-      rules: localModelRules.map(describeRule),
+      rules: localModelRules.map((rule) => describeRule(rule, (typeId) => typeMetaById.get(typeId)?.label)),
       dirty: isDirty,
     };
   }, [edges, enabled, isDirty, localModelRules, nodePanelOpen, nodes, projectType, selectedNodeId, typeMetaById]);

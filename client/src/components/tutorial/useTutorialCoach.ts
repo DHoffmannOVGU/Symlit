@@ -39,6 +39,7 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
   const [, setLocation] = useLocation();
   const tutorial = useMemo(() => findTutorialProjects(project, allProjects), [project, allProjects]);
   const runId = tutorial?.metamodel.id;
+  const definition = tutorial?.tutorial;
   const scope: TutorialScope | null = !tutorial || !project
     ? null
     : project.id === tutorial.metamodel.id
@@ -47,15 +48,15 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
 
   const [progress, setProgress] = useState<TutorialProgress | null>(null);
   useEffect(() => {
-    setProgress(runId ? loadTutorialProgress(runId) : null);
-  }, [runId]);
+    setProgress(runId && definition ? loadTutorialProgress(definition, runId) : null);
+  }, [definition, runId]);
 
   const update = useCallback(
     (change: (current: TutorialProgress) => TutorialProgress) => {
-      if (!runId) return;
-      setProgress((current) => change(current ?? loadTutorialProgress(runId)));
+      if (!runId || !definition) return;
+      setProgress((current) => change(current ?? loadTutorialProgress(definition, runId)));
     },
-    [runId],
+    [definition, runId],
   );
   useEffect(() => {
     if (runId && progress) saveTutorialProgress(runId, progress);
@@ -76,17 +77,19 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
 
   // Steps that ask for a result complete when the model shows it.
   useEffect(() => {
-    if (modelState && progress) update((current) => applyModelState(current, modelState));
-  }, [modelState, progress, update]);
+    if (modelState && progress && definition) update((current) => applyModelState(definition, current, modelState));
+  }, [definition, modelState, progress, update]);
 
   const signal = useCallback(
     (name: TutorialSignal) => {
-      if (!scope) return;
+      if (!scope || !definition) return;
       // Some events are dispatched while another component renders (e.g. from
       // inside a state updater); defer so we never update state mid-render.
-      queueMicrotask(() => update((current) => applySignal(current, name, scope, modelStateRef.current)));
+      queueMicrotask(() =>
+        update((current) => applySignal(definition, current, name, scope, modelStateRef.current)),
+      );
     },
-    [scope, update],
+    [definition, scope, update],
   );
 
   // Opening a diagram of a tutorial project.
@@ -146,22 +149,32 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
 
   /** Throws the tutorial projects away and starts again with fresh ones. */
   const restart = useCallback(async () => {
+    if (!definition) return;
     if (runId) clearTutorialProgress(runId);
-    await apiCall(api.tutorial.delete);
-    const created = await apiCall(api.tutorial.create);
+    const params = { tutorial: definition.id };
+    await apiCall(api.tutorial.deleteOne, { params });
+    const created = await apiCall(api.tutorial.createOne, { params });
     await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
     setLocation(`/project/${created.metamodel.id}/view/${created.metamodelViewId}`);
-  }, [queryClient, runId, setLocation]);
+  }, [definition, queryClient, runId, setLocation]);
 
   return {
     active: Boolean(tutorial && progress),
     tutorial,
+    definition,
     scope,
     progress,
-    skip: (stepId: string) => update((current) => skipStep(current, stepId)),
+    skip: (stepId: string) => definition && update((current) => skipStep(definition, current, stepId)),
     returnToSkipped: () => update(returnToSkipped),
     answer: (lessonId: string, option: number) => update((current) => answerQuestion(current, lessonId, option)),
-    closeRecap: (lessonId: string) => update((current) => closeRecap(current, lessonId)),
+    closeRecap: (lessonId: string) => definition && update((current) => closeRecap(definition, current, lessonId)),
+    /** Removes the projects of this tutorial. */
+    remove: async () => {
+      if (!definition) return;
+      await apiCall(api.tutorial.deleteOne, { params: { tutorial: definition.id } });
+      if (runId) clearTutorialProgress(runId);
+      await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
+    },
     noteHint: (stepId: string) => update((current) => noteHelpUsed(current, stepId, "hints")),
     restart,
     setCollapsed: (collapsed: boolean) => update((current) => ({ ...current, collapsed })),

@@ -483,6 +483,66 @@ describe("guided tutorial", () => {
     await request("DELETE", "/api/tutorial");
   });
 
+  test("the PPR tutorial brings its metamodel, a model with gaps and the rule that finds one", async () => {
+    const res = await request("POST", "/api/tutorial/ppr");
+    assert.equal(res.status, 201, res.text);
+    const { metamodel, instance, metamodelViewId, instanceViewId } = res.json;
+    assert.equal(metamodel.templateId, "tutorial-ppr");
+    assert.equal(instance.templateId, "tutorial-ppr");
+    assert.deepEqual(instance.referencedMetamodels, [metamodel.id]);
+
+    // Product, process and resource are PPR elements and relate the PPR way.
+    type TypeNode = { id: string; data: { label: string } };
+    type Relationship = { source: string; target: string; edgeType: string; data: { label?: string } };
+    const types = (await request("GET", `/api/views/${metamodelViewId}/flow`)).json;
+    const idOf = (label: string) => types.nodes.find((node: TypeNode) => node.data.label === label).id;
+    const relationships = types.edges
+      .map((edge: Relationship) => {
+        const label = (id: string) => types.nodes.find((node: TypeNode) => node.id === id).data.label;
+        return `${label(edge.source)} ${edge.edgeType === "generalization" ? "is a" : edge.data.label} ${label(edge.target)}`;
+      })
+      .sort();
+    assert.deepEqual(relationships, [
+      "Process is a PPR element",
+      "Process produces Product",
+      "Product goes into Process",
+      "Product is a PPR element",
+      "Resource executes Process",
+      "Resource is a PPR element",
+    ]);
+
+    // The rule points at the Requirement type of this run.
+    const view = (await request("GET", `/api/views/${instanceViewId}`)).json;
+    assert.equal(view.modelRules.length, 1);
+    assert.equal(view.modelRules[0].targetType, `mm:${metamodel.id}:${idOf("Requirement")}`);
+
+    // The model follows its metamodel; what is missing is for the learner to find:
+    // nothing produces the Bracket, and no requirement is traced yet.
+    const { issues } = (await request("POST", `/api/views/${instanceViewId}/validate`)).json;
+    assert.deepEqual(issues, []);
+    const model = (await request("GET", `/api/views/${instanceViewId}/flow`)).json;
+    type Element = { id: string; data: { label: string; type: string } };
+    const bracket = model.nodes.find((node: Element) => node.data.label === "Bracket");
+    assert.ok(!model.edges.some((edge: Relationship) => edge.target === bracket.id));
+    const requirements = model.nodes.filter((node: Element) => node.data.type === "Requirement");
+    assert.deepEqual(requirements.map((node: Element) => node.data.label).sort(), ["Carries 5 kg", "Corrosion protection"]);
+    assert.ok(!model.edges.some((edge: Relationship) => requirements.some((node: Element) => node.id === edge.target)));
+  });
+
+  test("tutorials are created and removed one at a time; an unknown one is a 404", async () => {
+    await request("DELETE", "/api/tutorial");
+    await request("POST", "/api/tutorial/basics");
+    await request("POST", "/api/tutorial/ppr");
+    assert.equal((await request("POST", "/api/tutorial/nonsense")).status, 404);
+    assert.equal((await request("DELETE", "/api/tutorial/nonsense")).status, 404);
+
+    const removed = await request("DELETE", "/api/tutorial/ppr");
+    assert.equal(removed.json.deletedProjects, 2);
+    const left = (await request("GET", "/api/projects")).json as Array<{ templateId: string | null }>;
+    assert.deepEqual(left.map((project) => project.templateId).filter((id) => id?.startsWith("tutorial")), ["tutorial", "tutorial"]);
+    await request("DELETE", "/api/tutorial");
+  });
+
   test("a second tutorial gets its own elements, and removing deletes all tutorial projects", async () => {
     const first = (await request("POST", "/api/tutorial")).json;
     const second = (await request("POST", "/api/tutorial")).json;
