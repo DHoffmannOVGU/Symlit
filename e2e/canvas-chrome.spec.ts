@@ -214,3 +214,45 @@ test("a metamodel that builds on another lists its types to specialize, without 
   await group.getByText("Alarm").click();
   await expect(page.locator(".react-flow__node")).toHaveCount(1);
 });
+
+test("auto-save is off by default; switched on, changes save by themselves and quietly", async ({ page, request }) => {
+  const created = await createProjectWithViews(request, {
+    name: "Auto-save",
+    projectType: "instance",
+    views: [
+      {
+        name: "Main",
+        nodes: [
+          { id: "a", type: "part", position: { x: 0, y: 0 }, data: { label: "Pump", type: "Object", attributes: [] } },
+          { id: "b", type: "part", position: { x: 0, y: 0 }, data: { label: "Valve", type: "Object", attributes: [] } },
+        ],
+        edges: [],
+      },
+    ],
+  });
+  const { project, firstViewId } = await created.json();
+  await page.goto(`/project/${project.id}/view/${firstViewId}`);
+  const status = page.getByTestId("diagram-save-status");
+  const positions = async () =>
+    (await (await request.get(`/api/views/${firstViewId}/flow`)).json()).nodes.map((node: { position: { x: number } }) => node.position.x);
+
+  // Off by default: a change stays unsaved until the user saves.
+  await page.getByTestId("button-toolbar-auto-layout").click();
+  await expect(status).toHaveText("Unsaved changes");
+  await page.waitForTimeout(2500);
+  await expect(status).toHaveText("Unsaved changes");
+  expect(new Set(await positions()).size).toBe(1);
+
+  // Switched on, the pending change is saved without a click and without a "Saved" toast.
+  await page.getByTestId("button-toolbar-settings").click();
+  await page.getByTestId("toggle-auto-save").click();
+  await page.keyboard.press("Escape");
+  await expect(status).toHaveText("All changes saved");
+  await expect(page.getByText("Your diagram has been saved successfully.")).toHaveCount(0);
+  expect(new Set(await positions()).size).toBe(2);
+
+  // The setting is remembered.
+  await page.reload();
+  await page.getByTestId("button-toolbar-settings").click();
+  await expect(page.getByTestId("toggle-auto-save")).toHaveAttribute("data-state", "checked");
+});

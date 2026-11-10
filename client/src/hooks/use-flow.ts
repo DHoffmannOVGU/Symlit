@@ -47,12 +47,15 @@ export function useSyncFlow() {
       viewId: number;
       nodes: InsertFlowNode[];
       edges: InsertFlowEdge[];
+      /** Automatic saves do not announce themselves; the header shows the state. */
+      quiet?: boolean;
     }) =>
       apiCall(api.flow.sync, {
         params: { viewId },
         body: { nodes, edges },
       }),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
+      if (variables.quiet) return;
       toast({
         title: "Saved",
         description: "Your diagram has been saved successfully.",

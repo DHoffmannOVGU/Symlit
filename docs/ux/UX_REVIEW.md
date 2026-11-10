@@ -96,7 +96,7 @@ All fixed; see Done below.
 
 | # | Where | Finding | Status |
 | --- | --- | --- | --- |
-| R1 | Saving | Two levels of saving (panel "Save Changes", then the diagram's Save; the rules panel has a third). Auto-save would remove a whole class of lost-work worries. | Open: changes behaviour, needs a decision |
+| R1 | Saving | Two levels of saving (panel "Save Changes", then the diagram's Save; the rules panel has a third). Auto-save would remove a whole class of lost-work worries. | Built as a setting, off by default; whether it becomes the default is still to decide |
 | R2 | Table view | Shows raw ids, cuts names short, has no attribute columns. | Done |
 | R3 | Validation | A modal even for "no issues"; issues did not lead to their elements. | Done |
 | R4 | Wording | Secondary screens still said edge/node/objects/meta rules. | Done |
@@ -109,6 +109,11 @@ All fixed; see Done below.
 | R11 | Keyboard | No undo/redo shortcut. | Done |
 
 ## Done
+- R1 (first step): "Save automatically" in the canvas settings saves the diagram about 1.5 s after the last change,
+  without a toast; the header shows "Saving…" and "All changes saved". It is off unless switched on and remembered per
+  browser (`AUTO_SAVE_DEFAULT` in `useDiagramCanvasPreferences.ts` is the one place to change the default). A failed
+  automatic save is reported once and not retried until the diagram changes. Still explicit: "Save Changes" in the
+  element and relationship editors, and Save in the model rules panel.
 - R5: the model rules panel opens at half the canvas height (280 to 560 px) until the user resizes it, so the diagram
   stays readable above it.
 - R6: the new-project dialog starts with name and description; kinds and relationship types are folded under "Customize"
