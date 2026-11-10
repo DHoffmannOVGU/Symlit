@@ -130,7 +130,9 @@ export function resolveReferencedMetamodelFlow({
         edgeType,
         flowType: data?.flowType as CustomEdgeData["flowType"] | undefined,
         label: typeof data?.label === "string" ? data.label : undefined,
-        multiplicity: typeof data?.multiplicity === "string" ? data.multiplicity : undefined,
+        ...(typeof data?.multiplicity === "string" && data.multiplicity.trim()
+          ? { multiplicity: data.multiplicity }
+          : {}),
         sourceTypeId: `mm:${sourceProjectId}:${edge.source}`,
         targetTypeId: `mm:${targetProjectId}:${edge.target}`,
       };
