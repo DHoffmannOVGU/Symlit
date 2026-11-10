@@ -16,9 +16,14 @@ DATABASE_URL. No account, no external requests.
   pattern libraries for the models that use them.
 - Project templates: start from an example; a template can bring its
   metamodel along. Templates use the JSON export format.
-- Guided tutorial (two sample projects, 15 steps) and export (JSON/CSV).
+- Guided tutorial (two sample projects, six lessons, 26 steps that check the
+  result in the model) and export (JSON/CSV).
 - Versioned database migrations applied on start; strict server-side
   validation of elements and relationships.
 - Tests: unit, API (PGlite and PostgreSQL 16) and browser (Playwright) in CI.
+
+### Fixed
+- A diagram reopened shortly after it was saved could show its state from
+  before the save; saving again then discarded the earlier save.
 
 Docs: README.md, docs/ARCHITECTURE.md, docs/BACKLOG.md.

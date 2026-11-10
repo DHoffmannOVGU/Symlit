@@ -1,4 +1,4 @@
-import type { TutorialSignal } from "@shared/tutorial";
+import type { TutorialModelState, TutorialSignal } from "@shared/tutorial";
 import React, {
   createContext,
   useCallback,
@@ -22,6 +22,7 @@ export type DiagramLeaveRequestDetail = { href: string };
 export type ModelRulesToggleRequestDetail = { viewId: number };
 export type MetamodelAiAssistantToggleRequestDetail = { viewId: number };
 export type TutorialSignalDetail = { signal: TutorialSignal };
+export type TutorialModelStateDetail = { viewId: number; state: TutorialModelState };
 
 export type SelectedNodeChangedDetail = {
   viewId: number;
@@ -58,6 +59,7 @@ export interface DiagramEventMap {
   "model-rules-toggle-request": ModelRulesToggleRequestDetail;
   "metamodel-ai-assistant-toggle-request": MetamodelAiAssistantToggleRequestDetail;
   "tutorial-signal": TutorialSignalDetail;
+  "tutorial-model-state": TutorialModelStateDetail;
 }
 
 export type DiagramEventName = keyof DiagramEventMap;

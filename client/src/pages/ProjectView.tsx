@@ -326,6 +326,7 @@ export default function ProjectView() {
                   setDiagramDisplayMode(mode);
                   if (mode === "table") emitTutorialSignal("table-mode");
                 }}
+                isTutorialProject={tutorialCoach.active}
               />
             ) : (
               <div className="flex-1 overflow-y-auto bg-slate-50/30 p-4 md:p-8">
@@ -440,8 +441,23 @@ export default function ProjectView() {
             progress={tutorialCoach.progress}
             scope={tutorialCoach.scope}
             onShowMe={(step) => void tutorialCoach.showMe(step)}
+            onOpenStepDiagram={(step) => void tutorialCoach.openStepDiagram(step)}
+            onHintShown={tutorialCoach.noteHint}
             onSkip={tutorialCoach.skip}
-            onRestart={tutorialCoach.restart}
+            onReturnToSkipped={tutorialCoach.returnToSkipped}
+            onAnswer={tutorialCoach.answer}
+            onCloseRecap={tutorialCoach.closeRecap}
+            onRestart={async () => {
+              try {
+                await tutorialCoach.restart();
+              } catch (error) {
+                toast({
+                  title: "Could not start the tutorial over",
+                  description: error instanceof Error ? error.message : undefined,
+                  variant: "destructive",
+                });
+              }
+            }}
             onCollapsedChange={tutorialCoach.setCollapsed}
             onStartOwnProject={() => tutorialCoach.navigate("/projects?startTemplate=blank")}
             onRemoveTutorial={async () => {

@@ -1,6 +1,37 @@
 # Guided tutorial: didactic review and improvement plan
 
-Scope: the guided tutorial (7 lessons, 15 steps) as defined in `shared/tutorial.ts`, its two
+## Status
+
+Steps 1 to 3 of the plan below are built; the review that follows describes the tutorial as it was
+before (7 lessons, 15 steps) and is kept as the reasoning behind the redesign.
+
+| Plan | State |
+| --- | --- |
+| Step 1: fix the content that misleads | Done. |
+| Step 2: give the tutorial a problem to solve | Done: the question "Can the drone Courier X1 fly the city route?", Pack B without a capacity, the rule that finds it, a rule the learner writes, inserting the pattern, six lessons. |
+| Step 3: check outcomes and support thinking | Done, with the differences listed below. |
+| Step 4: test it with learners | Open. Nobody from the intended audience has gone through it yet; the targets at the end of this document are unverified. |
+
+Where the result differs from the plan:
+
+- **Steps of a later lesson wait** until that lesson is reached, instead of completing early and being
+  marked "already done". What was built in the meantime counts on arrival; a button pressed early
+  (Table, Validate) has to be pressed again in its lesson.
+- **"Show me" was kept for the hard steps by pointing at the element to work on** (the card to open, the
+  field to fill in). There are no looping illustrations. Steps of the last lesson have no "Show me".
+- **Only the whole tutorial can be reset** ("Start the tutorial over" recreates both projects). A single
+  lesson cannot be reset on its own.
+- **Per-step records** (when a step was done, hints and "Show me" used) are stored with the progress in
+  the browser's local storage (`symlit_tutorial:<project id>`); the end screen shows the duration and the
+  number of hints. There is no export of these records yet.
+- **Found on the way:** the coach was hidden behind the element editor, so steps inside the editor could
+  not be read while doing them. It now moves to the bottom left while an editor, the rules panel, the
+  validation results or the table is open. The old step "pick a relationship such as Composition" described
+  a choice the metamodel editor does not offer when drawing a relationship; the new text says what happens.
+
+## Scope of the review
+
+The guided tutorial (7 lessons, 15 steps) as it was defined in `shared/tutorial.ts`, its two
 projects in `server/templates/tutorial.json`, and the coach in `client/src/components/tutorial/`.
 `docs/ux/UX_REVIEW.md` already covers the tutorial as an interface (placement, wording, not blocking
 the canvas). This review asks a different question: **what does a learner know and can do

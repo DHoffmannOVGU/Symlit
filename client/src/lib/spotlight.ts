@@ -1,15 +1,29 @@
+import type { TutorialHighlight } from "@shared/tutorial";
+
 const SPOTLIGHT_CLASS = "tutorial-spotlight";
 
+function findVisible(target: TutorialHighlight): HTMLElement | null {
+  const selector = typeof target === "string" ? target : target.selector;
+  const text = typeof target === "string" ? null : target.text.toLowerCase();
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>(selector));
+  return (
+    candidates.find(
+      (element) =>
+        element.getClientRects().length > 0 &&
+        (text === null || (element.textContent ?? "").toLowerCase().includes(text)),
+    ) ?? null
+  );
+}
+
 /**
- * Draws attention to the first visible element matching one of the selectors.
+ * Draws attention to the first visible element matching one of the targets.
  * Waits up to `timeoutMs` for it to appear (it may render after navigation).
  * Returns whether something was highlighted.
  */
-export function spotlight(selectors: string[], timeoutMs = 3000): Promise<boolean> {
+export function spotlight(targets: TutorialHighlight[], timeoutMs = 3000): Promise<boolean> {
   const find = () => {
-    for (const selector of selectors) {
-      const candidates = Array.from(document.querySelectorAll<HTMLElement>(selector));
-      const visible = candidates.find((element) => element.offsetParent !== null);
+    for (const target of targets) {
+      const visible = findVisible(target);
       if (visible) return visible;
     }
     return null;
@@ -19,7 +33,10 @@ export function spotlight(selectors: string[], timeoutMs = 3000): Promise<boolea
     const attempt = () => {
       const element = find();
       if (element) {
-        element.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+        // Diagram elements are positioned by the canvas; scrolling does not apply to them.
+        if (!element.closest(".react-flow__viewport")) {
+          element.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" });
+        }
         element.classList.add(SPOTLIGHT_CLASS);
         window.setTimeout(() => element.classList.remove(SPOTLIGHT_CLASS), 4000);
         resolve(true);

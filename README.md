@@ -20,9 +20,10 @@ machine. It needs no accounts and no cloud services.
 - **Multiple views per project:** an element is stored once and can appear in several diagrams.
 - **Patterns:** save a selection as a reusable pattern and insert it elsewhere.
 - **Model rules and validation**, plus a guided recovery dialog for damaged diagrams.
-- **A guided tutorial** that builds a small drone model with you: about 15 minutes, seven hands-on
-  lessons covering metamodels, typed models, validation, model rules, table view, auto layout,
-  patterns and export. Steps tick off as you work; "Show me" points at the right button.
+- **A guided tutorial** built around one question (can the drone fly the city route?): about
+  25 minutes, six hands-on lessons covering types and elements, attributes, typed models, validation,
+  model rules, table view, auto layout and patterns. Steps tick off when the model shows their result,
+  each lesson ends with one question, and the last lesson is done without step-by-step instructions.
 - **Project templates:** start from an example; templates can bring their metamodel along.
 - **Export** to JSON or CSV (elements and relationships), and diagram screenshots.
 - **Optional AI metamodel assistant** (Google Gemini, bring your own API key).

@@ -83,7 +83,8 @@ test("supports nested all/any condition groups and diagnostic outcomes", () => {
   };
   const violations = evaluateModelRules([rule], nodes, edges);
   assert.equal(violations.length, 1);
-  assert.equal(violations[0]?.message, "Needs handling review.");
+  // The message names the element, so a list of issues says where each one is.
+  assert.equal(violations[0]?.message, "Crate: Needs handling review.");
 });
 
 test("continues to evaluate rules saved by the original MVP", () => {

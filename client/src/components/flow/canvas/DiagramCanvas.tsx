@@ -63,6 +63,7 @@ import { CanvasAlignmentGuides } from "./CanvasAlignmentGuides";
 import { CanvasFlowStatusCard } from "./CanvasFlowStatusCard";
 import { CanvasInspectorPanels } from "./CanvasInspectorPanels";
 import { useCanvasDragPreview } from "./useCanvasDragPreview";
+import { useTutorialModelReporter } from "@/components/tutorial/useTutorialModelReporter";
 import { useCanvasKeyboardShortcuts } from "./useCanvasKeyboardShortcuts";
 import { useCanvasNodeSnapping } from "./useCanvasNodeSnapping";
 import type { ProjectType } from "@shared/schema";
@@ -83,6 +84,8 @@ export interface DiagramCanvasProps {
   viewMode?: "build" | "flow";
   displayMode?: "graph" | "table";
   onDisplayModeChange?: (mode: "graph" | "table") => void;
+  /** The project belongs to the guided tutorial, which follows what is built. */
+  isTutorialProject?: boolean;
 }
 
 // Side panels load when first opened.
@@ -94,6 +97,7 @@ function FlowInner({
   projectType,
   displayMode = "graph",
   onDisplayModeChange,
+  isTutorialProject = false,
 }: DiagramCanvasProps) {
   const { fitView } = useReactFlow();
   // Re-fit when an overlay (the tutorial coach) appears or changes size, unless
@@ -145,6 +149,7 @@ function FlowInner({
   const preferences = useDiagramCanvasPreferences();
   const { snapNodesEnabled, showBackgroundDots, alwaysShowAccent, showNodeDescriptions } = preferences;
   useAutoSave({ enabled: preferences.autoSave, isDirty, isSaving, save: handleSaveAsync });
+  useTutorialModelReporter(isTutorialProject, isDirty);
   const helpDialogOpen = useDiagramStore((state) => state.helpDialogOpen);
   const setHelpDialogOpen = useDiagramStore((state) => state.setHelpDialogOpen);
   const {

@@ -246,8 +246,8 @@ export function ModelRulesPanel({ open, onClose, height: panelHeight, onHeightCh
           <p className="text-xs text-muted-foreground">{isInstanceEditor ? "Rules from the metamodels apply here and are read-only. Rules you add apply to this diagram only." : "Describe elements by their attributes and relationships, then add a tag or report an issue."}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setRules((current) => [...current, createRule()])}><Plus className="mr-1 h-4 w-4" />Add rule</Button>
-          <Button size="sm" onClick={save} disabled={updateView.isPending || !rulesValid}><Save className="mr-1 h-4 w-4" />Save</Button>
+          <Button size="sm" variant="outline" onClick={() => setRules((current) => [...current, createRule()])} data-testid="button-add-rule"><Plus className="mr-1 h-4 w-4" />Add rule</Button>
+          <Button size="sm" onClick={save} disabled={updateView.isPending || !rulesValid} data-testid="button-save-rules"><Save className="mr-1 h-4 w-4" />Save</Button>
           <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close model rules"><X className="h-4 w-4" /></Button>
         </div>
       </header>

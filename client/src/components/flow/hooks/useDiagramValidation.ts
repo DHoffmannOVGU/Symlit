@@ -2,6 +2,7 @@ import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useCallback, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { emitTutorialSignal } from "@/lib/tutorial-signals";
 
 import type { CustomEdgeData } from "../edges/CustomEdges";
 import type {
@@ -79,7 +80,9 @@ export function useDiagramValidation({
   const showResult = useCallback(
     (issues: ValidationIssue[]) => {
       setValidationIssues(issues);
+      emitTutorialSignal("validation-run");
       if (issues.length === 0) {
+        emitTutorialSignal("validation-passed");
         setValidationOpen(false);
         setHighlightIssues(false);
         applyIssueHighlights(false, []);

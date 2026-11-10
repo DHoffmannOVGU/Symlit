@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { ArrowRight, CheckCircle2, GraduationCap, Loader2, Trash2 } from "lucide-react";
 import { api } from "@shared/routes";
 import type { Project, View } from "@shared/schema";
-import { TUTORIAL_LESSONS, TUTORIAL_STEPS } from "@shared/tutorial";
+import { TUTORIAL_LESSONS, TUTORIAL_MINUTES, TUTORIAL_QUESTION, TUTORIAL_STEPS } from "@shared/tutorial";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiCall } from "@/lib/api-client";
@@ -13,6 +13,8 @@ import {
   currentStep,
   isTutorialFinished,
   loadTutorialProgress,
+  pendingRecap,
+  skippedSteps,
 } from "@/lib/tutorial-progress";
 import { latestTutorialRun } from "@/lib/tutorial-projects";
 
@@ -30,6 +32,8 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
   const done = progress ? countDone(progress) : 0;
   const next = progress ? currentStep(progress) : null;
   const finished = progress ? isTutorialFinished(progress) : false;
+  const skipped = progress ? skippedSteps(progress).length : 0;
+  const recap = progress ? pendingRecap(progress) : null;
 
   const openProject = async (project: Project) => {
     const views = await queryClient.fetchQuery<View[]>({
@@ -74,8 +78,14 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
       >
         <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
         <p className="flex-1 text-sm">
-          <span className="font-semibold">Tutorial completed.</span>{" "}
-          <span className="text-muted-foreground">The two tutorial projects are still here if you want to look back.</span>
+          <span className="font-semibold">
+            {skipped > 0 ? `Tutorial finished, ${skipped} ${skipped === 1 ? "step" : "steps"} skipped.` : "Tutorial completed."}
+          </span>{" "}
+          <span className="text-muted-foreground">
+            {skipped > 0
+              ? "Open a tutorial project to go back to the skipped steps."
+              : "The two tutorial projects are still here if you want to look back."}
+          </span>
         </p>
         <Button variant="outline" size="sm" onClick={remove} disabled={busy} data-testid="button-tutorial-remove">
           <Trash2 className="mr-2 h-4 w-4" />
@@ -101,22 +111,26 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
               {run ? "Guided tutorial in progress" : "New to Symlit?"}
             </p>
             <h2 className="mt-1 text-lg font-semibold tracking-tight">
-              {run ? "Pick up where you left off" : "Learn Symlit by building a delivery drone model"}
+              {run ? "Pick up where you left off" : TUTORIAL_QUESTION}
             </h2>
             {run ? (
               <p className="mt-1 text-sm text-muted-foreground">
                 {done} of {TUTORIAL_STEPS.length} steps done
+                {skipped > 0 ? ` · ${skipped} skipped` : null}
                 {next ? (
                   <>
                     {" "}· next: <span className="font-medium text-foreground">{next.title}</span>
                   </>
+                ) : recap ? (
+                  <> · next: one question about {recap.title.toLowerCase()}</>
                 ) : null}
               </p>
             ) : (
               <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {TUTORIAL_LESSONS.length} short hands-on lessons, about 15 minutes. You define types in a
-                metamodel, build a typed model from them, validate it, tidy the layout, save a pattern and
-                export your work. Each step ticks off as you do it.
+                Find out by modeling it. In {TUTORIAL_LESSONS.length} hands-on lessons, about {TUTORIAL_MINUTES} minutes,
+                you define what a drone, a battery and a camera are, build a model from these types, let
+                Symlit check it, and write the rule that answers the question. The last lesson is yours:
+                you extend the model without step-by-step instructions.
               </p>
             )}
             {run && (
@@ -138,7 +152,11 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
             <>
               <Button
                 onClick={() =>
-                  void openProject(next?.scope === "instance" && run.instance ? run.instance : run.metamodel)
+                  void openProject(
+                    (next?.scope ?? recap?.steps[recap.steps.length - 1].scope) === "instance" && run.instance
+                      ? run.instance
+                      : run.metamodel,
+                  )
                 }
                 data-testid="button-tutorial-continue"
               >

@@ -7,6 +7,7 @@ import {
   Circle,
   GraduationCap,
   Lightbulb,
+  Loader2,
   Minimize2,
   RotateCcw,
   SkipForward,
@@ -14,7 +15,14 @@ import {
   Target,
   Trash2,
 } from "lucide-react";
-import { TUTORIAL_LESSONS, TUTORIAL_STEPS, type TutorialStep } from "@shared/tutorial";
+import {
+  TUTORIAL_LESSONS,
+  TUTORIAL_NOT_COVERED,
+  TUTORIAL_QUESTION,
+  TUTORIAL_STEPS,
+  type TutorialLesson,
+  type TutorialStep,
+} from "@shared/tutorial";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { announceCanvasOverlayChange } from "@/components/flow/utils/fit-options";
@@ -23,6 +31,12 @@ import {
   currentLessonIndex,
   currentStep,
   isTutorialFinished,
+  lastCompletedStep,
+  pendingRecap,
+  skippedSteps,
+  stepState,
+  totalHelpUsed,
+  tutorialMinutes,
   type TutorialProgress,
 } from "@/lib/tutorial-progress";
 
@@ -31,8 +45,14 @@ interface TutorialCoachProps {
   /** Which tutorial project is open, used to say where a step happens. */
   scope: "metamodel" | "instance";
   onShowMe: (step: TutorialStep) => void;
+  onOpenStepDiagram: (step: TutorialStep) => void;
+  onHintShown: (stepId: string) => void;
   onSkip: (stepId: string) => void;
-  onRestart: () => void;
+  onReturnToSkipped: () => void;
+  onAnswer: (lessonId: string, option: number) => void;
+  onCloseRecap: (lessonId: string) => void;
+  /** Recreates the tutorial projects and starts again. */
+  onRestart: () => Promise<void>;
   onCollapsedChange: (collapsed: boolean) => void;
   onStartOwnProject: () => void;
   onRemoveTutorial: () => void;
@@ -41,61 +61,141 @@ interface TutorialCoachProps {
 const projectLabel = (scope: "metamodel" | "instance") =>
   scope === "metamodel" ? "Drone types" : "Delivery drone";
 
+const COACH_WIDTH = 340;
+/** Docked left, the coach stays within the sidebar so it does not cover the panel beside it. */
+const COACH_WIDTH_LEFT = 300;
+
 /**
- * Docked coach for the guided tutorial. It shows the current lesson, explains
- * why it matters, and ticks steps off as the app reports matching actions.
+ * Where the coach sits. Its place is the bottom right corner; when something
+ * the learner has to work in opens there (an editor, the rules panel, the
+ * validation results, the table), it moves to the bottom left instead. `modal` is set
+ * while a dialog is open, which would otherwise hide and block the coach.
+ */
+function useCoachPlacement() {
+  const [placement, setPlacement] = useState<{ side: "left" | "right"; modal: boolean }>({ side: "right", modal: false });
+  useEffect(() => {
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const dialogs = Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"][data-state="open"]'));
+      const coversRight = (element: Element) =>
+        element.getBoundingClientRect().right > window.innerWidth - COACH_WIDTH - 32;
+      const panel = document.querySelector(
+        '[data-testid="model-rules-panel"], [data-testid="validation-results"], [data-testid="canvas-table-mode"]',
+      );
+      const next = {
+        side: dialogs.some(coversRight) || panel ? ("left" as const) : ("right" as const),
+        modal: dialogs.length > 0,
+      };
+      setPlacement((current) => (current.side === next.side && current.modal === next.modal ? current : next));
+    };
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(measure);
+    };
+    const observer = new MutationObserver(schedule);
+    observer.observe(document.body, { childList: true, subtree: true });
+    measure();
+    return () => {
+      observer.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, []);
+  return placement;
+}
+
+/**
+ * Docked coach for the guided tutorial. It shows the current lesson and why
+ * it matters, ticks steps off when the model shows their result, explains
+ * what just happened, and closes each lesson with one question.
  */
 export function TutorialCoach({
   progress,
   scope,
   onShowMe,
+  onOpenStepDiagram,
+  onHintShown,
   onSkip,
+  onReturnToSkipped,
+  onAnswer,
+  onCloseRecap,
   onRestart,
   onCollapsedChange,
   onStartOwnProject,
   onRemoveTutorial,
 }: TutorialCoachProps) {
   const done = countDone(progress);
+  const skipped = skippedSteps(progress);
   const total = TUTORIAL_STEPS.length;
   const finished = isTutorialFinished(progress);
   const activeStep = currentStep(progress);
   const activeLesson = currentLessonIndex(progress);
+  const recap = pendingRecap(progress);
+  const lastDone = lastCompletedStep(progress);
   const [viewedLesson, setViewedLesson] = useState(activeLesson);
   const [showHint, setShowHint] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
+  const [confirmRestart, setConfirmRestart] = useState(false);
+  const [restarting, setRestarting] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const previousDone = useRef(done);
+  const placement = useCoachPlacement();
+  const rootRef = useRef<HTMLElement | null>(null);
 
   // Follow the learner: jump to the lesson they are in when it changes.
   useEffect(() => setViewedLesson(activeLesson), [activeLesson]);
   // The canvas keeps its diagram clear of the coach; tell it when the coach
-  // appears or changes between open and minimised.
+  // appears, moves or changes between open and minimised.
   useEffect(() => {
     announceCanvasOverlayChange();
-  }, [progress.collapsed, finished]);
+  }, [progress.collapsed, finished, placement.side]);
   useEffect(() => setShowHint(false), [activeStep?.id]);
   useEffect(() => setWhyOpen(false), [viewedLesson]);
+  // Keep the step to work on in sight inside the coach.
   useEffect(() => {
-    if (done > previousDone.current) {
-      const justDone = TUTORIAL_STEPS.find(
-        (step) => progress.completed[progress.completed.length - 1] === step.id,
-      );
-      setAnnouncement(justDone ? `Done: ${justDone.title}` : "Step done");
-      const timer = window.setTimeout(() => setAnnouncement(""), 2500);
+    if (progress.collapsed) return;
+    const frame = window.requestAnimationFrame(() =>
+      rootRef.current?.querySelector('[data-state="current"]')?.scrollIntoView({ block: "nearest" }),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [activeStep?.id, viewedLesson, progress.collapsed, placement.side]);
+  useEffect(() => {
+    if (done > previousDone.current && lastDone) {
+      setAnnouncement(`Done: ${lastDone.title}. ${lastDone.done}`);
+      const timer = window.setTimeout(() => setAnnouncement(""), 4000);
       previousDone.current = done;
       return () => window.clearTimeout(timer);
     }
     previousDone.current = done;
-  }, [done, progress.completed]);
+  }, [done, lastDone]);
+  // While a dialog is open, a press outside it closes it. Presses on the
+  // coach are kept away from the dialog, so reading a hint does not discard
+  // what is being edited.
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || !placement.modal) return;
+    const keep = (event: Event) => event.stopPropagation();
+    root.addEventListener("pointerdown", keep);
+    return () => root.removeEventListener("pointerdown", keep);
+  }, [placement.modal, progress.collapsed]);
 
-  const percent = Math.round((done / total) * 100);
+  const dock = cn(
+    "fixed bottom-4 pointer-events-auto",
+    placement.side === "left" ? "left-2.5" : "right-4",
+    placement.modal ? "z-[60]" : "z-40",
+  );
 
   if (progress.collapsed) {
     return (
       <button
+        ref={(element) => {
+          rootRef.current = element;
+        }}
         type="button"
         onClick={() => onCollapsedChange(false)}
-        className="fixed bottom-4 right-4 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border bg-card px-4 py-2.5 text-left text-sm shadow-xl transition hover:shadow-2xl"
+        className={cn(
+          dock,
+          "flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border bg-card px-4 py-2.5 text-left text-sm shadow-xl transition hover:shadow-2xl",
+        )}
         data-testid="button-tutorial-expand"
       >
         <GraduationCap className="h-4 w-4 shrink-0 text-primary" />
@@ -103,28 +203,42 @@ export function TutorialCoach({
         <span className="font-mono text-xs text-muted-foreground" data-testid="tutorial-progress-count">
           {done}/{total}
         </span>
-        {activeStep && (
-          <span className="hidden truncate text-muted-foreground sm:inline">· {activeStep.title}</span>
+        {(activeStep || recap) && (
+          <span className="hidden truncate text-muted-foreground sm:inline">
+            · {activeStep ? activeStep.title : "Lesson done: one question"}
+          </span>
         )}
       </button>
     );
   }
 
   const lesson = TUTORIAL_LESSONS[viewedLesson];
-  const stepState = (step: TutorialStep) =>
-    progress.completed.includes(step.id)
-      ? "done"
-      : progress.skipped.includes(step.id)
-        ? "skipped"
-        : step.id === activeStep?.id
-          ? "current"
-          : "open";
+  const viewingActive = viewedLesson === activeLesson;
+  const lessonStarted = lesson.steps.some((step) => stepState(progress, step) === "done");
+  const whyInFull = whyOpen || !lessonStarted || !viewingActive;
+  const showRecap = !finished && recap !== null && viewingActive;
+
+  const restart = async () => {
+    setRestarting(true);
+    try {
+      await onRestart();
+    } finally {
+      setRestarting(false);
+      setConfirmRestart(false);
+    }
+  };
 
   return (
     <section
+      ref={rootRef}
       aria-label="Guided tutorial"
-      className="fixed bottom-4 right-4 z-40 flex max-h-[min(500px,calc(100vh-7rem))] w-[340px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl"
+      className={cn(
+        dock,
+        "flex max-h-[min(540px,calc(100vh-7rem))] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border bg-card shadow-2xl",
+      )}
+      style={{ width: placement.side === "left" ? COACH_WIDTH_LEFT : COACH_WIDTH }}
       data-testid="tutorial-coach"
+      data-side={placement.side}
     >
       <header className="border-b bg-primary/[0.04] px-4 pb-3 pt-3.5">
         <div className="flex items-center gap-2">
@@ -134,63 +248,79 @@ export function TutorialCoach({
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold leading-tight">Guided tutorial</p>
             <p className="text-xs text-muted-foreground">
-              <span data-testid="tutorial-progress-count">{done} of {total}</span> steps · you are in{" "}
-              <span className="font-medium text-foreground">{projectLabel(scope)}</span>
+              <span data-testid="tutorial-progress-count">{done} of {total}</span> done
+              {skipped.length > 0 && <span data-testid="tutorial-skipped-count"> · {skipped.length} skipped</span>}
+              {!finished && (
+                <>
+                  {" "}· in <span className="font-medium text-foreground">{projectLabel(scope)}</span>
+                </>
+              )}
             </p>
           </div>
           <Button
             variant="ghost"
             size="icon"
             className="h-7 w-7"
+            onClick={() => setConfirmRestart(true)}
+            title="Start the tutorial over"
+            aria-label="Start the tutorial over"
+            data-testid="button-tutorial-restart"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
             onClick={() => onCollapsedChange(true)}
             title="Minimise the tutorial"
+            aria-label="Minimise the tutorial"
             data-testid="button-tutorial-collapse"
           >
             <Minimize2 className="h-4 w-4" />
           </Button>
         </div>
         <div
-          className="mt-3 h-1.5 overflow-hidden rounded-full bg-primary/10"
+          className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-primary/10"
           role="progressbar"
           aria-label="Tutorial progress"
           aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={percent}
+          aria-valuemax={total}
+          aria-valuenow={done}
+          aria-valuetext={`${done} of ${total} steps done${skipped.length ? `, ${skipped.length} skipped` : ""}`}
         >
-          <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${percent}%` }} />
+          <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(done / total) * 100}%` }} />
+          <div className="h-full bg-muted-foreground/30 transition-all duration-500" style={{ width: `${(skipped.length / total) * 100}%` }} />
         </div>
       </header>
 
       <p className="sr-only" aria-live="polite">{announcement}</p>
 
-      {finished ? (
-        <div className="space-y-4 overflow-y-auto p-4" data-testid="tutorial-finished">
-          <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-emerald-100 p-2 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="font-semibold">You know your way around Symlit</p>
-              <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                You defined types, built a typed model, checked it, looked at it as a table, reused a
-                structure and exported it. Time for your own system.
-              </p>
-            </div>
-          </div>
-          <div className="grid gap-2">
-            <Button onClick={onStartOwnProject} data-testid="button-tutorial-start-own">
-              Start your own project
+      {confirmRestart ? (
+        <div className="space-y-3 p-4" data-testid="tutorial-restart-confirm">
+          <p className="font-semibold">Start the tutorial over?</p>
+          <p className="text-sm leading-6 text-muted-foreground">
+            The two tutorial projects are replaced by fresh ones and your progress starts at zero. Use this
+            when something in the tutorial model went wrong and you would rather begin again.
+          </p>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => void restart()} disabled={restarting} data-testid="button-tutorial-restart-confirm">
+              {restarting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="mr-2 h-3.5 w-3.5" />}
+              Start over
             </Button>
-            <Button variant="outline" onClick={onRemoveTutorial} data-testid="button-tutorial-remove">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Remove the tutorial projects
-            </Button>
-            <Button variant="ghost" size="sm" onClick={onRestart}>
-              <RotateCcw className="mr-2 h-3.5 w-3.5" />
-              Go through it again
+            <Button size="sm" variant="ghost" onClick={() => setConfirmRestart(false)} disabled={restarting}>
+              Keep going
             </Button>
           </div>
         </div>
+      ) : finished ? (
+        <FinishedCard
+          progress={progress}
+          onReturnToSkipped={onReturnToSkipped}
+          onStartOwnProject={onStartOwnProject}
+          onRemoveTutorial={onRemoveTutorial}
+          onRestart={() => setConfirmRestart(true)}
+        />
       ) : (
         <>
           <div className="overflow-y-auto px-4 py-3">
@@ -200,13 +330,20 @@ export function TutorialCoach({
               </p>
               <div className="flex gap-1" aria-hidden>
                 {TUTORIAL_LESSONS.map((candidate, index) => {
-                  const lessonDone = candidate.steps.every((step) => stepState(step) === "done" || stepState(step) === "skipped");
+                  const states = candidate.steps.map((step) => stepState(progress, step));
+                  const passed = states.every((state) => state === "done" || state === "skipped");
                   return (
                     <span
                       key={candidate.id}
                       className={cn(
                         "h-1.5 w-4 rounded-full",
-                        index === viewedLesson ? "bg-primary" : lessonDone ? "bg-primary/40" : "bg-muted",
+                        index === viewedLesson
+                          ? "bg-primary"
+                          : !passed
+                            ? "bg-muted"
+                            : states.includes("skipped")
+                              ? "bg-muted-foreground/30"
+                              : "bg-primary/40",
                       )}
                     />
                   );
@@ -216,87 +353,138 @@ export function TutorialCoach({
             <h2 className="mt-1 text-base font-semibold" data-testid="tutorial-lesson-title">
               {lesson.title}
             </h2>
-            <button
-              type="button"
-              className="mt-1 block text-left text-xs leading-5 text-muted-foreground"
-              onClick={() => setWhyOpen((open) => !open)}
-              aria-expanded={whyOpen}
-              data-testid="tutorial-lesson-why"
-            >
-              <span className={cn(!whyOpen && "line-clamp-2")}>{lesson.why}</span>
-              <span className="text-primary">{whyOpen ? " Less" : " More"}</span>
-            </button>
 
-            <ol className="mt-2.5 space-y-1">
-              {lesson.steps.map((step) => {
-                const state = stepState(step);
-                const isCurrent = state === "current";
-                return (
-                  <li
-                    key={step.id}
-                    className={cn(
-                      "rounded-xl border px-3 py-2 transition-colors",
-                      isCurrent ? "border-primary/40 bg-primary/[0.04]" : "border-transparent",
-                    )}
-                    data-testid={`tutorial-step-${step.id}`}
-                    data-state={state}
+            {showRecap && recap ? (
+              <RecapCard
+                lesson={recap}
+                lastStep={lastDone && recap.steps.some((step) => step.id === lastDone.id) ? lastDone : null}
+                chosen={progress.answers[recap.id]}
+                isLast={viewedLesson === TUTORIAL_LESSONS.length - 1}
+                onAnswer={(option) => onAnswer(recap.id, option)}
+                onContinue={() => onCloseRecap(recap.id)}
+              />
+            ) : (
+              <>
+                {/* In full until the lesson is under way; then it makes room for the steps. */}
+                {whyInFull ? (
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground" data-testid="tutorial-lesson-why">
+                    {lesson.why}
+                  </p>
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-1 block text-left text-xs leading-5 text-muted-foreground"
+                    onClick={() => setWhyOpen(true)}
+                    aria-expanded={false}
+                    data-testid="tutorial-lesson-why"
                   >
-                    <div className="flex items-start gap-2.5">
-                      {state === "done" ? (
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-label="Done" />
-                      ) : state === "skipped" ? (
-                        <SkipForward className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Skipped" />
-                      ) : isCurrent ? (
-                        <Target className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-label="Current step" />
-                      ) : (
-                        <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-label="Open" />
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <p className={cn("text-sm font-medium", state === "done" && "text-muted-foreground line-through decoration-muted-foreground/40")}>
-                          {step.title}
-                        </p>
-                        {isCurrent && (
-                          <>
-                            <p className="mt-1 text-[13px] leading-5 text-foreground/90">{step.instruction}</p>
-                            {step.scope !== scope && (
-                              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-primary" />
-                                In {projectLabel(step.scope)}: Show me opens it.
-                              </p>
-                            )}
-                            {step.hint && showHint && (
-                              <p className="mt-2 flex gap-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
-                                <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                                {step.hint}
-                              </p>
-                            )}
-                            <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                              <Button size="sm" className="h-8" onClick={() => onShowMe(step)} data-testid="button-tutorial-show-me">
-                                Show me
-                              </Button>
-                              {step.hint && !showHint && (
-                                <Button size="sm" variant="ghost" className="h-8" onClick={() => setShowHint(true)}>
-                                  Hint
-                                </Button>
-                              )}
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="ml-auto h-8 text-muted-foreground"
-                                onClick={() => onSkip(step.id)}
-                                data-testid="button-tutorial-skip"
-                              >
-                                Skip
-                              </Button>
-                            </div>
-                          </>
+                    <span className="line-clamp-1">{lesson.why}</span>
+                    <span className="text-primary">Read again</span>
+                  </button>
+                )}
+                <p className="mt-1.5 text-xs leading-5" data-testid="tutorial-lesson-goal">
+                  <span className="font-semibold">Afterwards you can</span> {lesson.goal}.
+                </p>
+
+                <ol className="mt-2.5 space-y-1">
+                  {lesson.steps.map((step) => {
+                    const state = stepState(progress, step);
+                    const isCurrent = state === "current";
+                    // The explanation of the step just done; all of them when looking back at a lesson.
+                    const showDone = state === "done" && (step.id === lastDone?.id || !viewingActive);
+                    const elsewhere = step.scope !== scope;
+                    return (
+                      <li
+                        key={step.id}
+                        className={cn(
+                          "rounded-xl border px-3 py-2 transition-colors",
+                          isCurrent ? "border-primary/40 bg-primary/[0.04]" : "border-transparent",
                         )}
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ol>
+                        data-testid={`tutorial-step-${step.id}`}
+                        data-state={state}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          {state === "done" ? (
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" aria-label="Done" />
+                          ) : state === "skipped" ? (
+                            <SkipForward className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-label="Skipped" />
+                          ) : isCurrent ? (
+                            <Target className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-label="Current step" />
+                          ) : (
+                            <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" aria-label="Open" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className={cn("text-sm font-medium", (state === "done" || state === "skipped") && "text-muted-foreground")}>
+                              {step.title}
+                              {state === "skipped" && <span className="font-normal"> · skipped</span>}
+                            </p>
+                            {showDone && (
+                              <p
+                                className="mt-1 rounded-lg bg-emerald-50 px-2.5 py-2 text-xs leading-5 text-emerald-950 dark:bg-emerald-900/20 dark:text-emerald-100"
+                                data-testid="tutorial-step-done-text"
+                              >
+                                {step.done}
+                              </p>
+                            )}
+                            {isCurrent && (
+                              <>
+                                <p className="mt-1 text-[13px] leading-5 text-foreground/90">{step.instruction}</p>
+                                {step.hint && showHint && (
+                                  <p className="mt-2 flex gap-2 rounded-lg bg-amber-50 px-2.5 py-2 text-xs leading-5 text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
+                                    <Lightbulb className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    {step.hint}
+                                  </p>
+                                )}
+                                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                                  {elsewhere ? (
+                                    <Button size="sm" className="h-8" onClick={() => onOpenStepDiagram(step)} data-testid="button-tutorial-open-project">
+                                      Open {projectLabel(step.scope)}
+                                      <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                                    </Button>
+                                  ) : (
+                                    <>
+                                      {step.hint && !showHint && (
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="h-8"
+                                          onClick={() => {
+                                            setShowHint(true);
+                                            onHintShown(step.id);
+                                          }}
+                                          data-testid="button-tutorial-hint"
+                                        >
+                                          <Lightbulb className="mr-1.5 h-3.5 w-3.5" />
+                                          Hint
+                                        </Button>
+                                      )}
+                                      {step.highlight?.length ? (
+                                        <Button size="sm" variant="outline" className="h-8" onClick={() => onShowMe(step)} data-testid="button-tutorial-show-me">
+                                          Show me
+                                        </Button>
+                                      ) : null}
+                                    </>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="ml-auto h-8 text-muted-foreground"
+                                    onClick={() => onSkip(step.id)}
+                                    data-testid="button-tutorial-skip"
+                                  >
+                                    Skip
+                                  </Button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </>
+            )}
           </div>
           <footer className="flex items-center justify-between border-t px-2 py-1.5">
             <Button
@@ -308,13 +496,13 @@ export function TutorialCoach({
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            {viewedLesson !== activeLesson ? (
+            {!viewingActive ? (
               <Button variant="ghost" size="sm" className="text-primary" onClick={() => setViewedLesson(activeLesson)}>
                 Back to the current lesson
               </Button>
             ) : (
-              <span className="text-xs text-muted-foreground" aria-live="polite">
-                {announcement || "Steps tick off as you work"}
+              <span className="text-xs text-muted-foreground">
+                {showRecap ? "One question, then on to the next lesson" : "Steps tick off when the result is there"}
               </span>
             )}
             <Button
@@ -330,5 +518,197 @@ export function TutorialCoach({
         </>
       )}
     </section>
+  );
+}
+
+/** Closes a lesson: what the learner can do now, and one question to look back. */
+function RecapCard({
+  lesson,
+  lastStep,
+  chosen,
+  isLast,
+  onAnswer,
+  onContinue,
+}: {
+  lesson: TutorialLesson;
+  /** The lesson's step that was just completed, whose explanation is still to be read. */
+  lastStep: TutorialStep | null;
+  chosen: number | undefined;
+  isLast: boolean;
+  onAnswer: (option: number) => void;
+  onContinue: () => void;
+}) {
+  const question = lesson.question!;
+  const answered = chosen !== undefined ? question.options[chosen] : undefined;
+  return (
+    <div className="mt-2 space-y-3" data-testid="tutorial-recap">
+      {lastStep && (
+        <p className="text-xs leading-5 text-muted-foreground" data-testid="tutorial-step-done-text">
+          <span className="font-medium text-foreground">{lastStep.title}:</span> {lastStep.done}
+        </p>
+      )}
+      <p className="flex gap-2 rounded-lg bg-emerald-50 px-2.5 py-2 text-xs leading-5 text-emerald-950 dark:bg-emerald-900/20 dark:text-emerald-100">
+        <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+        <span>
+          <span className="font-semibold">Lesson done.</span> You can now {lesson.goal}.
+        </span>
+      </p>
+      <fieldset>
+        <legend className="text-sm font-medium">{question.prompt}</legend>
+        <div className="mt-2 space-y-1.5">
+          {question.options.map((option, index) => {
+            const isChosen = chosen === index;
+            return (
+              <button
+                key={option.text}
+                type="button"
+                onClick={() => onAnswer(index)}
+                aria-pressed={isChosen}
+                className={cn(
+                  "block w-full rounded-lg border px-3 py-2 text-left text-[13px] leading-5 transition-colors",
+                  !isChosen && "hover:border-primary/40 hover:bg-primary/[0.04]",
+                  isChosen && option.correct && "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20",
+                  isChosen && !option.correct && "border-amber-500 bg-amber-50 dark:bg-amber-900/20",
+                )}
+                data-testid={`tutorial-answer-${index}`}
+              >
+                {option.text}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+      {answered && (
+        <p className="text-xs leading-5" aria-live="polite" data-testid="tutorial-answer-feedback">
+          {!answered.correct && <span className="font-semibold">Not quite. </span>}
+          {answered.feedback}
+          {!answered.correct && " Try another answer."}
+        </p>
+      )}
+      <Button size="sm" className="h-8" onClick={onContinue} data-testid="button-tutorial-next-lesson">
+        {isLast ? "Finish" : "Next lesson"}
+        <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+/** The end of the tutorial: what was done, the answer, and where to go next. */
+function FinishedCard({
+  progress,
+  onReturnToSkipped,
+  onStartOwnProject,
+  onRemoveTutorial,
+  onRestart,
+}: {
+  progress: TutorialProgress;
+  onReturnToSkipped: () => void;
+  onStartOwnProject: () => void;
+  onRemoveTutorial: () => void;
+  onRestart: () => void;
+}) {
+  const done = countDone(progress);
+  const skipped = skippedSteps(progress);
+  const total = TUTORIAL_STEPS.length;
+  const minutes = tutorialMinutes(progress);
+  const hints = totalHelpUsed(progress, "hints");
+  const lessonComplete = (lesson: TutorialLesson) =>
+    lesson.steps.every((step) => stepState(progress, step) === "done");
+  const answeredQuestion = stepState(progress, TUTORIAL_STEPS.find((step) => step.id === "answer-question")!) === "done";
+  const allDone = skipped.length === 0;
+
+  return (
+    <div className="space-y-4 overflow-y-auto p-4" data-testid="tutorial-finished">
+      <div className="flex items-start gap-3">
+        <div
+          className={cn(
+            "rounded-xl p-2",
+            allDone
+              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+              : "bg-muted text-muted-foreground",
+          )}
+        >
+          <Sparkles className="h-5 w-5" />
+        </div>
+        <div>
+          <p className="font-semibold" data-testid="tutorial-finished-title">
+            {allDone ? "You built, checked and extended a model" : `You reached the end with ${done} of ${total} steps done`}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground" data-testid="tutorial-finished-summary">
+            {done} of {total} steps done
+            {skipped.length > 0 && ` · ${skipped.length} skipped`}
+            {minutes !== null && ` · ${minutes} min`}
+            {hints > 0 && ` · ${hints} ${hints === 1 ? "hint" : "hints"} used`}
+          </p>
+        </div>
+      </div>
+
+      {answeredQuestion && (
+        <p className="rounded-lg bg-primary/[0.06] px-3 py-2 text-xs leading-5">
+          <span className="font-semibold">{TUTORIAL_QUESTION}</span> Yes: its 18 km of range covers the 15 km route,
+          and your rule keeps checking that.
+        </p>
+      )}
+
+      {skipped.length > 0 && (
+        <div className="rounded-lg border px-3 py-2.5" data-testid="tutorial-skipped-list">
+          <p className="text-xs font-semibold">Skipped, so not practised yet</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs leading-5 text-muted-foreground">
+            {skipped.map((step) => (
+              <li key={step.id}>{step.title}</li>
+            ))}
+          </ul>
+          <Button size="sm" variant="outline" className="mt-2 h-8" onClick={onReturnToSkipped} data-testid="button-tutorial-return-to-skipped">
+            Go back to the skipped steps
+          </Button>
+        </div>
+      )}
+
+      <div>
+        <p className="text-xs font-semibold">You can now</p>
+        <ul className="mt-1 space-y-1 text-xs leading-5">
+          {TUTORIAL_LESSONS.map((lesson) => {
+            const complete = lessonComplete(lesson);
+            return (
+              <li key={lesson.id} className={cn("flex gap-2", !complete && "text-muted-foreground")}>
+                {complete ? (
+                  <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" aria-label="Practised" />
+                ) : (
+                  <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/50" aria-label="Not fully practised" />
+                )}
+                {lesson.goal}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold">Not covered here, worth exploring next</p>
+        <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs leading-5 text-muted-foreground">
+          {TUTORIAL_NOT_COVERED.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+        <p className="mt-1.5 text-xs leading-5 text-muted-foreground">
+          The question mark in the toolbar opens the help for the diagram you are in.
+        </p>
+      </div>
+
+      <div className="grid gap-2">
+        <Button onClick={onStartOwnProject} data-testid="button-tutorial-start-own">
+          Start your own project
+        </Button>
+        <p className="text-center text-xs text-muted-foreground">Blank, or from one of the templates.</p>
+        <Button variant="outline" onClick={onRemoveTutorial} data-testid="button-tutorial-remove">
+          <Trash2 className="mr-2 h-4 w-4" />
+          Remove the tutorial projects
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onRestart}>
+          <RotateCcw className="mr-2 h-3.5 w-3.5" />
+          Go through it again
+        </Button>
+      </div>
+    </div>
   );
 }

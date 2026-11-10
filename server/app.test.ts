@@ -454,7 +454,33 @@ describe("guided tutorial", () => {
     }
     // Side-by-side elements connect right to left, stacked ones bottom to top.
     const handles = model.edges.map((edge: { sourceHandle: string | null; targetHandle: string | null }) => `${edge.sourceHandle}->${edge.targetHandle}`).sort();
-    assert.deepEqual(handles, ["bottom->top", "right->left"]);
+    assert.deepEqual(handles, ["bottom->top", "right->left", "right->left"]);
+  });
+
+  test("the model starts with one gap and the rule that finds it", async () => {
+    const { metamodel, metamodelViewId, instanceViewId } = (await request("POST", "/api/tutorial")).json;
+    const types = (await request("GET", `/api/views/${metamodelViewId}/flow`)).json;
+    const battery = types.nodes.find((node: { data: { label: string } }) => node.data.label === "Battery");
+    const batteryTypeId = `mm:${metamodel.id}:${battery.id}`;
+
+    // The rule points at the Battery type of this run, not the one in the template file.
+    const view = (await request("GET", `/api/views/${instanceViewId}`)).json;
+    assert.equal(view.modelRules.length, 1);
+    assert.equal(view.modelRules[0].targetType, batteryTypeId);
+    assert.equal(view.modelRules[0].outcome.kind, "issue");
+
+    const model = (await request("GET", `/api/views/${instanceViewId}/flow`)).json;
+    type Element = { data: { label: string; typeId: string; attributes?: Array<{ name: string; value: string }> } };
+    const withoutCapacity = model.nodes
+      .filter((node: Element) => node.data.typeId === batteryTypeId)
+      .filter((node: Element) => !node.data.attributes?.find((attr) => attr.name === "capacity")?.value)
+      .map((node: Element) => node.data.label);
+    assert.deepEqual(withoutCapacity, ["Pack B"]);
+
+    // Apart from that gap the model follows its metamodel.
+    const { issues } = (await request("POST", `/api/views/${instanceViewId}/validate`)).json;
+    assert.deepEqual(issues, []);
+    await request("DELETE", "/api/tutorial");
   });
 
   test("a second tutorial gets its own elements, and removing deletes all tutorial projects", async () => {
