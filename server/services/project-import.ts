@@ -27,6 +27,13 @@ export interface ImportOptions {
   templateId?: string | null;
   /** Overrides for the main project (the one the file is about). */
   main?: { name?: string; description?: string; metamodelSetup?: MetamodelSetup | null };
+  /**
+   * Metamodels outside the file that the imported projects may keep
+   * referencing as they are (duplicating a model keeps using its metamodels).
+   * The caller checks that the user may use them. Their elements placed in
+   * the file's diagrams stay the existing elements.
+   */
+  existingMetamodels?: number[];
 }
 
 export interface ImportResult {
@@ -57,9 +64,13 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
     throw new ProjectFileError("A project appears twice in the file");
   }
   const kindOf = new Map(bundle.map((entry) => [entry.project.id, entry.project.projectType]));
+  const existing = new Set(options.existingMetamodels ?? []);
+  for (const id of Array.from(existing)) {
+    if (fileProjectIds.has(id)) existing.delete(id);
+  }
   for (const { project } of bundle) {
     for (const ref of project.referencedMetamodels ?? []) {
-      if (kindOf.get(ref) !== "metamodel") {
+      if (kindOf.get(ref) !== "metamodel" && !existing.has(ref)) {
         throw new ProjectFileError(
           `"${project.name}" references a metamodel that is not in the file`,
         );
@@ -78,6 +89,12 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
     for (const view of diagramsOf(entry)) {
       for (const node of view.nodes) {
         const owner = node.projectId ?? entry.project.id;
+        if (existing.has(owner)) {
+          // An element of an existing metamodel: placed, not copied.
+          elementIds.set(node.id, node.id);
+          elementOwner.set(node.id, owner);
+          continue;
+        }
         if (!fileProjectIds.has(owner)) {
           throw new ProjectFileError(`Element ${node.id} belongs to a project that is not in the file`);
         }
@@ -122,7 +139,7 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
         .returning();
       created.set(source.id, project);
     }
-    const newProjectId = (fileId: number) => created.get(fileId)!.id;
+    const newProjectId = (fileId: number) => created.get(fileId)?.id ?? fileId;
 
     for (const { project } of bundle) {
       const refs = project.referencedMetamodels ?? [];
@@ -156,6 +173,7 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
 
     // Elements, once each, in the project that owns them.
     for (const [fileId, newId] of Array.from(elementIds)) {
+      if (existing.has(elementOwner.get(fileId)!)) continue;
       const record = elementRecord.get(fileId)!;
       const { typeId, pattern: _origin, ...data } = record.data;
       await tx.insert(nodes).values({

@@ -14,7 +14,7 @@ commit that fixed them.
   the view, so it was left unconstrained.
 
 ### Features
-- **Patterns, next steps (v0.2):** authoring instance-level patterns inside a metamodel (server ready, no editor yet), re-applying a pattern to its copies, importing exported patterns.
+- **Patterns, next steps (v0.2):** authoring instance-level patterns inside a metamodel (server ready, no editor yet), re-applying a pattern to its copies.
 - **Project templates, next steps (v0.2):** saving projects as templates, user template files, a template library.
 - **SysML v2 textual export (later import).** The vocabulary already follows SysML v2; export
   makes models diffable and usable in SysML v2 tools. See
@@ -56,6 +56,7 @@ commit that fixed them.
   project or copying the data directory.
 
 ## Done
+- Project creation: two steps (start from an empty metamodel, an empty model or a template; then only the choices that apply), an empty model can be based on a metamodel (also from the metamodel's card), empty projects get a first diagram and open on it, the confirmation names metamodels a template brings, and projects can be duplicated (the copy keeps using the same metamodels).
 - Saving a diagram that contained a relationship id already used in another diagram failed with a 500 that showed the database's constraint error. It answers 400 with what to do; unexpected save errors no longer pass database messages to the browser.
 - In narrow windows the header pushed the save state and the Save button out of view. The names on the left and the metamodel selector give way now; the save state keeps its mark and drops its words.
 - Renaming an element needed the editor sheet and Apply. F2 renames the selected element on its card (Enter confirms, Escape cancels, one undo step).

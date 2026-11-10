@@ -302,6 +302,19 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    /** Copies a project; the copy keeps using the same metamodels. */
+    duplicate: {
+      method: 'POST' as const,
+      path: '/api/projects/:id/duplicate',
+      input: z.object({ name: z.string().trim().min(1).optional() }),
+      responses: {
+        201: z.object({
+          project: z.custom<typeof projects.$inferSelect>(),
+          firstViewId: z.number().nullable(),
+        }),
+        404: errorSchemas.notFound,
+      },
+    },
     get: {
       method: 'GET' as const,
       path: '/api/projects/:id',
@@ -457,6 +470,8 @@ export const api = {
         201: z.object({
           project: z.custom<typeof projects.$inferSelect>(),
           firstViewId: z.number().nullable(),
+          /** Everything created, including metamodels the template brings. */
+          projects: z.array(z.custom<typeof projects.$inferSelect>()),
         }),
         400: errorSchemas.validation,
         404: errorSchemas.notFound,

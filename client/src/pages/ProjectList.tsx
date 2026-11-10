@@ -10,9 +10,11 @@ import {
   ArrowDownRight,
   Box,
   Clock3,
+  Copy,
   Folder,
   Layers,
   Plus,
+  PlusSquare,
   Search,
   Settings2,
   Trash2,
@@ -20,8 +22,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import {
-  useCreateProject,
-  useCreateProjectFromTemplate,
   useProjectTemplates,
   useDeleteProject,
   useImportProject,
@@ -53,27 +53,18 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
-  BLANK_TEMPLATE,
-  BLANK_TEMPLATE_ID,
-  findProjectTemplate,
-  withBlankTemplate,
-  type ProjectTemplateOption,
+  BLANK_MODEL,
+  projectStartOptions,
+  type ProjectStartOption,
 } from "@/lib/project-templates";
 import {
   getRecentProjects,
   rememberRecentProject,
   type RecentProject,
 } from "@/lib/recent-projects";
-import {
-  getMetamodelPurposeRecommendation,
-  normalizeMetamodelSetup,
-  type MagicNodeType,
-  type MagicRelationType,
-  type MetamodelPurpose,
-  type MetamodelSetup,
-} from "@shared/metamodel-setup";
 import type { Project, ProjectType } from "@shared/schema";
 import { ProjectCreateDialog } from "@/components/projects/ProjectCreateDialog";
+import { useProjectCreation, type CreateProjectRequest, type CreatedProject } from "@/components/projects/useProjectCreation";
 import { ProjectEditDialog } from "@/components/projects/ProjectEditDialog";
 import { getProjectTypeMeta } from "@/components/projects/project-types";
 
@@ -144,11 +135,15 @@ function ProjectCard({
   project,
   onDelete,
   onEdit,
+  onDuplicate,
+  onNewModel,
   allProjects,
 }: {
   project: Project;
   onDelete: (id: number) => void;
   onEdit: (project: Project) => void;
+  onDuplicate: (project: Project) => void;
+  onNewModel: (metamodel: Project) => void;
   allProjects?: Project[];
 }) {
   const referencedMetamodels =
@@ -177,6 +172,36 @@ function ProjectCard({
             <TypeIcon className="h-5 w-5" />
           </div>
           <div className="relative z-10 flex items-center gap-1">
+            {project.projectType === "metamodel" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground opacity-100 transition-all hover:text-primary sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onNewModel(project);
+                }}
+                title="New model from this metamodel"
+                aria-label={`New model from ${project.name}`}
+                data-testid={`button-new-model-${project.id}`}
+              >
+                <PlusSquare className="h-4 w-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground opacity-100 transition-all hover:text-primary sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDuplicate(project);
+              }}
+              title="Duplicate"
+              aria-label={`Duplicate ${project.name}`}
+              data-testid={`button-duplicate-project-${project.id}`}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
             <Button
               variant="ghost"
               size="icon"
@@ -293,7 +318,7 @@ function TemplateEmptyState({
   templates,
   onSelectTemplate,
 }: {
-  templates: ProjectTemplateOption[];
+  templates: ProjectStartOption[];
   onSelectTemplate: (templateId: string) => void;
 }) {
   return (
@@ -309,8 +334,8 @@ function TemplateEmptyState({
           Start with a model that fits your work
         </h3>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-          Choose a project template with a useful first view, or begin with a
-          completely blank project.
+          Start from a project template with a first diagram to build on, or
+          begin with an empty metamodel or model.
         </p>
       </div>
       <div className="mx-auto mt-8 grid max-w-5xl gap-3 md:grid-cols-3">
@@ -346,6 +371,8 @@ function ProjectGrid({
   projects,
   onDelete,
   onEdit,
+  onDuplicate,
+  onNewModel,
   isLoading,
   allProjects,
   templates = [],
@@ -355,9 +382,11 @@ function ProjectGrid({
   projects?: Project[];
   onDelete: (id: number) => void;
   onEdit: (project: Project) => void;
+  onDuplicate: (project: Project) => void;
+  onNewModel: (metamodel: Project) => void;
   isLoading: boolean;
   allProjects?: Project[];
-  templates?: ProjectTemplateOption[];
+  templates?: ProjectStartOption[];
   onSelectTemplate?: (templateId: string) => void;
   showTemplateState?: boolean;
 }) {
@@ -400,12 +429,22 @@ function ProjectGrid({
             project={project}
             onDelete={onDelete}
             onEdit={onEdit}
+            onDuplicate={onDuplicate}
+            onNewModel={onNewModel}
             allProjects={allProjects}
           />
         </motion.div>
       ))}
     </div>
   );
+}
+
+/** "Delivery drone is ready.", naming metamodels a template brought along. */
+function describeCreated(result: CreatedProject) {
+  const along = result.alongside.map((project) => project.name);
+  return along.length
+    ? `${result.project.name} is ready, with its metamodel ${along.join(", ")}.`
+    : `${result.project.name} is ready.`;
 }
 
 export default function ProjectList() {
@@ -417,9 +456,8 @@ export default function ProjectList() {
   } = useAuth();
   const [, setLocation] = useLocation();
   const { data: projects, isLoading } = useProjects(userId);
-  const createProject = useCreateProject();
-  const createFromTemplate = useCreateProjectFromTemplate();
-  const templates = withBlankTemplate(useProjectTemplates().data);
+  const { create, duplicate } = useProjectCreation();
+  const templates = projectStartOptions(useProjectTemplates().data);
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
   const { toast } = useToast();
@@ -443,32 +481,16 @@ export default function ProjectList() {
   const importProject = useImportProject();
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [newProjectName, setNewProjectName] = useState("");
-  const [newProjectDesc, setNewProjectDesc] = useState("");
-  const [newProjectType, setNewProjectType] = useState<ProjectType>("metamodel");
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"all" | ProjectType>("all");
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [editProjectName, setEditProjectName] = useState("");
   const [editProjectDesc, setEditProjectDesc] = useState("");
   const [recentProjectEntries, setRecentProjectEntries] = useState<RecentProject[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>(BLANK_TEMPLATE_ID);
-  const [metamodelPurpose, setMetamodelPurpose] = useState<MetamodelPurpose>("custom");
-  const [metamodelSetupDescription, setMetamodelSetupDescription] = useState("");
-  const [selectedMagicNodeTypes, setSelectedMagicNodeTypes] = useState<MagicNodeType[]>(
-    () => getMetamodelPurposeRecommendation("custom").nodeTypes,
-  );
-  const [selectedMagicRelationTypes, setSelectedMagicRelationTypes] = useState<MagicRelationType[]>(
-    () => getMetamodelPurposeRecommendation("custom").relationTypes,
-  );
-
-  const applyMetamodelSetup = (setup: MetamodelSetup) => {
-    setMetamodelPurpose(setup.purpose);
-    setMetamodelSetupDescription(setup.description);
-    setSelectedMagicNodeTypes(setup.nodeTypes);
-    setSelectedMagicRelationTypes(setup.relationTypes);
-  };
+  // The create dialog: open, optionally on a given start (and metamodel).
+  const [createDialog, setCreateDialog] = useState<{ open: boolean; start?: string; basedOn?: number | null }>({
+    open: false,
+  });
 
   useEffect(() => {
     if (editingProject) {
@@ -490,12 +512,7 @@ export default function ProjectList() {
     ) {
       return;
     }
-    const template = BLANK_TEMPLATE;
-    setSelectedTemplateId(template.id);
-    setNewProjectType(template.projectType);
-    setNewProjectName(template.projectName);
-    setNewProjectDesc(template.projectDescription);
-    setIsCreateOpen(true);
+    setCreateDialog({ open: true });
     window.history.replaceState({}, document.title, window.location.pathname);
   }, [authLoading, userId]);
 
@@ -538,75 +555,39 @@ export default function ProjectList() {
     }
   };
 
-  const openCreateDialog = (templateId: string = BLANK_TEMPLATE_ID) => {
-    const template = findProjectTemplate(templates, templateId);
-    setSelectedTemplateId(template.id);
-    setNewProjectType(template.projectType);
-    setNewProjectName(template.projectName);
-    setNewProjectDesc(template.projectDescription);
-    if (template.projectType === "metamodel") {
-      applyMetamodelSetup(template.metamodelSetup ?? getMetamodelPurposeRecommendation("custom"));
-    }
-    setIsCreateOpen(true);
+  const openCreateDialog = (start?: string, basedOn?: number | null) =>
+    setCreateDialog({ open: true, start, basedOn });
+
+  const opened = (result: CreatedProject, message: string) => {
+    if (userId) rememberRecentProject(userId, result.project.id);
+    toast({ title: message, description: describeCreated(result) });
+    setLocation(
+      result.firstViewId
+        ? `/project/${result.project.id}/view/${result.firstViewId}`
+        : `/project/${result.project.id}`,
+    );
   };
 
-  const resetCreateForm = () => {
-    setNewProjectName("");
-    setNewProjectDesc("");
-    setNewProjectType("metamodel");
-    setSelectedTemplateId(BLANK_TEMPLATE_ID);
-    applyMetamodelSetup(getMetamodelPurposeRecommendation("custom"));
-  };
-
-  const handleCreate = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!newProjectName.trim() || !userId) return;
-    const metamodelSetup =
-      newProjectType === "metamodel"
-        ? normalizeMetamodelSetup({
-            version: 1,
-            purpose: metamodelPurpose,
-            description: metamodelSetupDescription,
-            nodeTypes: selectedMagicNodeTypes,
-            relationTypes: selectedMagicRelationTypes,
-          })
-        : null;
+  const handleCreate = async (request: CreateProjectRequest) => {
     try {
-      const result =
-        selectedTemplateId === BLANK_TEMPLATE_ID
-          ? {
-              project: await createProject.mutateAsync({
-                userId,
-                name: newProjectName.trim(),
-                description: newProjectDesc.trim(),
-                projectType: newProjectType,
-                metamodelSetup,
-              }),
-              firstViewId: null,
-            }
-          : await createFromTemplate.mutateAsync({
-              templateId: selectedTemplateId,
-              name: newProjectName.trim(),
-              description: newProjectDesc.trim(),
-              ...(newProjectType === "metamodel" ? { metamodelSetup } : {}),
-            });
-      rememberRecentProject(userId, result.project.id);
-      setIsCreateOpen(false);
-      resetCreateForm();
-      toast({
-        title: "Project created",
-        description: result.firstViewId
-          ? `${result.project.name} is ready with its first diagram.`
-          : `${result.project.name} is ready for modeling.`,
-      });
-      setLocation(
-        result.firstViewId
-          ? `/project/${result.project.id}/view/${result.firstViewId}`
-          : `/project/${result.project.id}`,
-      );
+      const result = await create.mutateAsync(request);
+      setCreateDialog({ open: false });
+      opened(result, "Project created");
     } catch (error) {
       toast({
-        title: "Could not create project",
+        title: "Could not create the project",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDuplicate = async (project: Project) => {
+    try {
+      opened(await duplicate.mutateAsync(project), "Project duplicated");
+    } catch (error) {
+      toast({
+        title: "Could not duplicate the project",
         description: error instanceof Error ? error.message : "Please try again.",
         variant: "destructive",
       });
@@ -753,6 +734,8 @@ export default function ProjectList() {
                 projects={sortedProjects}
                 onDelete={(id) => userId && deleteProject.mutate({ id, userId })}
                 onEdit={setEditingProject}
+                onDuplicate={(project) => void handleDuplicate(project)}
+                onNewModel={(metamodel) => openCreateDialog(BLANK_MODEL, metamodel.id)}
                 isLoading={isLoading}
                 allProjects={visibleProjects}
                 templates={templates}
@@ -765,37 +748,14 @@ export default function ProjectList() {
       </div>
 
       <ProjectCreateDialog
-        open={isCreateOpen}
-        projectName={newProjectName}
-        projectDescription={newProjectDesc}
-        projectType={newProjectType}
-        templates={templates}
-        selectedTemplateId={selectedTemplateId}
-        metamodelPurpose={metamodelPurpose}
-        metamodelSetupDescription={metamodelSetupDescription}
-        selectedMagicNodeTypes={selectedMagicNodeTypes}
-        selectedMagicRelationTypes={selectedMagicRelationTypes}
-        isCreating={createProject.isPending || createFromTemplate.isPending}
-        onOpenChange={setIsCreateOpen}
-        onSubmit={handleCreate}
-        onTemplateSelect={openCreateDialog}
-        onProjectTypeChange={(projectType) => {
-          setNewProjectType(projectType);
-          if (projectType === "metamodel" && selectedMagicNodeTypes.length === 0) {
-            applyMetamodelSetup(getMetamodelPurposeRecommendation("custom"));
-          }
-        }}
-        onProjectNameChange={setNewProjectName}
-        onProjectDescriptionChange={setNewProjectDesc}
-        onMetamodelPurposeChange={(purpose) => {
-          const recommendation = getMetamodelPurposeRecommendation(purpose);
-          setMetamodelPurpose(purpose);
-          setSelectedMagicNodeTypes(recommendation.nodeTypes);
-          setSelectedMagicRelationTypes(recommendation.relationTypes);
-        }}
-        onMetamodelSetupDescriptionChange={setMetamodelSetupDescription}
-        onToggleMagicNodeType={(type) => setSelectedMagicNodeTypes((current) => current.includes(type) ? (current.length > 1 ? current.filter((item) => item !== type) : current) : [...current, type])}
-        onToggleMagicRelationType={(type) => setSelectedMagicRelationTypes((current) => current.includes(type) ? current.filter((item) => item !== type) : [...current, type])}
+        open={createDialog.open}
+        onOpenChange={(open) => setCreateDialog((current) => ({ ...current, open }))}
+        options={templates}
+        metamodels={(projects ?? []).filter((project) => project.projectType === "metamodel")}
+        initialStart={createDialog.start}
+        initialBasedOn={createDialog.basedOn ?? null}
+        isCreating={create.isPending}
+        onCreate={(request) => void handleCreate(request)}
       />
       <ProjectEditDialog
         project={editingProject}
