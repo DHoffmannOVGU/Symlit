@@ -123,3 +123,53 @@ test("validation lists issues beside the canvas and shows the element; a clean r
   await page.keyboard.press("ControlOrMeta+z");
   await expect(page.locator(".react-flow__node")).toHaveCount(2);
 });
+
+test("the table shows names and attribute values instead of ids, and values can be edited there", async ({ page, request }) => {
+  const created = await createProjectWithViews(request, {
+    name: "Table",
+    projectType: "instance",
+    views: [
+      {
+        name: "Main",
+        nodes: [
+          {
+            id: "drone",
+            type: "part",
+            position: { x: 0, y: 0 },
+            data: {
+              label: "Courier with a long descriptive name",
+              type: "Object",
+              attributes: [{ id: "mass", name: "mass", value: "4.2", unit: "kg", type: "number" }],
+            },
+          },
+          { id: "pack", type: "part", position: { x: 400, y: 0 }, data: { label: "Pack A", type: "Object", attributes: [] } },
+        ],
+        edges: [{ id: "e", source: "drone", target: "pack", edgeType: "association", sourceHandle: "right", targetHandle: "left", data: { edgeType: "association", label: "powered by" } }],
+      },
+    ],
+  });
+  const { project, firstViewId } = await created.json();
+  await page.goto(`/project/${project.id}/view/${firstViewId}`);
+  await expect(page.locator(".react-flow__node")).toHaveCount(2);
+  await page.getByTestId("button-toolbar-table").click();
+
+  // No internal ids anywhere; the attribute has its own column with the unit.
+  await expect(page.getByText(/drone-[0-9a-f]{8}/)).toHaveCount(0);
+  await expect(page.getByTestId("table-attribute-column-mass")).toBeVisible();
+  const mass = page.getByTestId("table-attribute-mass");
+  await expect(mass).toContainText("kg");
+  // Relationships name the elements they connect.
+  const relationship = page.getByRole("row", { name: /powered by/ });
+  await expect(relationship).toContainText("Courier with a long descriptive name");
+  await expect(relationship).toContainText("Pack A");
+
+  // Edit the value in the table; the element has it afterwards, and it is one undo step.
+  await mass.getByRole("spinbutton").fill("5.5");
+  await page.getByTestId("button-toolbar-graph").click();
+  await page.locator(".react-flow__node", { hasText: "Courier" }).dblclick();
+  await expect(page.getByTestId("input-attr-value-0")).toHaveValue("5.5");
+  await page.getByTestId("button-cancel-attributes").click();
+  await page.getByRole("button", { name: "Undo", exact: true }).click();
+  await page.locator(".react-flow__node", { hasText: "Courier" }).dblclick();
+  await expect(page.getByTestId("input-attr-value-0")).toHaveValue("4.2");
+});

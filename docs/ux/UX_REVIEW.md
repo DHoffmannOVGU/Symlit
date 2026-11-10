@@ -97,7 +97,7 @@ All fixed; see Done below.
 | # | Where | Finding | Status |
 | --- | --- | --- | --- |
 | R1 | Saving | Two levels of saving (panel "Save Changes", then the diagram's Save; the rules panel has a third). Auto-save would remove a whole class of lost-work worries. | Open: changes behaviour, needs a decision |
-| R2 | Table view | Shows raw ids, cuts names short, has no attribute columns. | Next |
+| R2 | Table view | Shows raw ids, cuts names short, has no attribute columns. | Done |
 | R3 | Validation | A modal even for "no issues"; issues did not lead to their elements. | Done |
 | R4 | Wording | Secondary screens still said edge/node/objects/meta rules. | Done |
 | R5 | Model rules panel | Squeezes the canvas to a strip; empty state explains nothing. | Empty state done; layout open |
@@ -109,6 +109,9 @@ All fixed; see Done below.
 | R11 | Keyboard | No undo/redo shortcut. | Done |
 
 ## Done
+- R2: the table has no id columns; names have room; every attribute name is a column with its unit, editable in place
+  (one undo step per edit; calculated values are shown, not edited). Relationships show the names of the elements they
+  connect (From / Kind / To). Filters search what is shown, including attribute values.
 - R3: validation no longer opens a modal. A clean result is a short note; issues are listed in a panel beside the canvas
   that stays open while they are fixed, are marked on the diagram, and each selects and shows its element or relationship.
   "Validate again" re-runs it.
