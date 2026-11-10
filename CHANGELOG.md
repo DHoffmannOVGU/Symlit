@@ -15,10 +15,11 @@
   message instead of a database error.
 
 ### Added
-- Multiplicities mean something: set on a metamodel's relationship ("how many
-  Battery per Drone": `1`, `0..1`, `1..*`, `2..5`), they are checked when a
-  model is validated, in the editor and on the server. Text that is not a
-  multiplicity can no longer be applied.
+- Multiplicities mean something. A metamodel's relationship has one at each
+  end ("how many Battery per Drone", "how many Drone per Battery": `1`,
+  `0..1`, `1..*`, `2..5`). Validate checks them in the models built from it,
+  in the editor and on the server, counting relationships across all of a
+  model's diagrams. Text that is not a multiplicity is refused.
 - F2 renames the selected element right on its card.
 - Import: open a JSON export as a new project (project list → Import).
 - The project list shows when a project was last edited and can be sorted;
@@ -31,6 +32,13 @@
 - Save stays in view in narrow windows.
 - The element and relationship panels say "Apply" (they change the diagram;
   Save in the header writes it).
+- "Variability" (mandatory/optional) is gone; a minimum of 1 or 0 says the
+  same. Migration 0008 turns "mandatory" into `1..*` on metamodel
+  relationships that had no multiplicity, puts multiplicities into canonical
+  spelling, and removes ones that could not be read (such as "many") and
+  ones set on a model's relationships, which were never used.
+- The relationships CSV has `source_multiplicity` and `target_multiplicity`
+  columns instead of `multiplicity` and `variability`.
 - Database migration 0007 adds `projects.updated_at` (applied on start).
 
 ## v0.1.0 – first local edition

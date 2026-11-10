@@ -166,7 +166,7 @@ export const BaseCustomEdge = ({
           className="animate-edge-flow"
         />
       )}
-      {(edgeData?.label || edgeData?.multiplicity) && (
+      {(edgeData?.label || edgeData?.multiplicity || edgeData?.sourceMultiplicity) && (
         <EdgeLabelRenderer>
           {(() => {
             const labelOffsetY =
@@ -184,13 +184,24 @@ export const BaseCustomEdge = ({
                 {edgeData?.label && (
                   <span className="font-medium">{edgeData.label}</span>
                 )}
-                {edgeData?.label && edgeData?.multiplicity && (
-                  <span className="mx-1">·</span>
-                )}
-                {edgeData?.multiplicity && (
-                  <span className="text-muted-foreground">
-                    [{edgeData.multiplicity}]
-                  </span>
+                {/* Multiplicities read along the line: [at the source → at the target]. */}
+                {(edgeData?.multiplicity || edgeData?.sourceMultiplicity) && (
+                  <>
+                    {edgeData?.label && <span className="mx-1">·</span>}
+                    <span
+                      className="text-muted-foreground"
+                      title={[
+                        edgeData.multiplicity ? `${edgeData.multiplicity} at the target end` : "",
+                        edgeData.sourceMultiplicity ? `${edgeData.sourceMultiplicity} at the source end` : "",
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                      data-testid="edge-multiplicity"
+                    >
+                      [{edgeData.sourceMultiplicity ? `${edgeData.sourceMultiplicity} → ` : ""}
+                      {edgeData.multiplicity || "*"}]
+                    </span>
+                  </>
                 )}
                 {edgeData?.label && (
                   <div className="absolute bottom-full left-full mb-1 -ml-2">

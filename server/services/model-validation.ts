@@ -1,5 +1,7 @@
+import { and, eq, ne } from "drizzle-orm";
+import { db } from "../db";
 import { storage } from "../storage";
-import type { Project, FlowNodeWithPosition, FlowEdge } from "@shared/schema";
+import { edges, nodes, views, type Project, type FlowNodeWithPosition, type FlowEdge } from "@shared/schema";
 import {
   buildParentMap,
   buildParentMapFromNodes,
@@ -7,6 +9,7 @@ import {
 } from "@shared/metamodel-inheritance";
 import {
   validateInstanceModel,
+  type ValidationContext,
   type ValidationIssue,
   type ValidationTypeNode,
   type ValidationRelationEdge,
@@ -60,6 +63,7 @@ function localRelationEdges(
       edgeType: e.edgeType || "association",
       label: ((e.data ?? {}) as Record<string, unknown>).label as string | undefined,
       multiplicity: ((e.data ?? {}) as Record<string, unknown>).multiplicity as string | undefined,
+      sourceMultiplicity: ((e.data ?? {}) as Record<string, unknown>).sourceMultiplicity as string | undefined,
     }));
 }
 
@@ -166,6 +170,7 @@ export async function resolveMetamodel(
             edgeType: e.edgeType || "association",
             label: ((e.data ?? {}) as Record<string, unknown>).label as string | undefined,
             multiplicity: ((e.data ?? {}) as Record<string, unknown>).multiplicity as string | undefined,
+            sourceMultiplicity: ((e.data ?? {}) as Record<string, unknown>).sourceMultiplicity as string | undefined,
           };
         });
       allRelationEdges.push(...mmRelationEdges);
@@ -212,5 +217,42 @@ export async function validateView(viewId: number): Promise<ValidationIssue[] | 
       })),
     },
     { typeNodes, relationEdges: nonGeneralizationEdges, parentMap },
+    await getValidationContext(view.projectId, viewId),
   );
+}
+
+/**
+ * The elements and relationships of a project's other diagrams, reduced to
+ * what validation reads. Two queries, whatever the number of diagrams.
+ */
+export async function getValidationContext(projectId: number, viewId: number): Promise<ValidationContext> {
+  const [elementRows, relationshipRows] = await Promise.all([
+    db
+      .select({ id: nodes.id, type: nodes.type, data: nodes.data })
+      .from(nodes)
+      .where(and(eq(nodes.projectId, projectId), eq(nodes.type, "part"))),
+    db
+      .select({ id: edges.id, source: edges.source, target: edges.target, edgeType: edges.edgeType, data: edges.data })
+      .from(edges)
+      .innerJoin(views, eq(edges.viewId, views.id))
+      .where(and(eq(views.projectId, projectId), eq(views.viewType, "view"), ne(views.id, viewId))),
+  ]);
+  const text = (data: unknown, field: string) => {
+    const value = data && typeof data === "object" ? (data as Record<string, unknown>)[field] : undefined;
+    return typeof value === "string" ? value : undefined;
+  };
+  return {
+    nodes: elementRows.map((row) => ({
+      id: row.id,
+      type: row.type,
+      data: { label: text(row.data, "label"), typeId: text(row.data, "typeId") },
+    })),
+    edges: relationshipRows.map((row) => ({
+      id: row.id,
+      source: row.source,
+      target: row.target,
+      edgeType: row.edgeType,
+      data: { label: text(row.data, "label") },
+    })),
+  };
 }

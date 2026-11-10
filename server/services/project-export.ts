@@ -105,8 +105,8 @@ export async function buildProjectExport(
           data.edgeType ?? edge.edgeType,
           data.flowType,
           data.description,
+          data.sourceMultiplicity,
           data.multiplicity,
-          data.variability,
         ];
       }),
     );
@@ -121,8 +121,8 @@ export async function buildProjectExport(
         "relationship_type",
         "flow_type",
         "description",
-        "multiplicity",
-        "variability",
+        "source_multiplicity",
+        "target_multiplicity",
       ],
       rows,
     );

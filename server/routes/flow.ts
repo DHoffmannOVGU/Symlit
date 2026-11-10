@@ -3,7 +3,7 @@ import { z } from "zod";
 import { api } from "@shared/routes";
 import { storage } from "../storage";
 import { FlowConflictError, flowRevision, RelationshipIdTakenError } from "../services/flow-mutations";
-import { validateView } from "../services/model-validation";
+import { getValidationContext, validateView } from "../services/model-validation";
 
 export function registerFlowRoutes(app: Express) {
   // Flow
@@ -31,6 +31,13 @@ export function registerFlowRoutes(app: Express) {
     const recovery = await storage.getFlowRecovery(viewId);
     if (!recovery) return res.status(404).json({ message: "View not found" });
     res.json(recovery);
+  });
+
+  app.get(api.flow.validationContext.path, async (req, res) => {
+    const viewId = Number(req.params.viewId);
+    const view = await storage.getView(viewId);
+    if (!view) return res.status(404).json({ message: "View not found" });
+    res.json(await getValidationContext(view.projectId, viewId));
   });
 
   app.post(api.flow.validate.path, async (req, res) => {

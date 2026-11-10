@@ -72,13 +72,14 @@ export function CanvasInspectorPanels({
         (candidate.label || "").trim() === (data?.label || "").trim() &&
         sourceAncestors.has(candidate.sourceTypeId) &&
         targetAncestors.has(candidate.targetTypeId) &&
-        !!candidate.multiplicity?.trim(),
+        !!(candidate.multiplicity?.trim() || candidate.sourceMultiplicity?.trim()),
     );
-    if (!meta?.multiplicity) return null;
+    if (!meta) return null;
     const typeName = (id: string) =>
       (availablePartDefNodes.find((candidate) => candidate.id === id)?.data as NodeData | undefined)?.label || "element";
     return {
-      text: meta.multiplicity,
+      target: meta.multiplicity,
+      source: meta.sourceMultiplicity,
       sourceType: typeName(meta.sourceTypeId),
       targetType: typeName(meta.targetTypeId),
     };

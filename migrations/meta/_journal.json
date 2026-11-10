@@ -57,6 +57,13 @@
       "when": 1794258463544,
       "tag": "0007_project_updated_at",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794328935267,
+      "tag": "0008_multiplicities",
+      "breakpoints": true
     }
   ]
 }

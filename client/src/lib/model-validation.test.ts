@@ -208,3 +208,102 @@ test("no multiplicity, `*`, or unreadable text restricts nothing", () => {
     assert.deepEqual(validateInstanceModel(droneModel(5), droneMetamodel(multiplicity)), [], String(multiplicity));
   }
 });
+
+test("the source end limits how many sources a target has", () => {
+  const metamodel = {
+    ...droneMetamodel("1..*"),
+    relationEdges: [{ ...droneMetamodel("1..*").relationEdges[0], sourceMultiplicity: "0..1" }],
+  };
+  // Two drones share one battery: each drone is fine, the battery has too many.
+  const model = {
+    nodes: [
+      { id: "d1", type: "part", data: { label: "Courier X1", typeId: "drone" } },
+      { id: "d2", type: "part", data: { label: "Courier X2", typeId: "cargo-drone" } },
+      { id: "b", type: "part", data: { label: "Pack A", typeId: "battery" } },
+    ],
+    edges: ["d1", "d2"].map((source) => ({
+      id: `${source}-b`,
+      source,
+      target: "b",
+      edgeType: "composition",
+      data: { label: "powered by" },
+    })),
+  };
+  const issues = validateInstanceModel(model, metamodel);
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].id, "b");
+  assert.equal(issues[0].message, '"Pack A" needs at most 1 "powered by" relationship from Drone, but has 2.');
+  assert.deepEqual(issues[0].relatedNodeIds, ["d1", "d2"]);
+});
+
+test("relationships in other diagrams count, the same one drawn twice counts once", () => {
+  const metamodel = droneMetamodel("1");
+  const drone = { id: "d", type: "part", data: { label: "Courier X1", typeId: "drone" } };
+  const battery = { id: "b0", type: "part", data: { label: "Pack 0", typeId: "battery" } };
+  const powered = (id: string, target = "b0") => ({
+    id,
+    source: "d",
+    target,
+    edgeType: "composition",
+    data: { label: "powered by" },
+  });
+
+  // This diagram shows the drone alone; its battery is connected in another diagram.
+  const alone = { nodes: [drone], edges: [] };
+  assert.equal(validateInstanceModel(alone, metamodel).length, 1, "without context: counted here only");
+  assert.deepEqual(
+    validateInstanceModel(alone, metamodel, { nodes: [drone, battery], edges: [powered("elsewhere")] }),
+    [],
+  );
+
+  // The same relationship drawn here and elsewhere is one relationship.
+  const here = { nodes: [drone, battery], edges: [powered("here")] };
+  assert.deepEqual(
+    validateInstanceModel(here, metamodel, { nodes: [drone, battery], edges: [powered("elsewhere")] }),
+    [],
+  );
+
+  // A second battery connected elsewhere is one too many.
+  const second = { id: "b1", type: "part", data: { label: "Pack 1", typeId: "battery" } };
+  const tooMany = validateInstanceModel(here, metamodel, { nodes: [second], edges: [powered("elsewhere", "b1")] });
+  assert.equal(tooMany.length, 1);
+  assert.match(tooMany[0].message, /needs exactly 1 "powered by" relationship to Battery, but has 2\./);
+
+  // Elements that are only in other diagrams are not reported here.
+  const otherDrone = { id: "d9", type: "part", data: { label: "Elsewhere", typeId: "drone" } };
+  assert.deepEqual(validateInstanceModel(here, metamodel, { nodes: [otherDrone], edges: [] }), []);
+});
+
+test("a large model validates quickly", () => {
+  const metamodel = {
+    ...droneMetamodel("1..2"),
+    relationEdges: [{ ...droneMetamodel("1..2").relationEdges[0], sourceMultiplicity: "1" }],
+  };
+  const drones = 5000;
+  const nodes = [];
+  const edges = [];
+  for (let index = 0; index < drones; index += 1) {
+    nodes.push({ id: `d${index}`, type: "part", data: { label: `Drone ${index}`, typeId: "drone" } });
+    for (const pack of [0, 1]) {
+      nodes.push({ id: `b${index}-${pack}`, type: "part", data: { label: `Pack ${index}-${pack}`, typeId: "battery" } });
+      edges.push({
+        id: `e${index}-${pack}`,
+        source: `d${index}`,
+        target: `b${index}-${pack}`,
+        edgeType: "composition",
+        data: { label: "powered by" },
+      });
+    }
+  }
+  const started = performance.now();
+  // Half the model as the open diagram, half as the rest of the project.
+  const half = nodes.length / 2;
+  const issues = validateInstanceModel(
+    { nodes: nodes.slice(0, half), edges: edges.filter((_, index) => index < edges.length / 2) },
+    metamodel,
+    { nodes: nodes.slice(half), edges: edges.filter((_, index) => index >= edges.length / 2) },
+  );
+  const elapsed = performance.now() - started;
+  assert.deepEqual(issues, []);
+  assert.ok(elapsed < 1500, `15,000 elements and 10,000 relationships took ${Math.round(elapsed)} ms`);
+});

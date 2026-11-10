@@ -330,10 +330,6 @@ export function useCanvasElementActions({
         edgeType: nextType,
         ...getEdgeSemanticDefaults(nextType),
         flowType: nextType === "association" ? currentData.flowType : undefined,
-        variability:
-          nextType === "aggregation" || nextType === "composition"
-            ? currentData.variability
-            : undefined,
       });
     },
     [edgeTypeCycle, edges, handleSaveEdgeData],

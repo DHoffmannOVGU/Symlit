@@ -2,11 +2,18 @@ import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useCallback, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { api } from "@shared/routes";
+import { apiCall } from "@/lib/api-client";
 
 import type { CustomEdgeData } from "../edges/CustomEdges";
 import type {
 } from "../types";
-import { invalidMultiplicityIssues, validateInstanceModel, type ValidationIssue } from "@shared/model-validation";
+import {
+  invalidMultiplicityIssues,
+  validateInstanceModel,
+  type ValidationContext,
+  type ValidationIssue,
+} from "@shared/model-validation";
 import type { ModelRule } from "@shared/schema";
 import { evaluateModelRules } from "../rules/model-rules";
 
@@ -25,7 +32,7 @@ export function useDiagramValidation({
   const edges = useDiagramStore((state) => state.edges);
   const setNodes = useDiagramStore((state) => state.setNodes);
   const setEdges = useDiagramStore((state) => state.setEdges);
-  const { projectType, availablePartDefNodes, relationEdges, parentMap } = useDiagramModel();
+  const { projectType, viewId, availablePartDefNodes, relationEdges, parentMap } = useDiagramModel();
   const [validationOpen, setValidationOpen] = useState(false);
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>(
     [],
@@ -99,7 +106,7 @@ export function useDiagramValidation({
     [applyIssueHighlights, projectType, toast],
   );
 
-  const handleValidate = useCallback(() => {
+  const handleValidate = useCallback(async () => {
     if (projectType === "metamodel") {
       const issues: ValidationIssue[] = evaluateModelRules(modelRules, nodes, edges).map(
         (violation) => ({
@@ -113,7 +120,12 @@ export function useDiagramValidation({
         ...invalidMultiplicityIssues(
           edges.map((edge) => {
             const data = edge.data as CustomEdgeData | undefined;
-            return { id: edge.id, label: data?.label, multiplicity: data?.multiplicity };
+            return {
+              id: edge.id,
+              label: data?.label,
+              multiplicity: data?.multiplicity,
+              sourceMultiplicity: data?.sourceMultiplicity,
+            };
           }),
         ),
       );
@@ -134,6 +146,19 @@ export function useDiagramValidation({
       const data = node.data;
       return { id: node.id, label: data?.label || node.id };
     });
+    // Multiplicities count relationships in all of the model's diagrams. The
+    // other diagrams come from the server; this one from the canvas, so
+    // unsaved changes are checked as they are.
+    let context: ValidationContext | undefined;
+    try {
+      context = await apiCall(api.flow.validationContext, { params: { viewId } });
+    } catch {
+      toast({
+        title: "Checked this diagram only",
+        description: "The model's other diagrams could not be loaded, so multiplicities were counted here alone.",
+        variant: "destructive",
+      });
+    }
     const structuralIssues = validateInstanceModel(
       {
         nodes: nodes.map((node) => ({
@@ -155,12 +180,15 @@ export function useDiagramValidation({
         }),
       },
       { typeNodes, relationEdges, parentMap },
+      context,
     );
     issues.push(...structuralIssues);
 
     showResult(issues);
   }, [
     showResult,
+    toast,
+    viewId,
     availablePartDefNodes,
     edges,
     nodes,

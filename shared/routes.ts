@@ -575,6 +575,32 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+    /**
+     * What validation needs from the project's other diagrams (elements with
+     * their types, relationships with their labels), so the editor can count
+     * across diagrams while the open one has unsaved changes.
+     */
+    validationContext: {
+      method: 'GET' as const,
+      path: '/api/views/:viewId/validation-context',
+      responses: {
+        200: z.object({
+          nodes: z.array(z.object({
+            id: z.string(),
+            type: z.string().nullable().optional(),
+            data: z.object({ label: z.string().optional(), typeId: z.string().optional() }),
+          })),
+          edges: z.array(z.object({
+            id: z.string(),
+            source: z.string(),
+            target: z.string(),
+            edgeType: z.string().nullable().optional(),
+            data: z.object({ label: z.string().optional() }),
+          })),
+        }),
+        404: errorSchemas.notFound,
+      },
+    },
     validate: {
       method: 'POST' as const,
       path: '/api/views/:viewId/validate',

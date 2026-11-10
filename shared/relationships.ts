@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { magicRelationTypeEnum, type MagicRelationType } from "./metamodel-setup";
+import { canonicalMultiplicity, MULTIPLICITY_HELP, parseMultiplicity } from "./multiplicity";
 
 /*
  * Relationship (edge) data shared by the client and server. Browser-safe: no
@@ -44,14 +45,21 @@ const anchorSchema = z.object({
  * type; other fields are kept so newer clients can add some without breaking
  * older servers.
  */
+/** Saving refuses text that is not a multiplicity: it would be shown but never checked. */
+const multiplicityText = z
+  .string()
+  .refine((text) => parseMultiplicity(text) !== null, { message: `Not a multiplicity. ${MULTIPLICITY_HELP}` });
+
 export const relationshipDataSchema = z
   .object({
     edgeType: z.enum(magicRelationTypeEnum).optional(),
     flowType: z.enum(["partflow", "actionflow", "informationflow"]).optional(),
     label: z.string().optional(),
     description: z.string().optional(),
-    multiplicity: z.string().optional(),
-    variability: z.enum(["mandatory", "optional"]).optional(),
+    /** Target end: how many targets each source element needs (shared/multiplicity.ts). */
+    multiplicity: multiplicityText.optional(),
+    /** Source end: how many sources each target element needs. */
+    sourceMultiplicity: multiplicityText.optional(),
     strokeWidth: z.number().positive().max(50).optional(),
     strokeColor: z.string().optional(),
     lineStyle: z.enum(["solid", "dashed", "dotted"]).optional(),
@@ -90,11 +98,25 @@ export function normalizeRelationship<T extends RelationshipLike>(edge: T) {
   const edgeType: MagicRelationType = (magicRelationTypeEnum as readonly unknown[]).includes(candidate)
     ? (candidate as MagicRelationType)
     : "association";
+  // "variability" (mandatory/optional) was replaced by multiplicities; migration
+  // 0008 converted stored values. Multiplicities are stored in canonical
+  // spelling, and only when they restrict something.
+  // Fields keep their order: the editor compares saved and current diagrams as text.
+  const cleaned: Record<string, unknown> = {};
+  for (const [field, value] of Object.entries(data)) {
+    if (field === "variability") continue;
+    if (field === "multiplicity" || field === "sourceMultiplicity") {
+      const canonical = canonicalMultiplicity(value);
+      if (canonical) cleaned[field] = canonical;
+      continue;
+    }
+    cleaned[field] = value;
+  }
   return {
     ...edge,
     edgeType,
     sourceHandle: normalizeHandleId("source", edge.sourceHandle),
     targetHandle: normalizeHandleId("target", edge.targetHandle),
-    data: { ...data, edgeType },
+    data: { ...cleaned, edgeType },
   };
 }

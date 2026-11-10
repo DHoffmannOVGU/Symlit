@@ -1,10 +1,16 @@
 /*
  * Multiplicities of metamodel relationships.
  *
- * A relationship type "Drone —powered by→ Battery [1..2]" says: every Drone
- * in a model needs between one and two "powered by" relationships to a
- * Battery. The multiplicity belongs to the target end, read from the source:
- * "how many targets per source element".
+ * A relationship type "Drone —powered by→ Battery" has one at each end:
+ *
+ * - `multiplicity` (target end): how many Batteries each Drone needs.
+ *   `1..2` = every Drone in a model has one or two "powered by"
+ *   relationships to a Battery.
+ * - `sourceMultiplicity` (source end): how many Drones each Battery needs.
+ *   `0..1` = a Battery powers at most one Drone.
+ *
+ * Both are counted over the whole project, not one diagram, and a
+ * relationship drawn in several diagrams counts once.
  *
  * Accepted forms: `1` (exactly), `0..1`, `1..*`, `2..5`, and `*` (any number,
  * the same as leaving it empty).
@@ -51,3 +57,10 @@ export function describeMultiplicity({ min, max }: Multiplicity): string {
 
 /** Why a text is not a multiplicity, for the input field. */
 export const MULTIPLICITY_HELP = "Use a number (1), a range (0..1, 2..5) or an open range (1..*).";
+
+/** The canonical spelling of a multiplicity, or undefined when it is empty, unrestricted or unreadable. */
+export function canonicalMultiplicity(text: unknown): string | undefined {
+  if (typeof text !== "string") return undefined;
+  const parsed = parseMultiplicity(text);
+  return parsed && !isUnrestricted(parsed) ? formatMultiplicity(parsed) : undefined;
+}

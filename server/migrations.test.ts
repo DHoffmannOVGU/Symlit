@@ -188,3 +188,65 @@ test("both tutorial projects are marked with the one tutorial template", async (
   const rows = (await run(`SELECT id, template_id FROM projects ORDER BY id`)).rows as Array<{ template_id: string | null }>;
   assert.deepEqual(rows.map((row) => row.template_id), ["tutorial", "tutorial", null, "system-context"]);
 });
+
+test("migration 0008 folds variability into multiplicities and cleans them up", async (t) => {
+  const upTo0007 = await mkdtemp(path.join(tmpdir(), "symlit-migrations-"));
+  t.after(() => rm(upTo0007, { recursive: true, force: true }));
+  await cp(MIGRATIONS_DIR, upTo0007, { recursive: true });
+  const journalPath = path.join(upTo0007, "meta", "_journal.json");
+  const journal = JSON.parse(await readFile(journalPath, "utf8"));
+  journal.entries = journal.entries.filter((entry: { tag: string }) => entry.tag < "0008");
+  await writeFile(journalPath, JSON.stringify(journal));
+
+  const db = await openDatabase({ driver: "pglite", dataDir: null }, { migrationsDir: upTo0007 });
+  t.after(() => db.close());
+  const run = (query: string) => db.db.execute(sql.raw(query));
+  await run(`INSERT INTO users (id, username) VALUES (1, 'local')`);
+  await run(`INSERT INTO projects (id, user_id, name, project_type) VALUES (1, 1, 'types', 'metamodel'), (2, 1, 'model', 'instance')`);
+  await run(`INSERT INTO views (id, project_id, name) VALUES (1, 1, 'Types'), (2, 2, 'Model')`);
+  await run(`INSERT INTO nodes (id, project_id, data) VALUES ('a', 1, '{}'), ('b', 1, '{}'), ('x', 2, '{}'), ('y', 2, '{}')`);
+  const edge = (id: string, view: number, data: Record<string, unknown> | null) =>
+    run(
+      `INSERT INTO edges (id, view_id, source, target, data) VALUES ('${id}', ${view}, '${view === 1 ? "a" : "x"}', '${view === 1 ? "b" : "y"}', ${
+        data === null ? "NULL" : `'${JSON.stringify(data)}'::jsonb`
+      })`,
+    );
+  await edge("mandatory", 1, { label: "has", variability: "mandatory" });
+  await edge("mandatory-with", 1, { variability: "mandatory", multiplicity: "2..5" });
+  await edge("optional", 1, { variability: "optional" });
+  await edge("spaced", 1, { multiplicity: " 1 .. 1 " });
+  await edge("open", 1, { multiplicity: "01..*" });
+  await edge("any", 1, { multiplicity: "0..*" });
+  await edge("star", 1, { multiplicity: "*" });
+  await edge("words", 1, { multiplicity: "many", label: "kept" });
+  await edge("backwards", 1, { multiplicity: "3..1" });
+  await edge("zero", 1, { multiplicity: "0" });
+  await edge("no-data", 1, null);
+  await edge("model-mandatory", 2, { variability: "mandatory" });
+  await edge("model-multiplicity", 2, { multiplicity: "1..2", label: "kept" });
+
+  const { migrate } = await import("drizzle-orm/pglite/migrator");
+  await migrate(db.db as never, { migrationsFolder: MIGRATIONS_DIR });
+
+  const rows = (await run(`SELECT id, data FROM edges`)).rows as Array<{ id: string; data: Record<string, unknown> | null }>;
+  const data = Object.fromEntries(rows.map((row) => [row.id, row.data]));
+  assert.deepEqual(data["mandatory"], { label: "has", multiplicity: "1..*" });
+  assert.deepEqual(data["mandatory-with"], { multiplicity: "2..5" });
+  assert.deepEqual(data["optional"], {});
+  assert.deepEqual(data["spaced"], { multiplicity: "1" });
+  assert.deepEqual(data["open"], { multiplicity: "1..*" });
+  assert.deepEqual(data["any"], {});
+  assert.deepEqual(data["star"], {});
+  assert.deepEqual(data["words"], { label: "kept" });
+  assert.deepEqual(data["backwards"], {});
+  assert.deepEqual(data["zero"], {});
+  assert.equal(data["no-data"], null);
+  assert.deepEqual(data["model-mandatory"], {}, "models do not define multiplicities");
+  assert.deepEqual(data["model-multiplicity"], { label: "kept" });
+
+  // Everything left passes the save checks.
+  const { relationshipDataSchema } = await import("@shared/relationships");
+  for (const row of rows) {
+    if (row.data) assert.equal(relationshipDataSchema.safeParse(row.data).success, true, row.id);
+  }
+});

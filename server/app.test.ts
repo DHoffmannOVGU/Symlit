@@ -848,6 +848,101 @@ describe("multiplicities", () => {
   });
 });
 
+describe("multiplicities across diagrams and at both ends", () => {
+  test("relationships in other diagrams count; the source end is checked; bad text is refused", async () => {
+    const metamodel = await createProject({ name: "Two-ended types", projectType: "metamodel" });
+    const metaView = await createView(metamodel.id);
+    const drone = `two-drone-${metamodel.id}`;
+    const battery = `two-battery-${metamodel.id}`;
+    const types = [
+      { id: drone, type: "partdef", position: { x: 0, y: 0 }, data: { label: "Drone", attributes: [] } },
+      { id: battery, type: "partdef", position: { x: 300, y: 0 }, data: { label: "Battery", attributes: [] } },
+    ];
+    const relationship = (data: Record<string, unknown>) => ({
+      id: `two-rel-${metamodel.id}`,
+      source: drone,
+      target: battery,
+      edgeType: "composition",
+      data: { label: "powered by", ...data },
+    });
+
+    // Text that is not a multiplicity is refused at either end, with the reason.
+    for (const data of [{ multiplicity: "lots" }, { sourceMultiplicity: "3..1" }]) {
+      const refused = await request("POST", `/api/views/${metaView.id}/sync`, { nodes: types, edges: [relationship(data)] });
+      assert.equal(refused.status, 400, JSON.stringify(data));
+      assert.match(refused.json.message, /Not a multiplicity/);
+    }
+    // Stored in canonical spelling; "any number" and the old "variability" are not stored.
+    const saved = await request("POST", `/api/views/${metaView.id}/sync`, {
+      nodes: types,
+      edges: [relationship({ multiplicity: " 1 .. 1 ", sourceMultiplicity: "0..1", variability: "mandatory" })],
+    });
+    assert.equal(saved.status, 200, saved.text);
+    const stored = (await request("GET", `/api/views/${metaView.id}/flow`)).json.edges[0].data;
+    assert.equal(stored.multiplicity, "1");
+    assert.equal(stored.sourceMultiplicity, "0..1");
+    assert.equal("variability" in stored, false);
+
+    const model = await createProject({
+      name: "Two-ended model",
+      projectType: "instance",
+      referencedMetamodels: [metamodel.id],
+    });
+    const overview = await createView(model.id, "Overview");
+    const power = await createView(model.id, "Power");
+    const element = (id: string, label: string, type: string) => ({
+      id: `${id}-${model.id}`,
+      type: "part",
+      position: { x: 0, y: 0 },
+      data: { label, typeId: `mm:${metamodel.id}:${type}`, attributes: [] },
+    });
+    const d1 = element("d1", "Courier X1", drone);
+    const d2 = element("d2", "Courier X2", drone);
+    const pack = element("b", "Pack A", battery);
+    const powered = (id: string, source: { id: string }) => ({
+      id: `${id}-${model.id}`,
+      source: source.id,
+      target: pack.id,
+      edgeType: "composition",
+      data: { label: "powered by" },
+    });
+    const sync = async (viewId: number, nodes: unknown[], edges: unknown[]) =>
+      assert.equal((await request("POST", `/api/views/${viewId}/sync`, { nodes, edges })).status, 200);
+    const issuesOf = async (viewId: number) =>
+      ((await request("POST", `/api/views/${viewId}/validate`)).json.issues as Array<{ message: string }>).map(
+        (issue) => issue.message,
+      );
+
+    // The overview shows the drone alone; the battery is connected in "Power".
+    await sync(overview.id, [d1], []);
+    await sync(power.id, [d1, pack], [powered("p1", d1)]);
+    assert.deepEqual(await issuesOf(overview.id), [], "the relationship in the other diagram counts");
+    assert.deepEqual(await issuesOf(power.id), []);
+
+    // The same relationship drawn in both diagrams is still one.
+    await sync(overview.id, [d1, pack], [powered("p1-again", d1)]);
+    assert.deepEqual(await issuesOf(overview.id), []);
+
+    // A second drone on the same battery breaks the source end, reported where the battery is shown.
+    await sync(power.id, [d1, d2, pack], [powered("p1", d1), powered("p2", d2)]);
+    assert.deepEqual(await issuesOf(power.id), [
+      '"Pack A" needs at most 1 "powered by" relationship from Drone, but has 2.',
+    ]);
+    assert.deepEqual(await issuesOf(overview.id), [
+      '"Pack A" needs at most 1 "powered by" relationship from Drone, but has 2.',
+    ]);
+
+    // What the editor gets to count across diagrams: the other diagrams only.
+    const context = await request("GET", `/api/views/${overview.id}/validation-context`);
+    assert.equal(context.status, 200, context.text);
+    assert.deepEqual(
+      context.json.edges.map((edge: { id: string }) => edge.id).sort(),
+      [powered("p1", d1).id, powered("p2", d2).id].sort(),
+    );
+    assert.equal((await request("GET", "/api/views/987654/validation-context")).status, 404);
+  });
+});
+
 describe("export defaults", () => {
   test("a model's default JSON export brings its metamodels and can be imported", async () => {
     const metamodel = await createProject({ name: "Default export types", projectType: "metamodel" });

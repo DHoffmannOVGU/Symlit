@@ -60,8 +60,10 @@ export interface CustomEdgeData {
   edgeType: MagicRelationType | (string & {});
   flowType?: "partflow" | "actionflow" | "informationflow";
   label?: string;
+  /** Target end: how many targets each source element needs (metamodel relationships). */
   multiplicity?: string;
-  variability?: "mandatory" | "optional";
+  /** Source end: how many sources each target element needs. */
+  sourceMultiplicity?: string;
   description?: string;
   strokeWidth?: number;
   strokeColor?: string;
