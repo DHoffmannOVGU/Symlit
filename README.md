@@ -17,14 +17,18 @@ machine. It needs no accounts and no cloud services.
   derived formulas, styling and inheritance.
 - **Instance projects** that reference one or more metamodels, with typed elements,
   validated relationships, and a *build* and *flow* mode (flow playback).
-- **Multiple views per project:** an element is stored once and can appear in several diagrams.
+- **Several diagrams per project:** an element is stored once and can appear in several diagrams.
+- **Diagram editor** with auto layout, table view, undo/redo, optional auto-save, and a
+  conflict dialog instead of silent overwrites when a diagram was changed elsewhere.
 - **Patterns:** save a selection as a reusable pattern and insert it elsewhere.
 - **Model rules and validation**, plus a guided recovery dialog for damaged diagrams.
 - **A guided tutorial** that builds a small drone model with you: about 15 minutes, seven hands-on
   lessons covering metamodels, typed models, validation, model rules, table view, auto layout,
   patterns and export. Steps tick off as you work; "Show me" points at the right button.
 - **Project templates:** start from an example; templates can bring their metamodel along.
+  Projects can also be duplicated, or created directly from a metamodel.
 - **Export** to JSON or CSV (elements and relationships), and diagram screenshots.
+  **Import** opens a JSON export as a new project.
 - **Optional AI metamodel assistant** (Google Gemini, bring your own API key).
 
 ## Quick start
@@ -97,6 +101,11 @@ Database migrations run automatically on startup. To run them on their own, use 
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 for how the code is organised.
+
+## Documentation
+
+The user guide lives in the [wiki](https://github.com/DHoffmannOVGU/Symlit/wiki). Its pages are
+kept in [`docs/wiki/`](docs/wiki/Home.md) and published with `bash script/publish-wiki.sh`.
 
 ## Status
 
