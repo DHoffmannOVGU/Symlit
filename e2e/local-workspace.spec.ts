@@ -159,3 +159,40 @@ test("auto layout spreads out overlapping elements and can be undone", async ({ 
   await page.getByRole("button", { name: "Undo", exact: true }).click();
   await expect.poll(positions).toEqual(before);
 });
+
+test("a saved diagram is still as saved after visiting another diagram", async ({ page, request }) => {
+  // The cached copy from before the save used to come back when the diagram
+  // was reopened soon after, and the next save then discarded the earlier one.
+  const project = await (
+    await request.post("/api/projects", { data: { name: "Two diagrams", projectType: "metamodel" } })
+  ).json();
+  const first = await (await request.post(`/api/projects/${project.id}/views`, { data: { name: "First" } })).json();
+  const second = await (await request.post(`/api/projects/${project.id}/views`, { data: { name: "Second" } })).json();
+
+  await page.goto(`/project/${project.id}/view/${first.id}`);
+  const cards = page.locator(".react-flow__node");
+  await page.getByTestId("button-create-sidebar-partdef").click();
+  await expect(cards).toHaveCount(1);
+  await page.getByTestId("button-save-diagram-header").click();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+  // Saving keeps the undo history of the open diagram.
+  await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeEnabled();
+
+  // Leave and come back without reloading the page.
+  await page.getByRole("tab", { name: "Diagrams" }).click();
+  await page.getByRole("link", { name: "Second" }).click();
+  await expect(page).toHaveURL(new RegExp(`/view/${second.id}$`));
+  await expect(cards).toHaveCount(0);
+  await page.getByRole("link", { name: "First" }).click();
+  await expect(page).toHaveURL(new RegExp(`/view/${first.id}$`));
+  await expect(cards).toHaveCount(1);
+
+  // A second element and a second save keep the first one.
+  await page.getByRole("tab", { name: "Add elements" }).click();
+  await page.getByTestId("button-create-sidebar-partdef").click();
+  await expect(cards).toHaveCount(2);
+  await page.getByTestId("button-save-diagram-header").click();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+  const saved = await (await request.get(`/api/views/${first.id}/flow`)).json();
+  expect(saved.nodes).toHaveLength(2);
+});

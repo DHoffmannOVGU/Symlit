@@ -13,16 +13,22 @@ import { canvasFitOptions } from "../utils/fit-options";
  */
 export function useDiagramLoading(suspended: boolean) {
   const { viewId, projectType } = useDiagramModel();
-  const { data: flowData, isLoading, isError, refetch } = useFlow(viewId);
+  const { data: flowData, isLoading, isFetching, isError, refetch } = useFlow(viewId);
   const { fitView } = useReactFlow();
   const setNodes = useDiagramStore((state) => state.setNodes);
   const setEdges = useDiagramStore((state) => state.setEdges);
   const resetHistory = useDiagramStore((state) => state.resetHistory);
   const setSavedSignature = useDiagramStore((state) => state.setSavedSignature);
   const lastFittedViewId = useRef<number | null>(null);
+  // When a diagram is opened while a newer copy is on its way (the cached one
+  // is outdated, e.g. it was saved since), wait for the new copy: showing the
+  // old one would let edits start from a state that is no longer the saved one.
+  const openedViewId = useRef<number | null>(null);
+  const awaitingFreshCopy = openedViewId.current !== viewId && isFetching;
 
   useEffect(() => {
-    if (!flowData || suspended) return;
+    if (!flowData || suspended || awaitingFreshCopy) return;
+    openedViewId.current = viewId;
     const { nodes, edges } = toCanvasGraph(flowData);
     setNodes(nodes);
     setEdges(edges);
@@ -33,15 +39,15 @@ export function useDiagramLoading(suspended: boolean) {
     // styles), which would otherwise make every diagram with relationships look
     // unsaved right after opening it.
     setSavedSignature(diagramSignature(nodes, edges, projectType));
-  }, [flowData, projectType, resetHistory, setEdges, setNodes, setSavedSignature, suspended]);
+  }, [awaitingFreshCopy, flowData, projectType, resetHistory, setEdges, setNodes, setSavedSignature, suspended, viewId]);
 
   useEffect(() => {
-    if (!flowData || lastFittedViewId.current === viewId) return;
+    if (!flowData || awaitingFreshCopy || lastFittedViewId.current === viewId) return;
     lastFittedViewId.current = viewId;
     requestAnimationFrame(() => {
       fitView(canvasFitOptions(500));
     });
-  }, [flowData, fitView, viewId]);
+  }, [awaitingFreshCopy, flowData, fitView, viewId]);
 
-  return { isLoading, isError, reload: refetch };
+  return { isLoading: isLoading || awaitingFreshCopy, isError, reload: refetch };
 }

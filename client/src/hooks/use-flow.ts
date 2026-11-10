@@ -1,4 +1,4 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { apiCall } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +37,7 @@ export function useFlow(viewId: number) {
 
 export function useSyncFlow() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
@@ -55,6 +56,16 @@ export function useSyncFlow() {
         body: { nodes, edges },
       }),
     onSuccess: (_result, variables) => {
+      // The cached copy of the diagram is from before this save. Mark it
+      // outdated, so that it is fetched again when the diagram is next opened:
+      // otherwise coming back would show the old state, and the next save
+      // would discard what was saved here. The open canvas already has the
+      // saved state and is left alone (no refetch, undo history stays).
+      void queryClient.invalidateQueries({
+        queryKey: [api.flow.get.path, variables.viewId],
+        exact: true,
+        refetchType: "none",
+      });
       if (variables.quiet) return;
       toast({
         title: "Saved",
