@@ -71,3 +71,55 @@ test("the save button says what it does; the state is shown next to it; Ctrl+S s
   await expect(status).toHaveText("All changes saved");
   await expect(save).toBeDisabled();
 });
+
+test("validation lists issues beside the canvas and shows the element; a clean result is only a note", async ({ page, request }) => {
+  const metamodel = await createProjectWithViews(request, {
+    name: "Validation types",
+    projectType: "metamodel",
+    views: [{ name: "Types", nodes: [{ id: "pump", type: "partdef", position: { x: 0, y: 0 }, data: { label: "Pump", type: "Object", attributes: [] } }], edges: [] }],
+  });
+  const { project: meta, firstViewId: metaViewId } = await metamodel.json();
+  const flow = await (await request.get(`/api/views/${metaViewId}/flow`)).json();
+  const pumpType = `mm:${meta.id}:${flow.nodes[0].id}`;
+  const created = await createProjectWithViews(request, {
+      name: "Validation",
+      projectType: "instance",
+      referencedMetamodels: [meta.id],
+      views: [
+        {
+          name: "Main",
+          nodes: [
+            { id: "ok", type: "part", position: { x: 0, y: 0 }, data: { label: "Pump 1", type: "Pump", typeId: pumpType, attributes: [] } },
+            // Its type no longer exists in the metamodel.
+            { id: "bad", type: "part", position: { x: 400, y: 0 }, data: { label: "Orphan", type: "Valve", typeId: `mm:${meta.id}:gone`, attributes: [] } },
+          ],
+          edges: [],
+        },
+      ],
+  });
+  const { project, firstViewId } = await created.json();
+  await page.goto(`/project/${project.id}/view/${firstViewId}`);
+  await expect(page.locator(".react-flow__node")).toHaveCount(2);
+
+  await page.getByTestId("button-toolbar-validate").click();
+  const results = page.getByTestId("validation-results");
+  await expect(results).toContainText("1 issue found");
+  await expect(results).toContainText("Orphan");
+  // Not a modal: the canvas stays usable, and the issue leads to its element.
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.getByTestId("validation-issue-0").click();
+  await expect(page.locator(".react-flow__node.selected")).toContainText("Orphan");
+
+  // Fix it (delete the orphan) and validate again: the panel goes away.
+  await page.keyboard.press("Delete");
+  await page.getByRole("button", { name: /delete/i }).last().click();
+  await expect(page.locator(".react-flow__node")).toHaveCount(1);
+  await page.getByTestId("button-validate-again").click();
+  await expect(results).toHaveCount(0);
+  await expect(page.getByText("No issues found", { exact: true })).toBeVisible();
+
+  // Ctrl+Z brings the element back.
+  await page.locator(".react-flow__pane").click({ position: { x: 20, y: 300 } });
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(page.locator(".react-flow__node")).toHaveCount(2);
+});

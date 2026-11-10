@@ -1,6 +1,7 @@
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useCallback, useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 import type { CustomEdgeData } from "../edges/CustomEdges";
 import type {
@@ -30,6 +31,7 @@ export function useDiagramValidation({
     [],
   );
   const [highlightIssues, setHighlightIssues] = useState(false);
+  const { toast } = useToast();
 
   const applyIssueHighlights = useCallback(
     (enable: boolean, issues = validationIssues) => {
@@ -69,6 +71,34 @@ export function useDiagramValidation({
     [setEdges, setNodes, validationIssues],
   );
 
+  /**
+   * A clean result is a short confirmation that needs no dismissing. Issues
+   * open the results panel, which stays open while they are fixed, and are
+   * marked on the canvas.
+   */
+  const showResult = useCallback(
+    (issues: ValidationIssue[]) => {
+      setValidationIssues(issues);
+      if (issues.length === 0) {
+        setValidationOpen(false);
+        setHighlightIssues(false);
+        applyIssueHighlights(false, []);
+        toast({
+          title: "No issues found",
+          description:
+            projectType === "instance"
+              ? "The model follows its metamodels and all model rules."
+              : "All model rules pass.",
+        });
+        return;
+      }
+      setValidationOpen(true);
+      setHighlightIssues(true);
+      applyIssueHighlights(true, issues);
+    },
+    [applyIssueHighlights, projectType, toast],
+  );
+
   const handleValidate = useCallback(() => {
     if (projectType === "metamodel") {
       const issues: ValidationIssue[] = evaluateModelRules(modelRules, nodes, edges).map(
@@ -78,9 +108,7 @@ export function useDiagramValidation({
           message: `${violation.ruleName}: ${violation.message}`,
         }),
       );
-      setValidationIssues(issues);
-      setValidationOpen(true);
-      if (highlightIssues) applyIssueHighlights(true, issues);
+      showResult(issues);
       return;
     }
 
@@ -121,16 +149,11 @@ export function useDiagramValidation({
     );
     issues.push(...structuralIssues);
 
-    setValidationIssues(issues);
-    setValidationOpen(true);
-    if (highlightIssues) {
-      applyIssueHighlights(true, issues);
-    }
+    showResult(issues);
   }, [
-    applyIssueHighlights,
+    showResult,
     availablePartDefNodes,
     edges,
-    highlightIssues,
     nodes,
     parentMap,
     projectType,

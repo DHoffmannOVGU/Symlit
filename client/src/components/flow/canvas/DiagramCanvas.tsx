@@ -514,7 +514,7 @@ function FlowInner({
         onDownload={downloadImage}
       />
 
-      <ValidationResultsDialog {...validation} projectType={projectType} />
+      <ValidationResultsDialog {...validation} />
 
       <UnsavedChangesDialog {...leaveConfirmation} isSaving={isSaving} />
 

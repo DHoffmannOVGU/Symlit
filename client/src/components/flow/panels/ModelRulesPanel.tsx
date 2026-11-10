@@ -242,11 +242,11 @@ export function ModelRulesPanel({ open, onClose, height: panelHeight, onHeightCh
       </div>
       <header className="flex items-center justify-between border-b px-5 py-3">
         <div>
-          <div className="flex items-center gap-2"><h2 className="font-semibold">{isInstanceEditor ? "Model rules (this model and its metamodels)" : "Model rules"}</h2><Badge variant={issueCount ? "destructive" : "secondary"}>{issueCount ? `${issueCount} issue${issueCount === 1 ? "" : "s"}` : `${results.length} classification${results.length === 1 ? "" : "s"}`}</Badge></div>
-          <p className="text-xs text-muted-foreground">{isInstanceEditor ? "Meta rules are inherited read-only. Instance rules apply only to this view." : "Describe objects from their attributes and relationships, then add a tag or report an issue."}</p>
+          <div className="flex items-center gap-2"><h2 className="font-semibold">{isInstanceEditor ? "Model rules (this model and its metamodels)" : "Model rules"}</h2><Badge variant={issueCount ? "destructive" : "secondary"}>{issueCount ? `${issueCount} issue${issueCount === 1 ? "" : "s"}` : `${results.length} match${results.length === 1 ? "" : "es"}`}</Badge></div>
+          <p className="text-xs text-muted-foreground">{isInstanceEditor ? "Rules from the metamodels apply here and are read-only. Rules you add apply to this diagram only." : "Describe elements by their attributes and relationships, then add a tag or report an issue."}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setRules((current) => [...current, createRule()])}><Plus className="mr-1 h-4 w-4" />{isInstanceEditor ? "Add instance rule" : "Add rule"}</Button>
+          <Button size="sm" variant="outline" onClick={() => setRules((current) => [...current, createRule()])}><Plus className="mr-1 h-4 w-4" />Add rule</Button>
           <Button size="sm" onClick={save} disabled={updateView.isPending || !rulesValid}><Save className="mr-1 h-4 w-4" />Save</Button>
           <Button size="icon" variant="ghost" onClick={onClose} aria-label="Close model rules"><X className="h-4 w-4" /></Button>
         </div>
@@ -254,7 +254,7 @@ export function ModelRulesPanel({ open, onClose, height: panelHeight, onHeightCh
       <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.8fr)_minmax(280px,0.65fr)]">
         <div className="overflow-y-auto p-4">
           {isInstanceEditor && inheritedRules.length > 0 ? <section className="mb-5 space-y-2" data-testid="inherited-model-rules">
-            <div className="flex items-center gap-2"><h3 className="text-sm font-semibold">Meta rules</h3><Badge variant="secondary">{inheritedRules.length} inherited</Badge></div>
+            <div className="flex items-center gap-2"><h3 className="text-sm font-semibold">Rules from metamodels</h3><Badge variant="secondary">{inheritedRules.length} inherited</Badge></div>
             <p className="text-xs text-muted-foreground">Defined by referenced metamodels and applied automatically to this instance.</p>
             {inheritedRules.map((rule) => <div key={rule.id} className="rounded-lg border bg-muted/30 p-3 text-xs">
               <div className="flex items-center gap-2"><Lock className="h-3.5 w-3.5 text-muted-foreground" /><span className="font-semibold">{rule.name}</span><Badge variant="outline">Meta rule</Badge>{!rule.enabled ? <Badge variant="secondary">Disabled</Badge> : null}</div>
@@ -262,8 +262,8 @@ export function ModelRulesPanel({ open, onClose, height: panelHeight, onHeightCh
               {rule.outcome ? <p className="mt-1">Then {rule.outcome.kind === "tag" ? `add “${rule.outcome.label}”` : `report a ${rule.outcome.severity}`}.</p> : null}
             </div>)}
           </section> : null}
-          {isInstanceEditor ? <div className="mb-2 flex items-center gap-2"><h3 className="text-sm font-semibold">Instance rules</h3><Badge variant="outline">{rules.length} local</Badge></div> : null}
-          {rules.length === 0 ? <div className="flex min-h-28 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground">{isInstanceEditor ? "No instance-specific rules yet." : "No rules yet. Add a descriptor rule to get started."}</div> : <div className="space-y-3">
+          {isInstanceEditor ? <div className="mb-2 flex items-center gap-2"><h3 className="text-sm font-semibold">Rules of this diagram</h3><Badge variant="outline">{rules.length}</Badge></div> : null}
+          {rules.length === 0 ? <div className="flex min-h-28 items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"><span className="max-w-md px-4 text-center">No rules yet. A rule looks like: every Battery whose capacity is below 100 Wh gets the tag “small”, or: report an issue for every Drone without a Battery.</span></div> : <div className="space-y-3">
             {rules.map((rule) => <div key={rule.id} className="space-y-3 rounded-lg border bg-muted/10 p-3">
               <div className="grid grid-cols-[auto_minmax(180px,1fr)_minmax(160px,0.7fr)_auto] items-center gap-2">
                 <Switch checked={rule.enabled} onCheckedChange={(enabled) => updateRule(rule.id, { enabled })} aria-label={`Enable ${rule.name}`} />
@@ -286,7 +286,7 @@ export function ModelRulesPanel({ open, onClose, height: panelHeight, onHeightCh
           </div>}
         </div>
         <aside className="overflow-y-auto border-l bg-muted/20 p-4"><h3 className="mb-2 text-sm font-semibold">Live results</h3>
-          {results.length === 0 ? <div className="flex items-center gap-2 text-sm text-emerald-700"><CheckCircle2 className="h-4 w-4" />No objects match.</div> : <div className="space-y-2">{results.map((result, index) => <div key={`${result.ruleId}:${result.nodeId}:${index}`} className="rounded-md border bg-background p-2 text-xs"><div className="flex items-center gap-1 font-medium">{result.outcome.kind === "tag" ? <Tag className="h-3.5 w-3.5" style={{ color: result.outcome.color }} /> : <AlertTriangle className={result.outcome.severity === "error" ? "h-3.5 w-3.5 text-destructive" : "h-3.5 w-3.5 text-amber-500"} />}{result.ruleName}<Badge variant="outline" className="ml-auto text-[9px]">{inheritedRuleIds.has(result.ruleId) ? "Meta" : isInstanceEditor ? "Instance" : "Model"}</Badge></div><p className="mt-1 text-muted-foreground">{result.message}</p></div>)}</div>}
+          {results.length === 0 ? <div className="flex items-center gap-2 text-sm text-emerald-700"><CheckCircle2 className="h-4 w-4" />No element matches a rule.</div> : <div className="space-y-2">{results.map((result, index) => <div key={`${result.ruleId}:${result.nodeId}:${index}`} className="rounded-md border bg-background p-2 text-xs"><div className="flex items-center gap-1 font-medium">{result.outcome.kind === "tag" ? <Tag className="h-3.5 w-3.5" style={{ color: result.outcome.color }} /> : <AlertTriangle className={result.outcome.severity === "error" ? "h-3.5 w-3.5 text-destructive" : "h-3.5 w-3.5 text-amber-500"} />}{result.ruleName}<Badge variant="outline" className="ml-auto text-[9px]">{inheritedRuleIds.has(result.ruleId) ? "Metamodel" : "This diagram"}</Badge></div><p className="mt-1 text-muted-foreground">{result.message}</p></div>)}</div>}
         </aside>
       </div>
     </section>
