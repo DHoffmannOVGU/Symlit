@@ -33,7 +33,6 @@ import { lazyNamed, MountWhenOpened } from "@/lib/lazy";
 const EditViewDialog = lazyNamed(() => import("@/components/layout/EditViewDialog"), "EditViewDialog");
 import { Sidebar as ShadcnSidebar, useSidebar } from "@/components/ui/sidebar";
 import {
-  BASE_METAMODEL_ID,
   METAMODEL_NODE_DRAG_MIME,
   METAMODEL_NODE_TYPE_ITEMS,
   getDefaultNodeStyle,
@@ -89,10 +88,6 @@ export function Sidebar({
   const [selectedNodeByViewId, setSelectedNodeByViewId] = useState<
     Map<number, string | null>
   >(() => new Map());
-  const [selectedMetamodelCreateProjectId, setSelectedMetamodelCreateProjectId] =
-    useState<string>(BASE_METAMODEL_ID);
-  const [selectedMetamodelCreateViewId, setSelectedMetamodelCreateViewId] =
-    useState<string>("all");
   const [includeReferencedMetamodelViews, setIncludeReferencedMetamodelViews] =
     useState<boolean>(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -128,44 +123,6 @@ export function Sidebar({
       configuredTypes.has(item.type),
     );
   }, [metamodelSetup]);
-
-  useEffect(() => {
-    if (referencedProjects.length === 0) {
-      setSelectedMetamodelCreateProjectId(BASE_METAMODEL_ID);
-      return;
-    }
-
-    setSelectedMetamodelCreateProjectId((current) => {
-      if (current === BASE_METAMODEL_ID) return current;
-      return referencedProjects.some((project) => String(project.id) === current)
-        ? current
-        : BASE_METAMODEL_ID;
-    });
-  }, [referencedProjects]);
-
-  const filteredMetamodelCreateViews = useMemo(() => {
-    if (selectedMetamodelCreateProjectId === BASE_METAMODEL_ID) return [];
-    return referencedViews.find(
-      ({ project }) => String(project.id) === selectedMetamodelCreateProjectId,
-    )?.views ?? [];
-  }, [referencedViews, selectedMetamodelCreateProjectId]);
-
-  useEffect(() => {
-    setSelectedMetamodelCreateViewId((current) => {
-      if (selectedMetamodelCreateProjectId === BASE_METAMODEL_ID) return "all";
-      if (filteredMetamodelCreateViews.length <= 1) {
-        return filteredMetamodelCreateViews[0]
-          ? String(filteredMetamodelCreateViews[0].id)
-          : "all";
-      }
-      if (current === "all") return current;
-      return filteredMetamodelCreateViews.some(
-        (view) => String(view.id) === current,
-      )
-        ? current
-        : "all";
-    });
-  }, [filteredMetamodelCreateViews, selectedMetamodelCreateProjectId]);
 
   const currentFlowQuery = useQuery({
     queryKey: [api.flow.get.path, currentViewId],
@@ -324,19 +281,13 @@ export function Sidebar({
   }, [referencedFlowByViewId, referencedViewEntries]);
 
   const metamodelCreatePaletteItems = useMemo(() => {
-    if (selectedMetamodelCreateProjectId === BASE_METAMODEL_ID) return [];
-
+    // Types of every referenced metamodel that a new type here can specialize.
     const items = referencedViewEntries
-      .filter(({ project, view }) => {
-        if (String(project.id) !== selectedMetamodelCreateProjectId) return false;
-        if (selectedMetamodelCreateViewId === "all") return true;
-        return String(view.id) === selectedMetamodelCreateViewId;
-      })
       .flatMap(({ project, view }) => {
         const flowQuery = referencedFlowByViewId.get(view.id);
         const nodes = ((flowQuery?.data?.nodes ?? []) as FlowNode[])
           .filter((node) =>
-            ["partdef", "actiondef", "concerndef", "agentdef", "requirementdef"].includes(node.type || ""),
+            ["partdef", "actiondef", "concerndef", "agentdef", "requirementdef", "eventdef", "capabilitydef"].includes(node.type || ""),
           )
           .slice()
           .sort((a, b) => getNodeMeta(a).label.localeCompare(getNodeMeta(b).label));
@@ -369,8 +320,6 @@ export function Sidebar({
   }, [
     referencedFlowByViewId,
     referencedViewEntries,
-    selectedMetamodelCreateProjectId,
-    selectedMetamodelCreateViewId,
   ]);
 
   const handleInsertNode = async (
@@ -481,14 +430,8 @@ export function Sidebar({
 
   const renderMetamodelCreatePalette = () => (
     <MetamodelCreatePalette
-      selectedMetamodelCreateProjectId={selectedMetamodelCreateProjectId}
       referencedProjects={referencedProjects}
       getReferencedFlowQueriesForSelection={getReferencedFlowQueriesForSelection}
-      selectedMetamodelCreateViewId={selectedMetamodelCreateViewId}
-      filteredMetamodelCreateViews={filteredMetamodelCreateViews}
-      hasReferencedMetamodels={hasReferencedMetamodels}
-      setSelectedMetamodelCreateProjectId={setSelectedMetamodelCreateProjectId}
-      setSelectedMetamodelCreateViewId={setSelectedMetamodelCreateViewId}
       visibleMetamodelNodeTypes={visibleMetamodelNodeTypes}
       currentViewId={currentViewId}
       handleCreateMetamodelNode={handleCreateMetamodelNode}

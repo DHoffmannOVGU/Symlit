@@ -42,7 +42,7 @@ export function SidebarPatternPalette({
   return (
     <SidebarGroup>
       <div className="mt-2 flex items-center justify-between border-t border-white/10 px-2 py-2">
-        <SidebarGroupLabel className="flex h-auto items-center gap-2 p-0 text-xs font-bold uppercase tracking-wider text-white/40">
+        <SidebarGroupLabel className="flex h-auto items-center gap-2 p-0 text-xs font-bold uppercase tracking-wider text-white/60">
           <Sparkles className="h-3 w-3" />
           Patterns
         </SidebarGroupLabel>
@@ -51,7 +51,7 @@ export function SidebarPatternPalette({
         <SidebarMenu>
           {isLoading && (
             <SidebarMenuItem>
-              <SidebarMenuButton asChild className="text-white/40">
+              <SidebarMenuButton asChild className="text-white/60">
                 <span>Loading patterns...</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -65,7 +65,7 @@ export function SidebarPatternPalette({
           )}
           {!isLoading && !isError && patterns.length === 0 && (
             <SidebarMenuItem>
-              <SidebarMenuButton asChild className="text-white/40">
+              <SidebarMenuButton asChild className="text-white/60">
                 <span>No patterns yet</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -97,7 +97,7 @@ export function SidebarPatternPalette({
                       <span className="truncate font-medium">
                         {pattern.name}
                       </span>
-                      <span className="truncate text-[10px] text-white/40">
+                      <span className="truncate text-[10px] text-white/60">
                         {pattern.from}
                       </span>
                     </span>
@@ -130,7 +130,7 @@ export function SidebarPatternPalette({
                   className={cn(
                     pattern.from ? "right-1" : "right-7",
                     currentViewId
-                      ? "text-white/50 hover:bg-white/10 hover:text-white"
+                      ? "text-white/60 hover:bg-white/10 hover:text-white"
                       : "cursor-not-allowed text-white/20 hover:bg-transparent",
                   )}
                   title={

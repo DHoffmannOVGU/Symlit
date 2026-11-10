@@ -44,6 +44,7 @@ import { EdgeRelationConfirmationProvider } from "../edges/EdgeRelationConfirmat
 import { CanvasToolbar } from "./CanvasToolbar";
 import { useDiagramLoading } from "../hooks/useDiagramLoading";
 import { useDiagramSaving } from "../hooks/useDiagramSaving";
+import { useAutoSave } from "../hooks/useAutoSave";
 import { useLayoutActions } from "../hooks/useLayoutActions";
 import { useAddElement } from "../hooks/useAddElement";
 import { DiagramStoreProvider, useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
@@ -143,6 +144,7 @@ function FlowInner({
   const diagramStore = useDiagramStoreApi();
   const preferences = useDiagramCanvasPreferences();
   const { snapNodesEnabled, showBackgroundDots, alwaysShowAccent, showNodeDescriptions } = preferences;
+  useAutoSave({ enabled: preferences.autoSave, isDirty, isSaving, save: handleSaveAsync });
   const helpDialogOpen = useDiagramStore((state) => state.helpDialogOpen);
   const setHelpDialogOpen = useDiagramStore((state) => state.setHelpDialogOpen);
   const {
@@ -514,7 +516,7 @@ function FlowInner({
         onDownload={downloadImage}
       />
 
-      <ValidationResultsDialog {...validation} projectType={projectType} />
+      <ValidationResultsDialog {...validation} />
 
       <UnsavedChangesDialog {...leaveConfirmation} isSaving={isSaving} />
 

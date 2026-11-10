@@ -128,10 +128,10 @@ export function SidebarViewNodeList({
         >
           {isReadOnly ? (
             <div className="flex items-center gap-3">
-              <Box className="w-4 h-4 shrink-0 text-white/40" />
+              <Box className="w-4 h-4 shrink-0 text-white/60" />
               <span className="truncate font-medium">{view.name}</span>
               {showReadOnlyBadge && (
-                <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-white/45">
+                <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-white/60">
                   Read only
                 </span>
               )}
@@ -146,7 +146,7 @@ export function SidebarViewNodeList({
             >
               <span
                 draggable
-                className="cursor-grab text-white/35 opacity-0 transition-opacity hover:text-white/70 group-hover/item:opacity-100 active:cursor-grabbing"
+                className="cursor-grab text-white/60 opacity-0 transition-opacity hover:text-white/70 group-hover/item:opacity-100 active:cursor-grabbing"
                 title="Drag to reorder"
                 aria-label={`Reorder ${view.name}`}
                 onClick={(event) => {
@@ -170,7 +170,7 @@ export function SidebarViewNodeList({
               <Box
                 className={cn(
                   "w-4 h-4 shrink-0",
-                  isCurrentView ? "text-white" : "text-white/40",
+                  isCurrentView ? "text-white" : "text-white/60",
                 )}
               />
               <span className="truncate font-medium">{view.name}</span>
@@ -209,7 +209,7 @@ export function SidebarViewNodeList({
                 <SidebarMenuSubButton
                   asChild
                   size="sm"
-                  className="text-white/40"
+                  className="text-white/60"
                 >
                   <span>{sourceLabel}</span>
                 </SidebarMenuSubButton>
@@ -220,7 +220,7 @@ export function SidebarViewNodeList({
                 <SidebarMenuSubButton
                   asChild
                   size="sm"
-                  className="text-white/50"
+                  className="text-white/60"
                 >
                   <span>Loading elements…</span>
                 </SidebarMenuSubButton>
@@ -244,7 +244,7 @@ export function SidebarViewNodeList({
                   <SidebarMenuSubButton
                     asChild
                     size="sm"
-                    className="text-white/40"
+                    className="text-white/60"
                   >
                     <span>No elements yet</span>
                   </SidebarMenuSubButton>
@@ -318,7 +318,7 @@ export function SidebarViewNodeList({
                           {meta.label}
                         </span>
                         {meta.typeLabel && (
-                          <span className="block text-[10px] uppercase tracking-wide text-white/40 truncate">
+                          <span className="block text-[10px] uppercase tracking-wide text-white/60 truncate">
                             {meta.typeLabel}
                           </span>
                         )}
@@ -332,7 +332,7 @@ export function SidebarViewNodeList({
                             "h-6 w-6 opacity-0 group-hover/node:opacity-100 transition-opacity",
                             alreadyInCurrentView
                               ? "text-white/20 cursor-not-allowed"
-                              : "text-white/50 hover:text-white hover:bg-white/10",
+                              : "text-white/60 hover:text-white hover:bg-white/10",
                           )}
                           onClick={(event) => {
                             event.preventDefault();

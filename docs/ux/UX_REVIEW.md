@@ -92,7 +92,48 @@ All fixed; see Done below.
 | F8 | Sidebar (instance) | The Metamodel and Diagram dropdowns feel stiff; the draggable type cards are very big. | Done (see below). |
 | F4 | Element editor, Styling | Show only the current colour and icon; open the choices on click. Offer more styling than colour and icon, as relationships already do (thickness, line style, arrows, path). | Done (see below). |
 
+## Second round (after the first PR)
+
+| # | Where | Finding | Status |
+| --- | --- | --- | --- |
+| R1 | Saving | Two levels of saving (panel "Save Changes", then the diagram's Save; the rules panel has a third). Auto-save would remove a whole class of lost-work worries. | Built as a setting, off by default; whether it becomes the default is still to decide |
+| R2 | Table view | Shows raw ids, cuts names short, has no attribute columns. | Done |
+| R3 | Validation | A modal even for "no issues"; issues did not lead to their elements. | Done |
+| R4 | Wording | Secondary screens still said edge/node/objects/meta rules. | Done |
+| R5 | Model rules panel | Squeezes the canvas to a strip; empty state explains nothing. | Done |
+| R6 | New project dialog | The name comes after 13 checkboxes. | Done |
+| R7 | Project list | Greeting and count tiles take half the screen; counts repeat the filter. | Done |
+| R8 | Metamodel palette | Still uses the two-dropdown pattern for referenced metamodels. | Done |
+| R9 | Help | Four shortcuts, three sentences. | Done |
+| R10 | Sidebar | Low-contrast secondary text. | Done |
+| R11 | Keyboard | No undo/redo shortcut. | Done |
+
 ## Done
+- R1 (first step): "Save automatically" in the canvas settings saves the diagram about 1.5 s after the last change,
+  without a toast; the header shows "Saving…" and "All changes saved". It is off unless switched on and remembered per
+  browser (`AUTO_SAVE_DEFAULT` in `useDiagramCanvasPreferences.ts` is the one place to change the default). A failed
+  automatic save is reported once and not retried until the diagram changes. Still explicit: "Save Changes" in the
+  element and relationship editors, and Save in the model rules panel.
+- R5: the model rules panel opens at half the canvas height (280 to 560 px) until the user resizes it, so the diagram
+  stays readable above it.
+- R6: the new-project dialog starts with name and description; kinds and relationship types are folded under "Customize"
+  with a count of what is selected.
+- R7: the project list has a compact header; the three count tiles (which repeated the filter's numbers) are gone, so
+  projects show without scrolling.
+- R8: the metamodel palette has no dropdowns: built-in kinds, then one group per referenced metamodel ("Specialize a
+  type of …"), with search. Event and Capability types of a referenced metamodel can be specialized now (they were
+  filtered out).
+- R10: readable sidebar text is at least 60% white on the dark background (6.2:1; it was 3.1 to 4.8:1).
+- R2: the table has no id columns; names have room; every attribute name is a column with its unit, editable in place
+  (one undo step per edit; calculated values are shown, not edited). Relationships show the names of the elements they
+  connect (From / Kind / To). Filters search what is shown, including attribute values.
+- R3: validation no longer opens a modal. A clean result is a short note; issues are listed in a panel beside the canvas
+  that stays open while they are fixed, are marked on the diagram, and each selects and shows its element or relationship.
+  "Validate again" re-runs it.
+- R4, R9: relationship editor, model rules, table and help use the vocabulary; help lists the real shortcuts and how the
+  editor works, from one shared list. The empty rules list gives two example rules.
+- R11: Ctrl/Cmd+Z undoes and Ctrl/Cmd+Shift+Z or Ctrl+Y redoes (outside text fields). Removed a second Ctrl+S handler
+  added in the first round; the canvas already had one, so the shortcut saved twice.
 - F8: the instance palette has no dropdowns. It lists the types of every referenced metamodel at once, grouped by
   metamodel (collapsible, with counts), with one search over names, kinds and descriptions, in compact rows. Built-in
   kinds are a group of their own, folded away while a metamodel provides types. Without any metamodel the tab used to be

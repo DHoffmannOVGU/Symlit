@@ -1,3 +1,4 @@
+import type { NodeAttribute } from "../types";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useElementSelection } from "../state/useElementSelection";
@@ -42,6 +43,7 @@ export type NodeTableRow = {
   description: string;
   isReadOnly: boolean;
   parentId: string;
+  attributes: NodeAttribute[];
 };
 
 export type EdgeTableRow = {
@@ -50,6 +52,8 @@ export type EdgeTableRow = {
   type: string;
   source: string;
   target: string;
+  sourceName: string;
+  targetName: string;
   description: string;
   parentId: string;
 };
@@ -59,6 +63,11 @@ export interface CanvasTableModeProps {
   displayMode: "graph" | "table";
   onDisplayModeChange: (mode: "graph" | "table") => void;
   nodeTableRows: NodeTableRow[];
+  /** Attribute names that get a column each. */
+  attributeColumns: string[];
+  /** Called when a cell is focused, before its first change (one undo step per edit). */
+  onBeginAttributeEdit: () => void;
+  onAttributeValueChange: (nodeId: string, attributeId: string, value: string) => void;
   filteredNodeTableRows: NodeTableRow[];
   nodeTableFilter: string;
   onNodeTableFilterChange: (value: string) => void;
@@ -86,11 +95,81 @@ export interface CanvasTableModeProps {
   ) => void;
 }
 
+/** One attribute value in the elements table, editable in place where that makes sense. */
+function AttributeCell({
+  attribute,
+  disabled,
+  onBegin,
+  onChange,
+}: {
+  attribute: NodeAttribute | undefined;
+  disabled: boolean;
+  onBegin: () => void;
+  onChange: (attributeId: string, value: string) => void;
+}) {
+  // The element does not have this attribute.
+  if (!attribute) return <TableCell className="text-muted-foreground/50">–</TableCell>;
+  const unit = attribute.type === "number" || attribute.type === "derived" ? attribute.unit?.trim() : "";
+  const stop = (event: React.SyntheticEvent) => event.stopPropagation();
+  const fieldClass =
+    "h-8 border-transparent bg-transparent px-2 shadow-none focus-visible:border-slate-300 focus-visible:ring-1 focus-visible:ring-slate-300";
+  let field: React.ReactNode;
+  if (attribute.type === "derived") {
+    // Calculated from other attributes: shown, not edited.
+    field = <span className="px-2 text-sm" title="Calculated by a formula">{attribute.value || "–"}</span>;
+  } else if (attribute.type === "boolean" || attribute.type === "list") {
+    const options = attribute.type === "boolean" ? ["true", "false"] : (attribute.options ?? []);
+    field = (
+      <select
+        value={attribute.value}
+        disabled={disabled}
+        onFocus={onBegin}
+        onClick={stop}
+        onKeyDown={stop}
+        onChange={(event) => onChange(attribute.id, event.target.value)}
+        className={cn(fieldClass, "rounded-md text-sm")}
+        aria-label={attribute.name}
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {attribute.type === "boolean" ? (option === "true" ? "Yes" : "No") : option}
+          </option>
+        ))}
+      </select>
+    );
+  } else {
+    field = (
+      <Input
+        type={attribute.type === "number" ? "number" : attribute.type === "date" ? "date" : "text"}
+        value={attribute.value}
+        disabled={disabled}
+        onFocus={onBegin}
+        onClick={stop}
+        onKeyDown={stop}
+        onChange={(event) => onChange(attribute.id, event.target.value)}
+        className={cn(fieldClass, attribute.type === "number" ? "w-24" : "min-w-[120px]")}
+        aria-label={attribute.name}
+      />
+    );
+  }
+  return (
+    <TableCell data-testid={`table-attribute-${attribute.name}`}>
+      <div className="flex items-center gap-1">
+        {field}
+        {unit ? <span className="whitespace-nowrap text-xs text-muted-foreground">{unit}</span> : null}
+      </div>
+    </TableCell>
+  );
+}
+
 export function CanvasTableMode({
   projectType,
   displayMode,
   onDisplayModeChange,
   nodeTableRows,
+  attributeColumns,
+  onBeginAttributeEdit,
+  onAttributeValueChange,
   filteredNodeTableRows,
   nodeTableFilter,
   onNodeTableFilterChange,
@@ -150,8 +229,9 @@ export function CanvasTableMode({
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Elements</CardTitle>
             <CardDescription>
-              {filteredNodeTableRows.length} of {nodeTableRows.length} node
+              {filteredNodeTableRows.length} of {nodeTableRows.length} element
               {nodeTableRows.length === 1 ? "" : "s"}
+              {attributeColumns.length > 0 ? ". Attribute values can be edited in place." : ""}
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
@@ -159,7 +239,7 @@ export function CanvasTableMode({
               <Input
                 value={nodeTableFilter}
                 onChange={(event) => onNodeTableFilterChange(event.target.value)}
-                placeholder="Filter elements by name, id, type, description, or parent"
+                placeholder="Filter by name, type, description or attribute value"
                 data-testid="input-node-table-filter"
               />
             </div>
@@ -167,11 +247,14 @@ export function CanvasTableMode({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50">
-                    <TableHead>Name</TableHead>
-                    <TableHead>ID</TableHead>
+                    <TableHead className="min-w-[220px]">Name</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Parent ID</TableHead>
+                    <TableHead className="min-w-[160px]">Description</TableHead>
+                    {attributeColumns.map((name) => (
+                      <TableHead key={name} className="min-w-[120px] whitespace-nowrap" data-testid={`table-attribute-column-${name}`}>
+                        {name}
+                      </TableHead>
+                    ))}
                     <TableHead className="w-[90px] text-right">
                       Edit
                     </TableHead>
@@ -181,7 +264,7 @@ export function CanvasTableMode({
                   {filteredNodeTableRows.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={4 + attributeColumns.length}
                         className="text-center text-muted-foreground"
                       >
                         {nodeTableRows.length === 0
@@ -252,9 +335,6 @@ export function CanvasTableMode({
                               />
                             </div>
                           </TableCell>
-                          <TableCell className="font-mono text-xs text-slate-700">
-                            {row.id}
-                          </TableCell>
                           <TableCell>
                             <Select
                               value={nodeTypeValue}
@@ -264,7 +344,7 @@ export function CanvasTableMode({
                               }
                             >
                               <SelectTrigger
-                                className="h-8 min-w-[160px] border-transparent bg-transparent px-2 shadow-none focus:ring-1 focus:ring-slate-300"
+                                className="h-8 min-w-[120px] border-transparent bg-transparent px-2 shadow-none focus:ring-1 focus:ring-slate-300"
                                 onClick={(event) => event.stopPropagation()}
                               >
                                 <SelectValue placeholder="Type" />
@@ -302,9 +382,15 @@ export function CanvasTableMode({
                               className="h-8 border-transparent bg-transparent px-2 shadow-none focus-visible:border-slate-300 focus-visible:ring-1 focus-visible:ring-slate-300"
                             />
                           </TableCell>
-                          <TableCell className="font-mono text-xs text-slate-700">
-                            {row.parentId || "-"}
-                          </TableCell>
+                          {attributeColumns.map((name) => (
+                            <AttributeCell
+                              key={name}
+                              attribute={row.attributes.find((attr) => attr.name.trim().toLowerCase() === name.toLowerCase())}
+                              disabled={isReadOnly}
+                              onBegin={onBeginAttributeEdit}
+                              onChange={(attributeId, value) => onAttributeValueChange(row.id, attributeId, value)}
+                            />
+                          ))}
                           <TableCell className="text-right">
                             <Button
                               type="button"
@@ -332,9 +418,9 @@ export function CanvasTableMode({
 
         <Card className="border-slate-200 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Edges</CardTitle>
+            <CardTitle className="text-base">Relationships</CardTitle>
             <CardDescription>
-              {filteredEdgeTableRows.length} of {edgeTableRows.length} edge
+              {filteredEdgeTableRows.length} of {edgeTableRows.length} relationship
               {edgeTableRows.length === 1 ? "" : "s"}
             </CardDescription>
           </CardHeader>
@@ -343,7 +429,7 @@ export function CanvasTableMode({
               <Input
                 value={edgeTableFilter}
                 onChange={(event) => onEdgeTableFilterChange(event.target.value)}
-                placeholder="Filter edges by name, id, type, description, source, or target"
+                placeholder="Filter by label, kind, description or connected element"
                 data-testid="input-edge-table-filter"
               />
             </div>
@@ -351,11 +437,11 @@ export function CanvasTableMode({
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50">
-                    <TableHead>Name</TableHead>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Parent ID</TableHead>
+                    <TableHead className="min-w-[180px]">Label</TableHead>
+                    <TableHead>From</TableHead>
+                    <TableHead>Kind</TableHead>
+                    <TableHead>To</TableHead>
+                    <TableHead className="min-w-[160px]">Description</TableHead>
                     <TableHead className="w-[90px] text-right">
                       Edit
                     </TableHead>
@@ -369,7 +455,7 @@ export function CanvasTableMode({
                         className="text-center text-muted-foreground"
                       >
                         {edgeTableRows.length === 0
-                          ? "No edges in this diagram."
+                          ? "No relationships in this diagram."
                           : "No edges match the current filter."}
                       </TableCell>
                     </TableRow>
@@ -424,9 +510,7 @@ export function CanvasTableMode({
                               />
                             </div>
                           </TableCell>
-                          <TableCell className="font-mono text-xs text-slate-700">
-                            {row.id}
-                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-sm">{row.sourceName}</TableCell>
                           <TableCell>
                             <Select
                               value={row.type || "association"}
@@ -435,7 +519,7 @@ export function CanvasTableMode({
                               }
                             >
                               <SelectTrigger
-                                className="h-8 min-w-[160px] border-transparent bg-transparent px-2 shadow-none focus:ring-1 focus:ring-slate-300"
+                                className="h-8 min-w-[120px] border-transparent bg-transparent px-2 shadow-none focus:ring-1 focus:ring-slate-300"
                                 onClick={(event) => event.stopPropagation()}
                               >
                                 <SelectValue placeholder="Type" />
@@ -449,6 +533,7 @@ export function CanvasTableMode({
                               </SelectContent>
                             </Select>
                           </TableCell>
+                          <TableCell className="whitespace-nowrap text-sm">{row.targetName}</TableCell>
                           <TableCell className="max-w-[380px]">
                             <Input
                               value={row.description}
@@ -463,9 +548,6 @@ export function CanvasTableMode({
                               }
                               className="h-8 border-transparent bg-transparent px-2 shadow-none focus-visible:border-slate-300 focus-visible:ring-1 focus-visible:ring-slate-300"
                             />
-                          </TableCell>
-                          <TableCell className="font-mono text-xs text-slate-700">
-                            {row.parentId || "-"}
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
@@ -516,6 +598,24 @@ export function ConnectedCanvasTableMode(
   const selectedEdgeId = useDiagramStore((state) => state.selectedEdgeId);
   const { selectNode, selectEdge, openNodePanel, openEdgePanel } = useElementSelection();
   const rows = useCanvasTableRows({ nodeTableFilter, edgeTableFilter });
+  const setNodes = useDiagramStore((state) => state.setNodes);
+  const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
+  const changeAttributeValue = (nodeId: string, attributeId: string, value: string) =>
+    setNodes((current) =>
+      current.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                attributes: (node.data.attributes ?? []).map((attr) =>
+                  attr.id === attributeId ? { ...attr, value } : attr,
+                ),
+              },
+            }
+          : node,
+      ),
+    );
   return (
     <CanvasTableMode
       {...props}
@@ -527,6 +627,8 @@ export function ConnectedCanvasTableMode(
       onEdgeTableFilterChange={setEdgeTableFilter}
       selectedNodeId={selectedNodeId}
       selectedEdgeId={selectedEdgeId}
+      onBeginAttributeEdit={() => takeSnapshot()}
+      onAttributeValueChange={changeAttributeValue}
       onSelectNode={selectNode}
       onSelectEdge={selectEdge}
       onOpenNodePanel={openNodePanel}

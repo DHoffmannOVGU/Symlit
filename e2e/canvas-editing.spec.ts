@@ -68,5 +68,6 @@ test("drag a relationship onto empty canvas, create the element, undo, and edit 
 
   // Table mode lists the element.
   await page.getByTestId("button-toolbar-table").click();
-  await expect(page.getByText("Start").or(page.getByText("Renamed start")).first()).toBeVisible();
+  // The name is an editable field in the table (Escape discarded the rename above, or it was kept).
+  await expect(page.locator('input[value="Start"], input[value="Renamed start"]').first()).toBeVisible();
 });

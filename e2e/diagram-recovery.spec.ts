@@ -494,6 +494,9 @@ test("renders configured relationship semantics and preserves them after reload"
 
   await page.getByTestId("button-new-project").click();
   const setupDialog = page.getByRole("dialog");
+  // The name comes first; kinds and relationship types are under "Customize".
+  await expect(setupDialog.getByTestId("input-project-name")).toBeFocused();
+  await setupDialog.getByText("Customize kinds and relationship types").click();
   for (const relationType of ["composition", "dependency", "realization"]) {
     const checkbox = setupDialog.getByTestId(
       `checkbox-metamodel-relation-${relationType}`,

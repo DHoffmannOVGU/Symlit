@@ -15,10 +15,10 @@ export function useDiagramSaving() {
   const savedSignature = useDiagramStore((state) => state.savedSignature);
   const setSavedSignature = useDiagramStore((state) => state.setSavedSignature);
 
-  const saveAsync = useCallback(async () => {
+  const saveAsync = useCallback(async (options?: { quiet?: boolean }) => {
     const { nodes: current, edges: currentEdges } = diagramStore.getState();
     const payload = toSavePayload(current, currentEdges, projectType);
-    await syncMutation.mutateAsync({ viewId, ...payload });
+    await syncMutation.mutateAsync({ viewId, ...payload, quiet: options?.quiet });
     setSavedSignature(diagramSignature(payload.nodes, payload.edges, projectType));
   }, [diagramStore, projectType, setSavedSignature, syncMutation, viewId]);
 

@@ -165,9 +165,9 @@ export function EdgeAttributePanel({
         <SheetHeader className="relative">
           <div className="flex items-center justify-between pr-8">
             <div>
-              <SheetTitle>Edge Properties</SheetTitle>
+              <SheetTitle>Edit relationship</SheetTitle>
               <SheetDescription>
-                Configure the relationship and its appearance
+                Label, kind, multiplicity and appearance of this relationship.
               </SheetDescription>
             </div>
             <Button 

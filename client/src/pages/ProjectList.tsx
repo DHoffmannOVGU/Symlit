@@ -565,61 +565,33 @@ export default function ProjectList() {
   return (
     <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6 md:p-10">
       <div className="mx-auto max-w-7xl space-y-7">
-        <section className="relative overflow-hidden rounded-3xl border border-primary/10 bg-gradient-to-br from-card via-card to-primary/[0.08] p-6 shadow-sm sm:p-8">
-          <div className="absolute -right-24 -top-32 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
-          <div className="relative flex flex-col justify-between gap-7 md:flex-row md:items-end">
+        {/* A compact header: the projects themselves should be visible without scrolling. */}
+        <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Activity className="h-5 w-5" />
+            </div>
             <div>
-              <div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
-                  <Activity className="h-4 w-4" />
-                </div>
-                Symlit workspace
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
-                {/* Greet by the configured name (SYMLIT_USER_NAME), not the internal login; the default name is no name. */}
-                Good to see you
-                {user.displayName && user.displayName !== DEFAULT_LOCAL_USER_NAME ? `, ${user.displayName}` : ""}.
-              </h1>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium capitalize text-primary">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+                  {/* Greet by the configured name (SYMLIT_USER_NAME), not the internal login; the default name is no name. */}
+                  Good to see you
+                  {user.displayName && user.displayName !== DEFAULT_LOCAL_USER_NAME ? `, ${user.displayName}` : ""}.
+                </h1>
+                <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
                   Local workspace
                 </span>
               </div>
-              <p className="mt-3 max-w-xl text-base leading-6 text-muted-foreground">
-                Keep your system models organized, connected, and ready for the next engineering decision.
-              </p>
-            </div>
-            <div>
-              <Button
-                onClick={() => openCreateDialog()}
-                size="lg"
-                className="w-full shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30 md:w-auto"
-                data-testid="button-new-project"
-              >
-                <Plus className="mr-2 h-5 w-5" />
-                New Project
-              </Button>
+              <p className="text-sm text-muted-foreground">Your Symlit projects: metamodels and the models built from them.</p>
             </div>
           </div>
-        </section>
+          <Button onClick={() => openCreateDialog()} className="w-full sm:w-auto" data-testid="button-new-project">
+            <Plus className="mr-2 h-4 w-4" />
+            New project
+          </Button>
+        </header>
 
         <TutorialCard projects={projects} />
-
-        <section aria-label="Workspace summary" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {[
-            { label: "All projects", value: visibleProjects?.length ?? 0, icon: Folder, tone: "text-primary bg-primary/10" },
-            { label: "Metamodels", value: metamodelCount, icon: Layers, tone: "text-violet-600 bg-violet-100 dark:bg-violet-900/30 dark:text-violet-400" },
-            { label: "Instance models", value: instanceCount, icon: Box, tone: "text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400" },
-          ].map((stat) => {
-            const StatIcon = stat.icon;
-            return (
-              <div key={stat.label} className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card/80 p-4">
-                <div className={`rounded-xl p-2.5 ${stat.tone}`}><StatIcon className="h-4 w-4" /></div>
-                <div><p className="text-xl font-semibold leading-none">{stat.value}</p><p className="mt-1 text-xs text-muted-foreground">{stat.label}</p></div>
-              </div>
-            );
-          })}
-        </section>
 
         {!search.trim() && activeTab === "all" && recentProjects.length > 0 && (
           <section aria-labelledby="recent-projects-heading" className="space-y-3">

@@ -29,10 +29,31 @@ export function useCanvasTableRows({
           description: data?.description || "",
           isReadOnly: isExternalNode(node.id),
           parentId: node.parentId || data?.typeId || "",
+          attributes: (data?.attributes ?? []).filter((attr) => attr.name?.trim()),
         };
       }),
     [nodes, isExternalNode],
   );
+
+  const nameById = useMemo(
+    () => new Map(nodes.map((node) => [node.id, node.data?.label || "Unnamed"])),
+    [nodes],
+  );
+
+  // One column per attribute name, in the order the names first appear.
+  const attributeColumns = useMemo(() => {
+    const names: string[] = [];
+    const seen = new Set<string>();
+    for (const row of nodeTableRows) {
+      for (const attr of row.attributes) {
+        const key = attr.name.trim().toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        names.push(attr.name.trim());
+      }
+    }
+    return names;
+  }, [nodeTableRows]);
 
   const edgeTableRows = useMemo(
     () =>
@@ -52,11 +73,13 @@ export function useCanvasTableRows({
           type: data?.edgeType || edge.type || "",
           source: edge.source,
           target: edge.target,
+          sourceName: nameById.get(edge.source) || "(missing element)",
+          targetName: nameById.get(edge.target) || "(missing element)",
           description: data?.description || "",
           parentId: data?.parentId || edge.source || "",
         };
       }),
-    [edges],
+    [edges, nameById],
   );
 
   const normalizedNodeTableFilter = nodeTableFilter.trim().toLowerCase();
@@ -65,7 +88,7 @@ export function useCanvasTableRows({
   const filteredNodeTableRows = useMemo(() => {
     if (!normalizedNodeTableFilter) return nodeTableRows;
     return nodeTableRows.filter((row) =>
-      [row.name, row.id, row.type, row.description, row.parentId]
+      [row.name, row.type, row.description, ...row.attributes.flatMap((attr) => [attr.name, attr.value, attr.unit])]
         .join(" ")
         .toLowerCase()
         .includes(normalizedNodeTableFilter),
@@ -77,12 +100,10 @@ export function useCanvasTableRows({
     return edgeTableRows.filter((row) =>
       [
         row.name,
-        row.id,
         row.type,
         row.description,
-        row.parentId,
-        row.source,
-        row.target,
+        row.sourceName,
+        row.targetName,
       ]
         .join(" ")
         .toLowerCase()
@@ -92,6 +113,7 @@ export function useCanvasTableRows({
 
   return {
     nodeTableRows,
+    attributeColumns,
     filteredNodeTableRows,
     edgeTableRows,
     filteredEdgeTableRows,

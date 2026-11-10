@@ -9,6 +9,23 @@ export type DiagramCanvasPreferences = {
   setAlwaysShowAccent: Dispatch<SetStateAction<boolean>>;
   showNodeDescriptions: boolean;
   setShowNodeDescriptions: Dispatch<SetStateAction<boolean>>;
+  /** Save the diagram automatically a moment after each change. Off unless switched on. */
+  autoSave: boolean;
+  setAutoSave: Dispatch<SetStateAction<boolean>>;
+};
+
+/** Whether new browsers start with automatic saving. One place to change the default. */
+export const AUTO_SAVE_DEFAULT = false;
+const AUTO_SAVE_KEY = "symlit.canvas.autoSave";
+
+// Unlike the view options above, this is remembered across tabs and restarts.
+const readAutoSave = () => {
+  try {
+    const stored = window.localStorage.getItem(AUTO_SAVE_KEY);
+    return stored === null ? AUTO_SAVE_DEFAULT : stored === "true";
+  } catch {
+    return AUTO_SAVE_DEFAULT;
+  }
 };
 
 const readBooleanSessionValue = (key: string, fallback: boolean) => {
@@ -31,6 +48,17 @@ export function useDiagramCanvasPreferences(): DiagramCanvasPreferences {
   const [showNodeDescriptions, setShowNodeDescriptions] = useState<boolean>(
     () => readBooleanSessionValue("flow.canvas.showNodeDescriptions", false),
   );
+
+  const [autoSave, setAutoSave] = useState<boolean>(() =>
+    typeof window === "undefined" ? AUTO_SAVE_DEFAULT : readAutoSave(),
+  );
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(AUTO_SAVE_KEY, String(autoSave));
+    } catch {
+      // Storage unavailable (private window): the setting lasts for this page only.
+    }
+  }, [autoSave]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -73,5 +101,7 @@ export function useDiagramCanvasPreferences(): DiagramCanvasPreferences {
     setAlwaysShowAccent,
     showNodeDescriptions,
     setShowNodeDescriptions,
+    autoSave,
+    setAutoSave,
   };
 }
