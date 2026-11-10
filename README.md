@@ -1,34 +1,39 @@
 # Symlit
 
-Symlit is a lightweight, MBSE-style modeling workspace that runs in your browser.
-You define your own **metamodels** (the types and relationships you care about),
-then build **instance models** typed against them, all on a diagram canvas.
+Symlit is a lightweight modeling workspace for systems engineering (MBSE) that runs in your
+browser. Instead of a fixed notation, you first define a **metamodel**: the types of things
+you care about and the relationships allowed between them. Then you build **models** from
+elements of those types on a diagram canvas, and Symlit checks them against the metamodel.
 
 ![Symlit diagram canvas](docs/images/symlit-quickstart-canvas.jpg)
 
-This repository contains the **local edition**: a single-user app you run on your own
-machine. It needs no accounts and no cloud services.
+Symlit runs entirely on your own machine: one Node.js process with an embedded database,
+no account, no cloud service, and no external requests unless you turn on the optional
+AI assistant.
 
 ## Features
 
-- **Metamodel projects:** define node types (Object, Behavior, Concern, Performer,
-  Need, Event, Capability) and relationship types (Association, Aggregation,
-  Composition, Generalization, Dependency, Realization), with attributes, units,
-  derived formulas, styling and inheritance.
-- **Instance projects** that reference one or more metamodels, with typed elements,
-  validated relationships, and a *build* and *flow* mode (flow playback).
+- **Metamodels:** define types of seven kinds (Object, Behavior, Concern, Performer, Need,
+  Event, Capability) and connect them with six relationships (Association, Aggregation,
+  Composition, Generalization, Dependency, Realization). Types have attributes with units
+  and derived formulas, a style (icon, colour, shape, border) and inheritance.
+- **Models** that use one or more metamodels: a searchable palette of all their types, and
+  only the relationships the metamodel allows.
 - **Several diagrams per project:** an element is stored once and can appear in several diagrams.
-- **Diagram editor** with auto layout, table view, undo/redo, optional auto-save, and a
-  conflict dialog instead of silent overwrites when a diagram was changed elsewhere.
-- **Patterns:** save a selection as a reusable pattern and insert it elsewhere.
-- **Model rules and validation**, plus a guided recovery dialog for damaged diagrams.
-- **A guided tutorial** that builds a small drone model with you: about 15 minutes, seven hands-on
-  lessons covering metamodels, typed models, validation, model rules, table view, auto layout,
-  patterns and export. Steps tick off as you work; "Show me" points at the right button.
-- **Project templates:** start from an example; templates can bring their metamodel along.
-  Projects can also be duplicated, or created directly from a metamodel.
-- **Export** to JSON or CSV (elements and relationships), and diagram screenshots.
-  **Import** opens a JSON export as a new project.
+- **Diagram editor** with auto layout, table view, undo/redo, rename on the card (F2),
+  screenshots and optional auto-save. A diagram changed elsewhere is never overwritten
+  unnoticed; you choose which version to keep.
+- **Validation and model rules:** Validate lists what does not fit the metamodel or your own
+  rules in a panel beside the canvas. Damaged diagrams open in a guided recovery dialog.
+- **Flow mode:** step through the behavior of a model from a start to an end element.
+- **Patterns:** save a selection as a reusable pattern and insert it elsewhere; metamodels can
+  ship pattern libraries.
+- **Projects:** start empty, from a metamodel, or from a template (templates can bring their
+  metamodel along); duplicate a project; see when each was last edited.
+- **Import and export:** JSON project files (export, and import as a new project) and CSV
+  tables of elements and relationships.
+- **A guided tutorial** that builds a small drone model with you: about 15 minutes, seven
+  hands-on lessons. Steps tick off as you work; "Show me" points at the right button.
 - **Optional AI metamodel assistant** (Google Gemini, bring your own API key).
 
 ## Quick start
@@ -109,9 +114,13 @@ kept in [`docs/wiki/`](docs/wiki/Home.md) and published with `bash script/publis
 
 ## Status
 
-Symlit was originally built on Replit and is being moved to GitHub step by step. See
-[docs/MIGRATION_PLAN.md](docs/MIGRATION_PLAN.md). Hosted features (accounts, team members
-and invitations, public share links) are deliberately not part of this repository yet.
+Version 0.1.0 is the first **local edition**: single-user and complete for everyday modeling.
+The [changelog](CHANGELOG.md) lists what changed, and the [backlog](docs/BACKLOG.md) what is
+known and planned (among others: saving your own templates and a SysML v2 textual export).
+
+Symlit began as a hosted app on Replit. The hosted features (accounts, team members and
+invitations, public share links) are deliberately not part of this repository; see
+[docs/MIGRATION_PLAN.md](docs/MIGRATION_PLAN.md) for the background.
 
 ## License
 
