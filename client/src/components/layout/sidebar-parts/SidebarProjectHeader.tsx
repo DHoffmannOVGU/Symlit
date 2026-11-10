@@ -42,7 +42,7 @@ export function SidebarProjectHeader({
                   {username}
                 </span>
                 {visibleRole ? (
-                  <span className="ml-auto rounded border border-white/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-white/50">
+                  <span className="ml-auto rounded border border-white/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-white/60">
                     {visibleRole}
                   </span>
                 ) : null}

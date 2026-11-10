@@ -94,9 +94,9 @@ function PaletteRow({
       <span className="min-w-0 flex-1">
         <span className="flex items-baseline gap-2">
           <span className="truncate text-sm font-medium text-white">{entry.label}</span>
-          <span className="shrink-0 text-[10px] uppercase tracking-wide text-white/40">{entry.kind}</span>
+          <span className="shrink-0 text-[10px] uppercase tracking-wide text-white/60">{entry.kind}</span>
         </span>
-        {entry.description ? <span className="block truncate text-xs text-white/50">{entry.description}</span> : null}
+        {entry.description ? <span className="block truncate text-xs text-white/60">{entry.description}</span> : null}
       </span>
     </div>
   );
@@ -207,11 +207,11 @@ export function ReferencedNodePalette({
           type="button"
           onClick={() => toggle(key)}
           aria-expanded={open}
-          className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left text-[11px] font-semibold uppercase tracking-wider text-white/50 hover:text-white/80"
+          className="flex w-full items-center gap-1.5 rounded px-1 py-1 text-left text-[11px] font-semibold uppercase tracking-wider text-white/60 hover:text-white/80"
         >
           <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform", !open && "-rotate-90")} />
           <span className="min-w-0 flex-1 truncate normal-case tracking-normal text-xs">{title}</span>
-          <span className="font-mono text-[10px] text-white/35">{search ? `${visible.length}/${entries.length}` : entries.length}</span>
+          <span className="font-mono text-[10px] text-white/60">{search ? `${visible.length}/${entries.length}` : entries.length}</span>
         </button>
         {open ? (
           <div className="space-y-0.5">
@@ -235,14 +235,14 @@ export function ReferencedNodePalette({
       <SidebarGroupContent>
         <div className="space-y-3 px-1">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/40" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/60" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               onKeyDown={(event) => event.key === "Escape" && setQuery("")}
               placeholder="Find a type…"
               aria-label="Find a type"
-              className="h-8 w-full rounded-md border border-white/10 bg-white/5 pl-8 pr-7 text-sm text-white placeholder:text-white/35 focus:border-white/30 focus:outline-none"
+              className="h-8 w-full rounded-md border border-white/10 bg-white/5 pl-8 pr-7 text-sm text-white placeholder:text-white/60 focus:border-white/30 focus:outline-none"
               data-testid="input-palette-search"
             />
             {query ? (
@@ -250,14 +250,14 @@ export function ReferencedNodePalette({
                 type="button"
                 onClick={() => setQuery("")}
                 aria-label="Clear search"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-white/40 hover:text-white"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-0.5 text-white/60 hover:text-white"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             ) : null}
           </div>
 
-          {!currentViewId ? <p className="px-1 text-xs text-white/50">Open a diagram to add elements.</p> : null}
+          {!currentViewId ? <p className="px-1 text-xs text-white/60">Open a diagram to add elements.</p> : null}
 
           {groups.map(({ project, entries }) => {
             const key = String(project.id);
@@ -302,9 +302,9 @@ export function ReferencedNodePalette({
                 </Button>
               </div>
             ) : loading ? (
-              <p className="px-2 text-xs text-white/50">Loading types…</p>
+              <p className="px-2 text-xs text-white/60">Loading types…</p>
             ) : entries.length === 0 ? (
-              <p className="px-2 text-xs text-white/50">This metamodel has no types yet.</p>
+              <p className="px-2 text-xs text-white/60">This metamodel has no types yet.</p>
             ) : null;
             return renderGroup(key, project.name, failed || unavailable ? [] : entries, status);
           })}
@@ -316,13 +316,13 @@ export function ReferencedNodePalette({
           )}
 
           {nothingFound ? (
-            <p className="px-2 text-xs text-white/50" data-testid="palette-nothing-found">
+            <p className="px-2 text-xs text-white/60" data-testid="palette-nothing-found">
               No type matches “{query.trim()}”.
             </p>
           ) : null}
 
           {!hasMetamodels ? (
-            <p className="px-1 text-xs text-white/45">
+            <p className="px-1 text-xs text-white/60">
               To use your own types, reference a metamodel with the selector at the top of the page.
             </p>
           ) : null}

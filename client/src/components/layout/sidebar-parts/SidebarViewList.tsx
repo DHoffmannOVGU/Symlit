@@ -45,7 +45,7 @@ export function SidebarViewList({
       <SidebarGroupContent>
         <SidebarMenu>
           {views.length === 0 ? (
-            <div className="px-4 py-8 text-center text-xs italic text-white/30">
+            <div className="px-4 py-8 text-center text-xs italic text-white/60">
               No diagrams yet.
             </div>
           ) : (

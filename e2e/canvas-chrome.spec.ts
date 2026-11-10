@@ -173,3 +173,44 @@ test("the table shows names and attribute values instead of ids, and values can 
   await page.locator(".react-flow__node", { hasText: "Courier" }).dblclick();
   await expect(page.getByTestId("input-attr-value-0")).toHaveValue("4.2");
 });
+
+test("a metamodel that builds on another lists its types to specialize, without dropdowns", async ({ page, request }) => {
+  const base = await createProjectWithViews(request, {
+    name: "Base vocabulary",
+    projectType: "metamodel",
+    views: [
+      {
+        name: "Types",
+        nodes: [
+          { id: "vehicle", type: "partdef", position: { x: 0, y: 0 }, data: { label: "Vehicle", type: "Object", attributes: [] } },
+          // Kinds the old palette left out when specializing.
+          { id: "alarm", type: "eventdef", position: { x: 300, y: 0 }, data: { label: "Alarm", type: "Event", attributes: [] } },
+        ],
+        edges: [],
+      },
+    ],
+  });
+  const { project: baseProject } = await base.json();
+  const derived = await createProjectWithViews(request, {
+    name: "Drone vocabulary",
+    projectType: "metamodel",
+    referencedMetamodels: [baseProject.id],
+    views: [{ name: "Types", nodes: [], edges: [] }],
+  });
+  const { project, firstViewId } = await derived.json();
+  await page.goto(`/project/${project.id}/view/${firstViewId}`);
+
+  // Built-in kinds and the base metamodel's types are both there, in groups.
+  await expect(page.getByTestId("button-create-sidebar-partdef")).toBeVisible();
+  const group = page.getByTestId(`palette-group-${baseProject.id}`);
+  await expect(group).toContainText("Specialize a type of Base vocabulary");
+  await expect(group).toContainText("Vehicle");
+  await expect(group).toContainText("Alarm");
+  await expect(page.getByRole("combobox")).toHaveCount(0);
+
+  // Search narrows both groups; clicking a type creates one that specializes it.
+  await page.getByTestId("input-palette-search").fill("alarm");
+  await expect(page.getByTestId("button-create-sidebar-partdef")).toHaveCount(0);
+  await group.getByText("Alarm").click();
+  await expect(page.locator(".react-flow__node")).toHaveCount(1);
+});

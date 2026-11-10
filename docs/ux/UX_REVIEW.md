@@ -100,15 +100,25 @@ All fixed; see Done below.
 | R2 | Table view | Shows raw ids, cuts names short, has no attribute columns. | Done |
 | R3 | Validation | A modal even for "no issues"; issues did not lead to their elements. | Done |
 | R4 | Wording | Secondary screens still said edge/node/objects/meta rules. | Done |
-| R5 | Model rules panel | Squeezes the canvas to a strip; empty state explains nothing. | Empty state done; layout open |
-| R6 | New project dialog | The name comes after 13 checkboxes. | Open |
-| R7 | Project list | Greeting and count tiles take half the screen; counts repeat the filter. | Open |
-| R8 | Metamodel palette | Still uses the two-dropdown pattern for referenced metamodels. | Open |
+| R5 | Model rules panel | Squeezes the canvas to a strip; empty state explains nothing. | Done |
+| R6 | New project dialog | The name comes after 13 checkboxes. | Done |
+| R7 | Project list | Greeting and count tiles take half the screen; counts repeat the filter. | Done |
+| R8 | Metamodel palette | Still uses the two-dropdown pattern for referenced metamodels. | Done |
 | R9 | Help | Four shortcuts, three sentences. | Done |
-| R10 | Sidebar | Low-contrast secondary text. | Open |
+| R10 | Sidebar | Low-contrast secondary text. | Done |
 | R11 | Keyboard | No undo/redo shortcut. | Done |
 
 ## Done
+- R5: the model rules panel opens at half the canvas height (280 to 560 px) until the user resizes it, so the diagram
+  stays readable above it.
+- R6: the new-project dialog starts with name and description; kinds and relationship types are folded under "Customize"
+  with a count of what is selected.
+- R7: the project list has a compact header; the three count tiles (which repeated the filter's numbers) are gone, so
+  projects show without scrolling.
+- R8: the metamodel palette has no dropdowns: built-in kinds, then one group per referenced metamodel ("Specialize a
+  type of …"), with search. Event and Capability types of a referenced metamodel can be specialized now (they were
+  filtered out).
+- R10: readable sidebar text is at least 60% white on the dark background (6.2:1; it was 3.1 to 4.8:1).
 - R2: the table has no id columns; names have room; every attribute name is a column with its unit, editable in place
   (one undo step per edit; calculated values are shown, not edited). Relationships show the names of the elements they
   connect (From / Kind / To). Filters search what is shown, including attribute values.
