@@ -155,18 +155,6 @@ export default function ProjectView() {
     dispatchDiagramEvent("diagram-save-request", { viewId });
   };
 
-  // Ctrl+S / Cmd+S saves the open diagram (and never opens the browser's "save page").
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s" || event.shiftKey || event.altKey) return;
-      if (!viewId) return;
-      event.preventDefault();
-      if (activeDiagramDirtyState && !activeDiagramSaveState) dispatchDiagramEvent("diagram-save-request", { viewId });
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activeDiagramDirtyState, activeDiagramSaveState, viewId]);
-
   const saveShortcut = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform) ? "\u2318S" : "Ctrl+S";
 
   // Auth check

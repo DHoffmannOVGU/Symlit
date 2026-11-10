@@ -192,7 +192,7 @@ export function SidebarTabsContent({
                         )}
                         <SidebarMenu>
                           {views.length === 0 ? (
-                            <div className="px-4 py-8 text-center text-white/30 text-xs italic">
+                            <div className="px-4 py-8 text-center text-white/60 text-xs italic">
                               No diagrams yet.
                             </div>
                           ) : (
@@ -221,14 +221,14 @@ export function SidebarTabsContent({
                             referencedViews.map(
                               ({ project, views, isLoading, isError }) => (
                                 <div key={project.id} className="mt-3 mb-2">
-                                  <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
+                                  <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/60">
                                     {project.name}
                                   </div>
                                   {isLoading && (
                                     <SidebarMenuItem>
                                       <SidebarMenuButton
                                         asChild
-                                        className="text-white/40"
+                                        className="text-white/60"
                                       >
                                         <span>Loading referenced views...</span>
                                       </SidebarMenuButton>
@@ -248,7 +248,7 @@ export function SidebarTabsContent({
                                     <SidebarMenuItem>
                                       <SidebarMenuButton
                                         asChild
-                                        className="text-white/40"
+                                        className="text-white/60"
                                       >
                                         <span>No diagrams available</span>
                                       </SidebarMenuButton>

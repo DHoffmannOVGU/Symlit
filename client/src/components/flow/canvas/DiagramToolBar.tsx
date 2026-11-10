@@ -80,6 +80,8 @@ type Props = {
   onResetFlow?: () => void;
   onStraightenEdge?: () => void;
   onOpenHelp: () => void;
+  autoSave?: boolean;
+  onToggleAutoSave?: () => void;
 };
 
 type ToolbarButtonProps = {
@@ -190,6 +192,8 @@ export function DiagramToolbar(props: Props) {
     onResetFlow,
     onStraightenEdge,
     onOpenHelp,
+    autoSave = false,
+    onToggleAutoSave,
   } = props;
 
   return (
@@ -358,6 +362,19 @@ export function DiagramToolbar(props: Props) {
                   >
                     Always show accent border
                   </DropdownMenuCheckboxItem>
+                )}
+                {onToggleAutoSave && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Saving</DropdownMenuLabel>
+                    <DropdownMenuCheckboxItem
+                      checked={autoSave}
+                      onCheckedChange={() => onToggleAutoSave()}
+                      data-testid="toggle-auto-save"
+                    >
+                      Save automatically
+                    </DropdownMenuCheckboxItem>
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

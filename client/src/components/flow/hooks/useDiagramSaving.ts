@@ -18,10 +18,11 @@ export function useDiagramSaving() {
   /**
    * Saves the diagram. The save names the revision it is based on; when the
    * stored diagram changed in the meantime it is refused and the conflict
-   * dialog opens. `overwrite` saves regardless.
+   * dialog opens. `overwrite` saves regardless; `quiet` (automatic saves)
+   * shows no toast.
    */
   const saveAsync = useCallback(
-    async (options: { overwrite?: boolean } = {}) => {
+    async (options: { overwrite?: boolean; quiet?: boolean } = {}) => {
       const { nodes: current, edges: currentEdges, revision, setRevision, setSaveConflict } =
         diagramStore.getState();
       const payload = toSavePayload(current, currentEdges, projectType);
@@ -30,6 +31,7 @@ export function useDiagramSaving() {
           viewId,
           ...payload,
           baseRevision: options.overwrite ? undefined : (revision ?? undefined),
+          quiet: options.quiet,
         });
         setRevision(result?.revision ?? null);
         setSaveConflict(false);

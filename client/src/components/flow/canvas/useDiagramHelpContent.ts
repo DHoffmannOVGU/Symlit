@@ -18,88 +18,54 @@ export function useDiagramHelpContent(
   isFlowMode: boolean,
 ): DiagramHelpContent {
   return useMemo(() => {
+    // The same on every canvas; kept in one list so the editors cannot drift apart.
+    const editing: HelpItem[] = [
+      { key: "Ctrl/Cmd + S", description: "Save the diagram." },
+      { key: "Ctrl/Cmd + Z", description: "Undo. Add Shift (or use Ctrl + Y) to redo." },
+      { key: "Ctrl/Cmd + C / V", description: "Copy and paste the selected elements." },
+      { key: "F2", description: "Rename the selected element on its card (Enter confirms, Esc cancels)." },
+      { key: "Delete / Backspace", description: "Delete the selected elements or relationships." },
+      { key: "Double-click", description: "Open the editor of an element or relationship." },
+      { key: "Shift + drag", description: "Select several elements with a box. Ctrl/Cmd-click adds one at a time." },
+      { key: "Drag from a side handle", description: "Draw a relationship to another element, or onto empty canvas to create one there." },
+      { key: "Esc", description: "Close a menu or dialog." },
+    ];
+
     if (projectType === "metamodel") {
       return {
-        title: "Metamodel Editor Help",
-        description:
-          "Use the metamodel editor to define types and relationships that instance models can build on.",
-        shortcuts: [
-          { key: "Ctrl/Cmd + S", description: "Save the current diagram." },
-          { key: "F2", description: "Rename the selected element on its card (Enter confirms, Escape cancels)." },
-          {
-            key: "Delete / Backspace",
-            description: "Delete the selected element or relationship.",
-          },
-          {
-            key: "Double-click node",
-            description: "Open the editor of the selected element.",
-          },
-          {
-            key: "Select an element",
-            description: "Shows its edit, duplicate and delete buttons.",
-          },
-        ],
+        title: "Help: metamodels",
+        description: "A metamodel defines the types and relationships that models can be built from.",
+        shortcuts: editing,
         functions: [
-          "Use the Add elements tab in the sidebar to place types of the seven built-in kinds.",
-          "Click a kind to place it in a free spot, or drag it onto the canvas to place it precisely.",
-          "Create and validate relationships to define which structures are allowed in instance models.",
+          "Add elements tab: click a kind to place a new type in a free spot, or drag it to where you want it.",
+          "Double-click a type to give it attributes and a style; elements of that type start from both.",
+          "Relationships between types define which relationships are allowed between their elements.",
+          "Model rules tag elements or report issues when a condition holds; Validate runs them.",
         ],
       };
     }
 
     if (isFlowMode) {
       return {
-        title: "Instance Flow Help",
-        description:
-          "Use flow mode to simulate and step through the behavior of your instance model.",
-        shortcuts: [
-          { key: "Ctrl/Cmd + S", description: "Save the current diagram." },
-          { key: "F2", description: "Rename the selected element on its card (Enter confirms, Escape cancels)." },
-          {
-            key: "Delete / Backspace",
-            description: "Delete the selected element or relationship.",
-          },
-          {
-            key: "Double-click node",
-            description: "Open the editor of the selected element.",
-          },
-          {
-            key: "Esc",
-            description: "Cancel edge creation menus when they are open.",
-          },
-        ],
+        title: "Help: flow mode",
+        description: "Flow mode steps through the behavior of your model.",
+        shortcuts: editing,
         functions: [
-          "Mark start and end nodes, then run or step through the flow from the canvas toolbar.",
-          "Use the flow run card to monitor progress, current tick, and active endpoints.",
-          "Edit elements and relationships while checking whether the instance still follows the metamodel.",
+          "Mark a start and an end element, then run or step through the flow from the toolbar.",
+          "The flow card shows progress, the current tick and the active elements.",
         ],
       };
     }
 
     return {
-      title: "Instance Editor Help",
-      description:
-        "Use the instance editor to create concrete models from your referenced metamodel types.",
-      shortcuts: [
-        { key: "Ctrl/Cmd + S", description: "Save the current diagram." },
-          { key: "F2", description: "Rename the selected element on its card (Enter confirms, Escape cancels)." },
-        {
-          key: "Delete / Backspace",
-          description: "Delete the selected element or relationship.",
-        },
-        {
-          key: "Double-click node",
-          description: "Open the editor of the selected element.",
-        },
-        {
-          key: "Esc",
-          description: "Cancel edge creation menus when they are open.",
-        },
-      ],
+      title: "Help: models",
+      description: "A model is built from elements typed by the metamodels it references.",
+      shortcuts: editing,
       functions: [
-        "Drag referenced metamodel types into the canvas to create typed instance nodes.",
-        "Use patterns and alignment tools to assemble diagrams more quickly.",
-        "Validate the model to check whether elements and relationships conform to the metamodel.",
+        "Add elements tab: click a type to place an element of it, or drag it to where you want it. Search finds types across all referenced metamodels.",
+        "Double-click an element to set its attribute values; the definition of an attribute opens in its own editor.",
+        "Validate checks elements and relationships against the metamodel and your model rules, and lists what to fix.",
+        "Select two or more elements to align them or to save them as a reusable pattern.",
       ],
     };
   }, [isFlowMode, projectType]);

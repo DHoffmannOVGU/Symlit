@@ -22,9 +22,7 @@
 - Deleting a metamodel warns about the projects that use it.
 
 ### Changed
-- The project list's welcome block shrinks to one line once there are projects.
-- Save stays in view in narrow windows; the "Saved" toast is gone (the header
-  already says "All changes saved").
+- Save stays in view in narrow windows.
 - The element and relationship panels say "Apply" (they change the diagram;
   Save in the header writes it).
 - Database migration 0007 adds `projects.updated_at` (applied on start).

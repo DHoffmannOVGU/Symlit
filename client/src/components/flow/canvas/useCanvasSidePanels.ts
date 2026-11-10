@@ -16,7 +16,14 @@ export function useCanvasSidePanels({
   const { getViewport, setViewport } = useReactFlow();
   const [modelRulesOpen, setModelRulesOpen] = useState(false);
   const [aiAssistantOpen, setAiAssistantOpen] = useState(false);
-  const [modelRulesPanelHeight, setModelRulesPanelHeight] = useState(560);
+  const [modelRulesPanelHeight, setPanelHeight] = useState(560);
+  // Until the user drags the panel's edge, it opens at half the canvas, so the
+  // diagram stays readable above it on small screens.
+  const userResizedPanel = useRef(false);
+  const setModelRulesPanelHeight = useCallback((height: number) => {
+    userResizedPanel.current = true;
+    setPanelHeight(height);
+  }, []);
   const rulesViewportBaselineRef = useRef<{
     viewport: { x: number; y: number; zoom: number };
     width: number;
@@ -33,6 +40,10 @@ export function useCanvasSidePanels({
         width: bounds?.width ?? window.innerWidth,
         height: bounds?.height ?? window.innerHeight,
       };
+      if (!userResizedPanel.current) {
+        const canvasHeight = bounds?.height ?? window.innerHeight;
+        setPanelHeight(Math.round(Math.max(280, Math.min(560, canvasHeight * 0.5))));
+      }
     }
     setModelRulesOpen(true);
   }, [canvasShellRef, getViewport]);

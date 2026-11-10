@@ -77,15 +77,36 @@ export function ProjectCreateDialog({
       <DialogContent className="w-[95vw] max-h-[90vh] overflow-y-auto sm:max-w-[620px]">
         <DialogHeader>
           <DialogTitle>
-            {projectType === "metamodel" ? "Start a new metamodel" : "Create Project"}
+            {projectType === "metamodel" ? "New metamodel" : "New project"}
           </DialogTitle>
           <DialogDescription>
             {projectType === "metamodel"
-              ? "Choose the modeling vocabulary that should be visible while you build it."
-              : "Start a new engineering project container."}
+              ? "A metamodel defines the types and relationships that models are built from."
+              : "A model is built from elements; reference a metamodel later to use your own types."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit} className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="project-name">Name</Label>
+            <Input
+              value={projectName}
+              onChange={(event) => onProjectNameChange(event.target.value)}
+              placeholder="e.g. Avionics Control System"
+              id="project-name"
+              autoFocus
+              data-testid="input-project-name"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="project-description">Description <span className="font-normal text-muted-foreground">(optional)</span></Label>
+            <Input
+              value={projectDescription}
+              onChange={(event) => onProjectDescriptionChange(event.target.value)}
+              id="project-description"
+              placeholder="What is this project about?"
+              data-testid="input-project-description"
+            />
+          </div>
           <div className="space-y-2">
             <Label>Start from a template</Label>
             <div className="grid gap-2">
@@ -126,7 +147,7 @@ export function ProjectCreateDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Project Type</Label>
+            <Label>Kind of project</Label>
             <RadioGroup
               value={projectType}
               // A template decides the project type; only a blank project can choose.
@@ -145,7 +166,7 @@ export function ProjectCreateDialog({
                 <RadioGroupItem value="instance" id="type-instance" data-testid="radio-instance" />
                 <Label htmlFor="type-instance" className="flex cursor-pointer items-center gap-2">
                   <Box className="h-4 w-4 text-emerald-500" />
-                  Instance Model
+                  Model
                 </Label>
               </div>
             </RadioGroup>
@@ -154,9 +175,9 @@ export function ProjectCreateDialog({
           {projectType === "metamodel" && (
             <div className="space-y-5 rounded-2xl border border-violet-200/70 bg-violet-50/50 p-4 dark:border-violet-900/60 dark:bg-violet-950/20">
               <div className="space-y-1">
-                <Label className="text-base">What do you want to create?</Label>
+                <Label className="text-base">What is the metamodel for?</Label>
                 <p className="text-xs leading-5 text-muted-foreground">
-                  We’ll suggest a focused set of magic types. You can adjust it before creating the metamodel.
+                  Pick the closest purpose; it suggests which kinds and relationship types to offer. You can change this at any time.
                 </p>
               </div>
               <RadioGroup
@@ -197,9 +218,21 @@ export function ProjectCreateDialog({
                   data-testid="input-metamodel-setup-description"
                 />
               </div>
-              <div className="grid gap-5 sm:grid-cols-2">
+              <details className="group rounded-xl border border-border bg-background" data-testid="metamodel-vocabulary-details">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                  <span>
+                    <span className="font-medium">Customize kinds and relationship types</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {selectedMagicNodeTypes.length} of {magicNodeTypeCatalog.length} kinds and{" "}
+                      {selectedMagicRelationTypes.length} of {magicRelationTypeCatalog.length} relationship types selected
+                    </span>
+                  </span>
+                  <span className="text-xs text-primary group-open:hidden">Show</span>
+                  <span className="hidden text-xs text-primary group-open:inline">Hide</span>
+                </summary>
+              <div className="grid gap-5 border-t p-3 sm:grid-cols-2">
                 <TypeSelectionList
-                  title="Suggested element kinds"
+                  title="Kinds"
                   description="Choose the concepts you need to define."
                   items={magicNodeTypeCatalog}
                   selected={selectedMagicNodeTypes}
@@ -207,7 +240,7 @@ export function ProjectCreateDialog({
                   testIdPrefix="checkbox-metamodel-node"
                 />
                 <TypeSelectionList
-                  title="Suggested relation types"
+                  title="Relationship types"
                   description="Choose how your concepts can connect."
                   items={magicRelationTypeCatalog}
                   selected={selectedMagicRelationTypes}
@@ -215,31 +248,13 @@ export function ProjectCreateDialog({
                   testIdPrefix="checkbox-metamodel-relation"
                 />
               </div>
-              <p className="text-xs leading-5 text-muted-foreground">
-                These choices control what is offered in the creation palette. They do not remove existing content or prevent you from expanding the vocabulary later.
+              <p className="px-3 pb-3 text-xs leading-5 text-muted-foreground">
+                This only decides what the Add elements tab offers. You can change it later, and nothing is removed.
               </p>
+              </details>
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>Name</Label>
-            <Input
-              value={projectName}
-              onChange={(event) => onProjectNameChange(event.target.value)}
-              placeholder="e.g. Avionics Control System"
-              autoFocus
-              data-testid="input-project-name"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Description</Label>
-            <Input
-              value={projectDescription}
-              onChange={(event) => onProjectDescriptionChange(event.target.value)}
-              placeholder="Brief overview..."
-              data-testid="input-project-description"
-            />
-          </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
               Cancel
@@ -249,7 +264,7 @@ export function ProjectCreateDialog({
               disabled={isCreating || !projectName.trim()}
               data-testid="button-create-project"
             >
-              {isCreating ? "Creating..." : "Create Project"}
+              {isCreating ? "Creating…" : projectType === "metamodel" ? "Create metamodel" : "Create project"}
             </Button>
           </DialogFooter>
         </form>

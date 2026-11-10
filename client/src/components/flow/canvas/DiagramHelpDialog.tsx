@@ -43,7 +43,7 @@ export function DiagramHelpDialog({
                 </div>
     
                 <div className="space-y-3">
-                  <h3 className="text-sm font-semibold">Main Functions</h3>
+                  <h3 className="text-sm font-semibold">How it works</h3>
                   <ul className="space-y-2 text-sm text-muted-foreground">
                     {helpContent.functions.map((item) => (
                       <li

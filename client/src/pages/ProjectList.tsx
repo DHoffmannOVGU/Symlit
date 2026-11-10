@@ -652,95 +652,60 @@ export default function ProjectList() {
     })
     .filter((entry): entry is { project: Project; openedAt: number } => Boolean(entry));
 
-  const hasProjects = Boolean(visibleProjects?.length);
-
   return (
     <div className="min-h-screen bg-slate-50 p-4 dark:bg-slate-950 sm:p-6 md:p-10">
       <div className="mx-auto max-w-7xl space-y-7">
-        {/* A full welcome for an empty workspace; once there are projects, one line, so they start near the top. */}
-        <section
-          className={`relative overflow-hidden border border-primary/10 bg-gradient-to-br from-card via-card to-primary/[0.08] shadow-sm ${
-            hasProjects ? "rounded-2xl px-5 py-4 sm:px-6" : "rounded-3xl p-6 sm:p-8"
-          }`}
-          data-testid="project-list-header"
-        >
-          {!hasProjects && <div className="absolute -right-24 -top-32 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />}
-          <div className={`relative flex flex-col justify-between md:flex-row ${hasProjects ? "gap-4 md:items-center" : "gap-7 md:items-end"}`}>
-            {hasProjects ? (
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Activity className="h-4 w-4" />
-                </div>
-                <div className="min-w-0">
-                  <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">
-                    {/* Greet by the configured name (SYMLIT_USER_NAME), not the internal login; the default name is no name. */}
-                Good to see you
-                {user.displayName && user.displayName !== DEFAULT_LOCAL_USER_NAME ? `, ${user.displayName}` : ""}.
-                  </h1>
-                  <p className="text-xs text-muted-foreground">Symlit · local workspace</p>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="mb-5 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10">
-                    <Activity className="h-4 w-4" />
-                  </div>
-                  Symlit workspace
-                </div>
-                <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+        {/* A compact header: the projects themselves should be visible without scrolling. */}
+        <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Activity className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">
                   {/* Greet by the configured name (SYMLIT_USER_NAME), not the internal login; the default name is no name. */}
-                Good to see you
-                {user.displayName && user.displayName !== DEFAULT_LOCAL_USER_NAME ? `, ${user.displayName}` : ""}.
+                  Good to see you
+                  {user.displayName && user.displayName !== DEFAULT_LOCAL_USER_NAME ? `, ${user.displayName}` : ""}.
                 </h1>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium capitalize text-primary">
-                    Local workspace
-                  </span>
-                </div>
-                <p className="mt-3 max-w-xl text-base leading-6 text-muted-foreground">
-                  Keep your system models organized, connected, and ready for the next engineering decision.
-                </p>
+                <span className="rounded-full border border-primary/20 bg-primary/5 px-2.5 py-0.5 text-xs font-medium text-primary">
+                  Local workspace
+                </span>
               </div>
-            )}
-            <div className="flex flex-col gap-2 sm:flex-row md:items-center">
-              <input
-                ref={importInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="hidden"
-                aria-label="Project file to import"
-                data-testid="input-import-project"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.target.value = "";
-                  if (file) void handleImport(file);
-                }}
-              />
-              <Button
-                variant="outline"
-                size={hasProjects ? "default" : "lg"}
-                className="w-full md:w-auto"
-                disabled={importProject.isPending}
-                onClick={() => importInputRef.current?.click()}
-                title="Open a project file (a JSON export) as a new project"
-                data-testid="button-import-project"
-              >
-                <Upload className="mr-2 h-5 w-5" />
-                {importProject.isPending ? "Importing…" : "Import"}
-              </Button>
-              <Button
-                onClick={() => openCreateDialog()}
-                size={hasProjects ? "default" : "lg"}
-                className="w-full shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30 md:w-auto"
-                data-testid="button-new-project"
-              >
-                <Plus className="mr-2 h-5 w-5" />
-                New Project
-              </Button>
+              <p className="text-sm text-muted-foreground">Your Symlit projects: metamodels and the models built from them.</p>
             </div>
           </div>
-        </section>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              aria-label="Project file to import"
+              data-testid="input-import-project"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                if (file) void handleImport(file);
+              }}
+            />
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              disabled={importProject.isPending}
+              onClick={() => importInputRef.current?.click()}
+              title="Open a project file (a JSON export) as a new project"
+              data-testid="button-import-project"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              {importProject.isPending ? "Importing…" : "Import"}
+            </Button>
+            <Button onClick={() => openCreateDialog()} className="w-full sm:w-auto" data-testid="button-new-project">
+              <Plus className="mr-2 h-4 w-4" />
+              New project
+            </Button>
+          </div>
+        </header>
 
         <TutorialCard projects={projects} />
 

@@ -16,6 +16,8 @@ const isEditableTarget = (target: EventTarget | null): boolean => {
 /**
  * Global keyboard shortcuts for the diagram canvas:
  * - Ctrl/Cmd+S triggers save
+ * - Ctrl/Cmd+Z undoes, Ctrl/Cmd+Shift+Z or Ctrl+Y redoes (not while typing in a field,
+ *   where the browser's own text undo applies)
  * - Delete/Backspace requests deletion of the current selection
  * - F2 renames the selected element on its card
  *
@@ -42,6 +44,25 @@ export function useCanvasKeyboardShortcuts({
     window.addEventListener("keydown", handleRenameShortcut);
     return () => window.removeEventListener("keydown", handleRenameShortcut);
   }, [deleteDialogOpen, nodes, setRenamingNodeId]);
+
+  const undo = useDiagramStore((state) => state.undo);
+  const redo = useDiagramStore((state) => state.redo);
+  useEffect(() => {
+    const handleUndoRedo = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      if (isEditableTarget(event.target)) return;
+      const key = event.key.toLowerCase();
+      if (key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        undo();
+      } else if ((key === "z" && event.shiftKey) || key === "y") {
+        event.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handleUndoRedo);
+    return () => window.removeEventListener("keydown", handleUndoRedo);
+  }, [redo, undo]);
   useEffect(() => {
     const handleSaveShortcut = (event: KeyboardEvent) => {
       if (
@@ -73,7 +94,7 @@ export function useCanvasKeyboardShortcuts({
       const label =
         selectionCount === 1
           ? selectedNodes[0]
-            ? selectedNodes[0].data.label || "this node"
+            ? selectedNodes[0].data.label || "this element"
             : selectedEdges[0]?.data?.label ||
               "this relationship"
           : `${selectionCount} items`;

@@ -20,9 +20,9 @@ commit that fixed them.
   makes models diffable and usable in SysML v2 tools. See
   `docs/decisions/diagram-editor-state-and-libraries.md`.
 
-- **Autosave.** The element and relationship panels now say "Apply" and explain that Save in the header
-  writes the diagram, but there are still two steps. Saving automatically (debounced, with the conflict check
-  below) would remove the second one; the tutorial and the "unsaved changes" prompts assume manual saving.
+- **Auto-save and save conflicts.** Auto-save is optional (canvas settings). When an automatic save meets a
+  conflict, the conflict dialog opens and auto-save waits for the next edit; "Decide later" followed by an
+  edit asks again. Nobody has yet used the two together for long.
 - **Import matches nothing that exists.** Importing a file always creates new copies of the metamodels it brings,
   even when the same metamodel is already in the workspace. Offer "use the existing one" when names/content match.
 - **Save conflicts are all-or-nothing.** The dialog offers "my version" or "the other version" for the whole
@@ -59,9 +59,8 @@ commit that fixed them.
 - Saving a diagram that contained a relationship id already used in another diagram failed with a 500 that showed the database's constraint error. It answers 400 with what to do; unexpected save errors no longer pass database messages to the browser.
 - In narrow windows the header pushed the save state and the Save button out of view. The names on the left and the metamodel selector give way now; the save state keeps its mark and drops its words.
 - Renaming an element needed the editor sheet and Apply. F2 renames the selected element on its card (Enter confirms, Escape cancels, one undo step).
-- The project list's welcome block took the first 250 px on every visit; with projects it is one line, so the list starts near the top. An empty workspace still gets the full welcome.
 - Diagrams and patterns were listed without a defined order; they come in creation order.
-- Every save showed a "Saved" toast on top of "All changes saved" in the header; the toast is gone. The project list remembers its sort choice.
+- The project list remembers its sort choice.
 - A request with an id that is not a number (`GET /api/projects/abc`) ended the server process: Express 4 does not catch errors from async handlers, and the id went to the database unchecked. Async route errors now reach the error handler and impossible ids answer 404 before any query (`server/http-guards.ts`).
 - Any website could write to the workspace: form posts need no CORS preflight and the server read them, and nothing checked `Origin` or `Host` (DNS rebinding gave read access too). Form bodies are no longer read, writes must come from the app's own origin, and only `localhost`, IP addresses and `SYMLIT_ALLOWED_HOSTS` are served.
 - Export was one-way. `POST /api/projects/import` and an Import button on the project list open a JSON export as a new project (with the metamodels it brings).

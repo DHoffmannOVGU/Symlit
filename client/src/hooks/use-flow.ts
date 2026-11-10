@@ -55,19 +55,26 @@ export function useSyncFlow() {
       edges: InsertFlowEdge[];
       /** Leave out to overwrite whatever is stored. */
       baseRevision?: string;
+      /** Automatic saves do not announce themselves; the header shows the state. */
+      quiet?: boolean;
     }) =>
       apiCall(api.flow.sync, {
         params: { viewId },
         body: { nodes, edges, ...(baseRevision ? { baseRevision } : {}) },
       }),
-    onSuccess: () => {
+    onSuccess: (_result, variables) => {
       // Elements are shared between diagrams, and cached diagrams never go
       // stale on their own: without this, switching away and back showed the
       // diagram as it was before the save.
       void queryClient.invalidateQueries({ queryKey: [api.flow.get.path] });
       // The project list shows and sorts by when a project was last edited.
       void queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
-      // No toast: the header already shows "All changes saved".
+      if (variables.quiet) return;
+      toast({
+        title: "Saved",
+        description: "Your diagram has been saved successfully.",
+        duration: 2000,
+      });
     },
     onError: (error) => {
       // A conflict is settled in its own dialog (SaveConflictDialog).

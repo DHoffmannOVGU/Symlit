@@ -145,6 +145,8 @@ export function CanvasToolbar({
       onToggleAlwaysShowAccent={() => setAlwaysShowAccent((current) => !current)}
       onToggleBackgroundDots={() => setShowBackgroundDots((current) => !current)}
       onToggleNodeDescriptions={() => setShowNodeDescriptions((current) => !current)}
+      autoSave={preferences.autoSave}
+      onToggleAutoSave={() => preferences.setAutoSave((current) => !current)}
       onOpenHelp={() => setHelpDialogOpen(true)}
     />
   );
