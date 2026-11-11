@@ -60,6 +60,9 @@ interface TutorialCoachProps {
   onRemoveTutorial: () => void;
 }
 
+/** In a window this small the open coach covers most of the canvas. */
+const SMALL_WINDOW = "(max-width: 899px), (max-height: 599px)";
+
 const COACH_WIDTH = 340;
 /** Docked left, the coach stays within the sidebar so it does not cover the panel beside it. */
 const COACH_WIDTH_LEFT = 300;
@@ -166,6 +169,17 @@ export function TutorialCoach({
   const previousDone = useRef(done);
   const placement = useCoachPlacement();
   const rootRef = useRef<HTMLElement | null>(null);
+  // In a small window the open coach covers most of the canvas, so it starts
+  // minimised there until the learner opens it.
+  const [smallWindow, setSmallWindow] = useState(() => window.matchMedia(SMALL_WINDOW).matches);
+  const [openedInSmallWindow, setOpenedInSmallWindow] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia(SMALL_WINDOW);
+    const onChange = () => setSmallWindow(query.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, []);
+  const minimised = progress.collapsed || (smallWindow && !openedInSmallWindow && !finished);
 
   // Follow the learner: jump to the lesson they are in when it changes.
   useEffect(() => setViewedLesson(activeLesson), [activeLesson]);
@@ -173,17 +187,17 @@ export function TutorialCoach({
   // appears, moves or changes between open and minimised.
   useEffect(() => {
     announceCanvasOverlayChange();
-  }, [progress.collapsed, finished, placement.side]);
+  }, [minimised, finished, placement.side]);
   useEffect(() => setShowHint(false), [activeStep?.id]);
   useEffect(() => setWhyOpen(false), [viewedLesson]);
   // Keep the step to work on in sight inside the coach.
   useEffect(() => {
-    if (progress.collapsed) return;
+    if (minimised) return;
     const frame = window.requestAnimationFrame(() =>
       rootRef.current?.querySelector('[data-state="current"]')?.scrollIntoView({ block: "nearest" }),
     );
     return () => window.cancelAnimationFrame(frame);
-  }, [activeStep?.id, viewedLesson, progress.collapsed, placement.side, placement.maxHeight]);
+  }, [activeStep?.id, viewedLesson, minimised, placement.side, placement.maxHeight]);
   useEffect(() => {
     if (done > previousDone.current && lastDone) {
       setAnnouncement(`Done: ${lastDone.title}. ${lastDone.done}`);
@@ -202,7 +216,7 @@ export function TutorialCoach({
     const keep = (event: Event) => event.stopPropagation();
     root.addEventListener("pointerdown", keep);
     return () => root.removeEventListener("pointerdown", keep);
-  }, [placement.modal, progress.collapsed]);
+  }, [placement.modal, minimised]);
 
   // On the left the coach sits over the sidebar. Unless a dialog has taken
   // over the screen, it stays above the sidebar's bottom buttons (Model rules,
@@ -215,14 +229,17 @@ export function TutorialCoach({
     placement.modal ? "z-[60]" : "z-40",
   );
 
-  if (progress.collapsed) {
+  if (minimised) {
     return (
       <button
         ref={(element) => {
           rootRef.current = element;
         }}
         type="button"
-        onClick={() => onCollapsedChange(false)}
+        onClick={() => {
+          setOpenedInSmallWindow(true);
+          onCollapsedChange(false);
+        }}
         className={cn(
           dock,
           "flex max-w-[calc(100vw-2rem)] items-center gap-3 rounded-full border bg-card px-4 py-2.5 text-left text-sm shadow-xl transition hover:shadow-2xl",
@@ -307,7 +324,10 @@ export function TutorialCoach({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
-            onClick={() => onCollapsedChange(true)}
+            onClick={() => {
+              setOpenedInSmallWindow(false);
+              onCollapsedChange(true);
+            }}
             title="Minimise the tutorial"
             aria-label="Minimise the tutorial"
             data-testid="button-tutorial-collapse"

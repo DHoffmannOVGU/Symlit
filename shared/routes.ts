@@ -114,6 +114,12 @@ export const flowSyncInputSchema = z
   .object({
     nodes: z.array(flowNodeInputSchema),
     edges: z.array(flowEdgeInputSchema),
+    /**
+     * The revision (from the flow response) this save is based on. When the
+     * stored diagram has moved on, the save is refused with 409. Leave it out
+     * to overwrite whatever is stored.
+     */
+    baseRevision: z.string().optional(),
   })
   .superRefine(validateFlowIdentity);
 
@@ -131,6 +137,7 @@ export const flowResponseSchema = z
   .object({
     nodes: z.array(flowNodeRecordSchema),
     edges: z.array(flowEdgeSchema),
+    revision: z.string().optional(),
   })
   .superRefine(validateFlowIdentity);
 
@@ -295,6 +302,19 @@ export const api = {
         400: errorSchemas.validation,
       },
     },
+    /** Copies a project; the copy keeps using the same metamodels. */
+    duplicate: {
+      method: 'POST' as const,
+      path: '/api/projects/:id/duplicate',
+      input: z.object({ name: z.string().trim().min(1).optional() }),
+      responses: {
+        201: z.object({
+          project: z.custom<typeof projects.$inferSelect>(),
+          firstViewId: z.number().nullable(),
+        }),
+        404: errorSchemas.notFound,
+      },
+    },
     get: {
       method: 'GET' as const,
       path: '/api/projects/:id',
@@ -328,6 +348,21 @@ export const api = {
       responses: {
         200: z.any(),
         404: errorSchemas.notFound,
+      },
+    },
+    /** Creates the projects of a project file (the JSON export), with fresh ids. */
+    import: {
+      method: 'POST' as const,
+      path: '/api/projects/import',
+      input: z.unknown(),
+      responses: {
+        201: z.object({
+          project: z.custom<typeof projects.$inferSelect>(),
+          firstViewId: z.number().nullable(),
+          /** How many projects were created (the project and the metamodels it brought). */
+          createdProjects: z.number(),
+        }),
+        400: errorSchemas.validation,
       },
     },
     access: {
@@ -459,6 +494,8 @@ export const api = {
         201: z.object({
           project: z.custom<typeof projects.$inferSelect>(),
           firstViewId: z.number().nullable(),
+          /** Everything created, including metamodels the template brings. */
+          projects: z.array(z.custom<typeof projects.$inferSelect>()),
         }),
         400: errorSchemas.validation,
         404: errorSchemas.notFound,
@@ -509,9 +546,10 @@ export const api = {
       path: '/api/views/:viewId/sync',
       input: flowSyncInputSchema,
       responses: {
-        200: z.object({ success: z.boolean() }),
+        200: z.object({ success: z.boolean(), revision: z.string().nullable().optional() }),
         400: errorSchemas.validation,
         404: errorSchemas.notFound,
+        409: errorSchemas.validation,
       },
     },
     get: {

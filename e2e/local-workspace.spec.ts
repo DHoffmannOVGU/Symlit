@@ -24,7 +24,7 @@ test("creates a project in the UI and persists it on the server", async ({ page,
   const name = `UI project ${Date.now()}`;
   await page.goto("/projects");
   await page.getByTestId("button-new-project").click();
-  await page.getByTestId("radio-instance").click();
+  await page.getByTestId("select-template-blank-instance").click();
   await page.getByTestId("input-project-name").fill(name);
   await page.getByTestId("button-create-project").click();
 

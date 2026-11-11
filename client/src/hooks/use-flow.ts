@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/queryClient";
 import { api } from "@shared/routes";
 import { apiCall } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
@@ -35,6 +36,9 @@ export function useFlow(viewId: number) {
   });
 }
 
+/** The save was refused because the stored diagram changed since it was loaded. */
+export const isSaveConflict = (error: unknown) => error instanceof ApiError && error.status === 409;
+
 export function useSyncFlow() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -44,28 +48,27 @@ export function useSyncFlow() {
       viewId,
       nodes,
       edges,
+      baseRevision,
     }: {
       viewId: number;
       nodes: InsertFlowNode[];
       edges: InsertFlowEdge[];
+      /** Leave out to overwrite whatever is stored. */
+      baseRevision?: string;
       /** Automatic saves do not announce themselves; the header shows the state. */
       quiet?: boolean;
     }) =>
       apiCall(api.flow.sync, {
         params: { viewId },
-        body: { nodes, edges },
+        body: { nodes, edges, ...(baseRevision ? { baseRevision } : {}) },
       }),
     onSuccess: (_result, variables) => {
-      // The cached copy of the diagram is from before this save. Mark it
-      // outdated, so that it is fetched again when the diagram is next opened:
-      // otherwise coming back would show the old state, and the next save
-      // would discard what was saved here. The open canvas already has the
-      // saved state and is left alone (no refetch, undo history stays).
-      void queryClient.invalidateQueries({
-        queryKey: [api.flow.get.path, variables.viewId],
-        exact: true,
-        refetchType: "none",
-      });
+      // Elements are shared between diagrams, and cached diagrams never go
+      // stale on their own: without this, switching away and back showed the
+      // diagram as it was before the save.
+      void queryClient.invalidateQueries({ queryKey: [api.flow.get.path] });
+      // The project list shows and sorts by when a project was last edited.
+      void queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
       if (variables.quiet) return;
       toast({
         title: "Saved",
@@ -74,6 +77,8 @@ export function useSyncFlow() {
       });
     },
     onError: (error) => {
+      // A conflict is settled in its own dialog (SaveConflictDialog).
+      if (isSaveConflict(error)) return;
       console.error("Flow save failed:", error);
       toast({
         variant: "destructive",

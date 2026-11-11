@@ -394,6 +394,11 @@ async function installRelationshipApi(page: Page) {
       await fulfillJson(route, relationshipProject, 201);
       return;
     }
+    // ... with its first diagram.
+    if (request.method() === "POST" && pathname === "/api/projects/2/views") {
+      await fulfillJson(route, relationshipView, 201);
+      return;
+    }
 
     if (request.method() === "POST" && pathname === "/api/views/2/sync") {
       savedPayload = request.postDataJSON() as {
@@ -494,9 +499,10 @@ test("renders configured relationship semantics and preserves them after reload"
 
   await page.getByTestId("button-new-project").click();
   const setupDialog = page.getByRole("dialog");
+  await setupDialog.getByTestId("select-template-blank-metamodel").click();
   // The name comes first; kinds and relationship types are under "Customize".
   await expect(setupDialog.getByTestId("input-project-name")).toBeFocused();
-  await setupDialog.getByText("Customize kinds and relationship types").click();
+  await setupDialog.getByTestId("button-adjust-vocabulary").click();
   for (const relationType of ["composition", "dependency", "realization"]) {
     const checkbox = setupDialog.getByTestId(
       `checkbox-metamodel-relation-${relationType}`,
@@ -509,9 +515,8 @@ test("renders configured relationship semantics and preserves them after reload"
     .getByTestId("input-project-name")
     .fill("Relationship Visuals");
   await setupDialog.getByTestId("button-create-project").click();
-  // A blank project has no diagram yet, so it opens on the project page.
-  await expect(page).toHaveURL(/\/project\/2$/);
-  await page.goto("/project/2/view/2");
+  // A blank project gets a first diagram and opens on it.
+  await expect(page).toHaveURL(/\/project\/2\/view\/2$/);
   await expect(page.getByTestId("diagram-canvas-region")).toBeVisible();
   expect(
     (
@@ -561,7 +566,7 @@ test("renders configured relationship semantics and preserves them after reload"
     await panel
       .getByRole("radio", { name: change.relationType, exact: true })
       .click();
-    await panel.getByRole("button", { name: "Save Changes" }).click();
+    await panel.getByRole("button", { name: "Apply" }).click();
     await expect(panel).toHaveCount(0);
 
     const edgePath = page.locator(
@@ -668,7 +673,7 @@ test("inherits configured relationship semantics in a referenced instance model"
     await panel
       .getByRole("radio", { name: change.relationType, exact: true })
       .click();
-    await panel.getByRole("button", { name: "Save Changes" }).click();
+    await panel.getByRole("button", { name: "Apply" }).click();
     await expect(panel).toHaveCount(0);
 
     const edgePath = page.locator(

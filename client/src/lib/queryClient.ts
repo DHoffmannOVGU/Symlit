@@ -19,9 +19,20 @@ async function parseErrorMessage(res: Response): Promise<string> {
   return raw;
 }
 
+/** A failed API call; `status` is the HTTP status. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+    throw new ApiError(await parseErrorMessage(res), res.status);
   }
 }
 

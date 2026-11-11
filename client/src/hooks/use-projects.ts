@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { apiCall } from "@/lib/api-client";
 import type { InsertProject } from "@shared/schema";
-import type { MetamodelSetup } from "@shared/metamodel-setup";
 
 export function useProjects(userId: number | undefined) {
   return useQuery({
@@ -24,19 +23,6 @@ export function useProject(id: number) {
   });
 }
 
-export function useCreateProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (data: InsertProject) =>
-      apiCall(api.projects.create, { body: data }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: [api.projects.list.path, variables.userId],
-      });
-    },
-  });
-}
-
 /** The project templates offered when creating a project (without "Blank project"). */
 export function useProjectTemplates() {
   return useQuery({
@@ -46,15 +32,11 @@ export function useProjectTemplates() {
   });
 }
 
-/** Creates a project (with any metamodels the template brings) from a project template. */
-export function useCreateProjectFromTemplate() {
+/** Imports a project file (a JSON export): the project and the metamodels it brings. */
+export function useImportProject() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      templateId,
-      ...body
-    }: { templateId: string; name?: string; description?: string; metamodelSetup?: MetamodelSetup | null }) =>
-      apiCall(api.projectTemplates.create, { params: { templateId }, body }),
+    mutationFn: async (file: unknown) => apiCall(api.projects.import, { body: file }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
     },

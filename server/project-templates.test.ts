@@ -21,6 +21,7 @@ const config: AppConfig = {
   database: { driver: "pglite", dataDir: null },
   seedDemo: false,
   localUserName: "Test Engineer",
+  allowedHosts: [],
   features: { ai: false },
 };
 
@@ -292,5 +293,53 @@ describe("importing a project file", () => {
     assert.deepEqual((await patternsOf(copy.project.id)).map((p) => p.name), ["Drone kit"]);
     const { issues } = await ok("POST", `/api/views/${copy.firstViewId}/validate`);
     assert.ok(!issues.some((issue: Json) => /missing type/.test(issue.message)), JSON.stringify(issues));
+  });
+});
+
+describe("duplicating a project", () => {
+  test("D1: the copy has the same content with fresh ids and keeps using the same metamodels", async () => {
+    const original = await importProjectFile(bundleFile(), { userId, templateId: "fleet" });
+    const metamodel = original.projects.get(10)!;
+    await ok("POST", `/api/projects/${original.project.id}/patterns`, {
+      name: "Own pattern",
+      nodes: [{ nodeId: "x", type: "part", position: { x: 0, y: 0 }, data: { label: "X" } }],
+      edges: [],
+    });
+    const before = await projectCount();
+
+    const copy = await ok("POST", `/api/projects/${original.project.id}/duplicate`, {});
+    assert.equal(await projectCount(), before + 1, "only the model is copied, not its metamodel");
+    assert.equal(copy.project.name, "Copy of Fleet");
+    assert.equal(copy.project.templateId, null, "a copy is not linked to the template");
+    assert.deepEqual(copy.project.referencedMetamodels, [metamodel.id]);
+
+    const summary = async (projectId: number) =>
+      Promise.all(
+        (await viewsOf(projectId)).map(async (view) => {
+          const flow = await flowOf(view.id);
+          return [view.name, flow.nodes.length, flow.edges.length, view.modelRules.length];
+        }),
+      );
+    assert.deepEqual(await summary(copy.project.id), await summary(original.project.id));
+
+    const originalFlow = await flowOf(original.firstViewId!);
+    const copyFlow = await flowOf(copy.firstViewId);
+    const ownIds = (flow: Json) => flow.nodes.filter((n: Json) => n.projectId !== metamodel.id).map((n: Json) => n.id);
+    assert.equal(ownIds(copyFlow).filter((id: string) => ownIds(originalFlow).includes(id)).length, 0, "own elements are new");
+    const placedType = (flow: Json) => flow.nodes.find((n: Json) => n.projectId === metamodel.id).id;
+    assert.equal(placedType(copyFlow), placedType(originalFlow), "the metamodel's element is the same element");
+    const typeOf = (flow: Json) => flow.nodes.find((n: Json) => n.data.label === "Courier").data.typeId;
+    assert.equal(typeOf(copyFlow), typeOf(originalFlow), "types still point at the same metamodel");
+
+    const patterns = (await patternsOf(copy.project.id)).filter((p) => p.ownedByProject).map((p) => p.name);
+    assert.deepEqual(patterns, ["Own pattern"]);
+
+    // Editing the copy leaves the original alone.
+    await ok("DELETE", `/api/projects/${copy.project.id}`);
+    assert.equal((await flowOf(original.firstViewId!)).nodes.length, originalFlow.nodes.length);
+  });
+
+  test("D2: a project that does not exist cannot be duplicated", async () => {
+    assert.equal((await request("POST", "/api/projects/999999/duplicate", {})).status, 404);
   });
 });

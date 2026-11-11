@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { normalizeRelationship } from "@shared/relationships";
 import { db } from "../db";
 import {
@@ -19,7 +20,7 @@ import {
   flowResponseSchema,
   flowSyncInputSchema,
 } from "@shared/routes";
-import { and, eq, inArray, notExists, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, notExists, sql } from "drizzle-orm";
 
 /**
  * Validate flow identity and geometry before any records are written or
@@ -69,6 +70,77 @@ export async function getFlow(
     nodes: flowNodes as FlowNodeWithPosition[],
     edges: flowEdges,
   };
+}
+
+/**
+ * A fingerprint of everything a diagram shows: its elements' data (shared
+ * with other diagrams), their placement here and its relationships. A save
+ * names the revision it was based on, so a diagram that changed in between
+ * (in another tab, or through an element edited in another diagram) is not
+ * overwritten unnoticed.
+ */
+export function flowRevision(flow: { nodes: FlowNodeWithPosition[]; edges: FlowEdge[] }): string {
+  const byId = <T extends { id: string }>(items: T[]) =>
+    [...items].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const content = {
+    nodes: byId(flow.nodes).map((node) => [
+      node.id,
+      node.type,
+      canonical(node.data),
+      canonical(node.position),
+      node.parentId ?? null,
+    ]),
+    edges: byId(flow.edges).map((edge) => [
+      edge.id,
+      edge.source,
+      edge.target,
+      edge.edgeType,
+      edge.sourceHandle ?? null,
+      edge.targetHandle ?? null,
+      canonical(edge.data ?? null),
+    ]),
+  };
+  return createHash("sha1").update(JSON.stringify(content)).digest("hex").slice(0, 16);
+}
+
+/** Object keys in a fixed order, so equal values always serialise the same. */
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, canonical((value as Record<string, unknown>)[key])]),
+  );
+}
+
+/** A relationship id of the save already belongs to a relationship in another diagram. */
+export class RelationshipIdTakenError extends Error {
+  readonly status = 409;
+  constructor(readonly ids: string[]) {
+    super(
+      ids.length === 1
+        ? "A relationship in this diagram has the same id as one in another diagram. Remove it and draw it again."
+        : `${ids.length} relationships in this diagram have the same ids as relationships in another diagram. Remove them and draw them again.`,
+    );
+  }
+}
+
+/** The diagram changed since the revision a save was based on. */
+export class FlowConflictError extends Error {
+  readonly status = 409;
+  constructor() {
+    super("This diagram was changed somewhere else since you opened it.");
+  }
+}
+
+async function currentRevision(viewId: number): Promise<string | null> {
+  try {
+    return flowRevision(await getFlow(viewId));
+  } catch {
+    // A damaged diagram has no revision; saving a repaired copy must work.
+    return null;
+  }
 }
 
 export type FlowRecoveryIssue = {
@@ -221,11 +293,17 @@ export async function syncFlow(
   viewId: number,
   newNodes: SyncFlowNodeInput[],
   newEdges: FlowEdgeInput[],
-): Promise<void> {
+  options: { baseRevision?: string } = {},
+): Promise<{ revision: string | null }> {
   validateFlowRecords(newNodes, newEdges);
 
   const [view] = await db.select().from(views).where(eq(views.id, viewId));
   if (!view) throw new Error("View not found");
+
+  if (options.baseRevision !== undefined) {
+    const stored = await currentRevision(viewId);
+    if (stored !== null && stored !== options.baseRevision) throw new FlowConflictError();
+  }
 
   const [project] = await db
     .select({
@@ -235,6 +313,16 @@ export async function syncFlow(
     .from(projects)
     .where(eq(projects.id, view.projectId));
   if (!project) throw new Error("Project not found");
+
+  // Relationship ids are unique across all diagrams (they are the primary
+  // key). Say so instead of failing on the constraint.
+  if (newEdges.length > 0) {
+    const taken = await db
+      .select({ id: edges.id })
+      .from(edges)
+      .where(and(inArray(edges.id, newEdges.map((edge) => edge.id)), ne(edges.viewId, viewId)));
+    if (taken.length > 0) throw new RelationshipIdTakenError(taken.map((row) => row.id));
+  }
 
   const allowedExternalProjectIds = new Set(
     project.referencedMetamodels ?? [],
@@ -314,7 +402,9 @@ export async function syncFlow(
         .map((row) => row.nodeId)
         .filter((id) => !keptIds.has(id)),
     );
+    await tx.update(projects).set({ updatedAt: new Date() }).where(eq(projects.id, view.projectId));
   });
+  return { revision: await currentRevision(viewId) };
 }
 
 export async function insertNodeIntoView(
