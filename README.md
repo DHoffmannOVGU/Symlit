@@ -32,8 +32,13 @@ AI assistant.
   metamodel along); duplicate a project; see when each was last edited.
 - **Import and export:** JSON project files (export, and import as a new project) and CSV
   tables of elements and relationships.
-- **A guided tutorial** that builds a small drone model with you: about 15 minutes, seven
-  hands-on lessons. Steps tick off as you work; "Show me" points at the right button.
+- **Two guided tutorials.** *Symlit basics* (about 25 minutes) teaches the tool around one question,
+  can the drone fly the city route: types and elements, attributes, typed models, validation, model
+  rules, table view, auto layout and patterns. *Production with PPR* (about 30 minutes) teaches a
+  method: modelling production as products, processes and resources, starting from the customer's
+  requirements and tracing each of them to what satisfies it. In both, steps tick off when the model
+  shows their result, each lesson ends with one question, and the last lesson is done without
+  step-by-step instructions.
 - **Optional AI metamodel assistant** (Google Gemini, bring your own API key).
 
 ## Quick start
@@ -49,7 +54,7 @@ npm run dev
 
 Open http://localhost:5000. That's it: with no configuration, Symlit stores its data in an
 embedded PostgreSQL database ([PGlite](https://pglite.dev)) under `./data/`, and creates a
-demo project on first start. New to Symlit? Press **Start the guided tutorial** on the project list.
+demo project on first start. New to Symlit? Start the **Symlit basics** tutorial on the project list.
 
 ### With a dedicated PostgreSQL server (Docker)
 

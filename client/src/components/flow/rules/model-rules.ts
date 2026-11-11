@@ -222,7 +222,9 @@ export function evaluateModelRuleResults(rules: ModelRule[], nodes: Node[], edge
       const nodeLabel = data?.label?.trim() || "Unnamed node";
       const message = rule.outcome!.kind === "tag"
         ? `${nodeLabel} is classified as ${rule.outcome!.label}.`
-        : rule.outcome!.message?.trim() || `${nodeLabel} matches this condition.`;
+        : rule.outcome!.message?.trim()
+          ? `${nodeLabel}: ${rule.outcome!.message.trim()}`
+          : `${nodeLabel} matches this condition.`;
       return [{ ruleId: rule.id, ruleName: rule.name, nodeId: node.id, nodeLabel, outcome: rule.outcome!, message }];
     });
   });

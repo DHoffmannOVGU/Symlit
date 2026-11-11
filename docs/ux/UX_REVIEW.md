@@ -22,7 +22,7 @@ like `docs/BACKLOG.md`.
 - **Fitts:** frequent targets (save, add, handles) big and near where the pointer already is.
 - **Hick:** fewer, grouped choices in the palette and toolbar make decisions faster.
 - **Jakob:** people expect Figma / draw.io / Miro conventions on a canvas.
-- **Miller / chunking:** 7 lessons, short steps, grouped toolbar sections.
+- **Miller / chunking:** 6 lessons, short steps, grouped toolbar sections.
 - **Doherty threshold:** feedback in under ~400 ms (saving, layout, validation).
 - **Goal-gradient & Zeigarnik:** visible progress and an open next step pull people through the tutorial.
 - **Peak-end:** the end of the tutorial should feel like an achievement and point to a real next step.
@@ -56,8 +56,11 @@ One word per concept in everything a user reads (labels, tooltips, help, tutoria
   Projects Overview), breadcrumb + save state at the top, icon toolbar on the canvas
   (graph, table, panels, AI, patterns, validate, screenshot, help), undo/redo, zoom controls.
 - **Element editor:** right-hand sheet "Configure Node" with Content and Styling tabs, attributes as cards.
-- **Tutorial:** docked coach card bottom right; 7 lessons, 15 steps; Show me / Hint / Skip; collapsible;
-  steps complete on app signals (`shared/tutorial.ts`, `client/src/components/tutorial/`).
+- **Tutorials:** two (Symlit basics, Production with PPR), 6 lessons each. Docked coach card bottom right
+  (bottom left while an editor, the rules panel or the table is open; shorter while validation results are
+  open); Hint / Show me / Skip; collapsible; steps complete when the model shows their result
+  (`shared/tutorial.ts`, `client/src/components/tutorial/`; the didactic reasoning is in
+  `docs/ux/TUTORIAL_DIDACTICS.md`).
 
 ## First observations (from screenshots)
 

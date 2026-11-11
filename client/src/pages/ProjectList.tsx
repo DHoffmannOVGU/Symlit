@@ -1,5 +1,5 @@
 import { DEFAULT_LOCAL_USER_NAME } from "@shared/authorization";
-import { TutorialCard } from "@/components/tutorial/TutorialCard";
+import { TutorialCards } from "@/components/tutorial/TutorialCard";
 import { WorkspaceUnavailable } from "@/components/WorkspaceUnavailable";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -688,7 +688,7 @@ export default function ProjectList() {
           </div>
         </header>
 
-        <TutorialCard projects={projects} />
+        <TutorialCards projects={projects} />
 
         {!search.trim() && activeTab === "all" && recentProjects.length > 0 && (
           <section aria-labelledby="recent-projects-heading" className="space-y-3">

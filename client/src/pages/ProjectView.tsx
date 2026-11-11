@@ -1,7 +1,4 @@
-import { apiCall } from "@/lib/api-client";
-import { api } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
 import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { useState, useEffect } from "react";
 import { useRoute, Redirect, Link, useLocation } from "wouter";
@@ -56,7 +53,6 @@ function RedirectWithNotice({ to, title, description }: { to: string; title: str
 }
 
 export default function ProjectView() {
-  const queryClient = useQueryClient();
   const { toast } = useToast();
   const {
     user,
@@ -359,6 +355,7 @@ export default function ProjectView() {
                   setDiagramDisplayMode(mode);
                   if (mode === "table") emitTutorialSignal("table-mode");
                 }}
+                isTutorialProject={tutorialCoach.active}
               />
             ) : (
               <div className="flex-1 overflow-y-auto bg-slate-50/30 p-4 md:p-8">
@@ -468,19 +465,35 @@ export default function ProjectView() {
           onOpenChange={(open) => !open && setEditingView(null)}
         />
         </MountWhenOpened>
-        {tutorialCoach.active && tutorialCoach.progress && tutorialCoach.scope && (
+        {tutorialCoach.active && tutorialCoach.progress && tutorialCoach.scope && tutorialCoach.definition && (
           <TutorialCoach
+            tutorial={tutorialCoach.definition}
             progress={tutorialCoach.progress}
             scope={tutorialCoach.scope}
             onShowMe={(step) => void tutorialCoach.showMe(step)}
+            onOpenStepDiagram={(step) => void tutorialCoach.openStepDiagram(step)}
+            onHintShown={tutorialCoach.noteHint}
             onSkip={tutorialCoach.skip}
-            onRestart={tutorialCoach.restart}
+            onReturnToSkipped={tutorialCoach.returnToSkipped}
+            onAnswer={tutorialCoach.answer}
+            onCloseRecap={tutorialCoach.closeRecap}
+            onRestart={async () => {
+              try {
+                await tutorialCoach.restart();
+              } catch (error) {
+                toast({
+                  title: "Could not start the tutorial over",
+                  description: error instanceof Error ? error.message : undefined,
+                  variant: "destructive",
+                });
+              }
+            }}
             onCollapsedChange={tutorialCoach.setCollapsed}
             onStartOwnProject={() => tutorialCoach.navigate("/projects?startTemplate=blank")}
+            onShowTutorials={() => tutorialCoach.navigate("/projects")}
             onRemoveTutorial={async () => {
               try {
-                await apiCall(api.tutorial.delete);
-                await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
+                await tutorialCoach.remove();
                 setLocation("/projects");
               } catch (error) {
                 toast({

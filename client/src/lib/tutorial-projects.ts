@@ -1,13 +1,14 @@
 import type { Project } from "@shared/schema";
-import { TUTORIAL_TEMPLATE } from "@shared/tutorial";
+import { tutorialForTemplate, type TutorialDefinition } from "@shared/tutorial";
 
-const isTutorialMetamodel = (project: Project) =>
-  project.templateId === TUTORIAL_TEMPLATE && project.projectType === "metamodel";
-const isTutorialInstance = (project: Project) =>
-  project.templateId === TUTORIAL_TEMPLATE && project.projectType === "instance";
+const isMetamodelOf = (tutorial: TutorialDefinition) => (project: Project) =>
+  project.templateId === tutorial.templateId && project.projectType === "metamodel";
+const isInstanceOf = (tutorial: TutorialDefinition) => (project: Project) =>
+  project.templateId === tutorial.templateId && project.projectType === "instance";
 
 /** The metamodel and instance project of one tutorial run. */
 export interface TutorialProjects {
+  tutorial: TutorialDefinition;
   metamodel: Project;
   instance: Project | undefined;
 }
@@ -21,30 +22,29 @@ export function findTutorialProjects(
   allProjects: Project[] | undefined,
 ): TutorialProjects | null {
   if (!project || !allProjects) return null;
-  const metamodel =
-    isTutorialMetamodel(project)
-      ? project
-      : isTutorialInstance(project)
-        ? allProjects.find(
-            (candidate) =>
-              isTutorialMetamodel(candidate) &&
-              (project.referencedMetamodels ?? []).includes(candidate.id),
-          )
-        : undefined;
+  const tutorial = tutorialForTemplate(project.templateId);
+  if (!tutorial) return null;
+  const isMetamodel = isMetamodelOf(tutorial);
+  const isInstance = isInstanceOf(tutorial);
+  const metamodel = isMetamodel(project)
+    ? project
+    : isInstance(project)
+      ? allProjects.find(
+          (candidate) => isMetamodel(candidate) && (project.referencedMetamodels ?? []).includes(candidate.id),
+        )
+      : undefined;
   if (!metamodel) return null;
   const instance = allProjects.find(
-    (candidate) =>
-      isTutorialInstance(candidate) &&
-      (candidate.referencedMetamodels ?? []).includes(metamodel.id),
+    (candidate) => isInstance(candidate) && (candidate.referencedMetamodels ?? []).includes(metamodel.id),
   );
-  return { metamodel, instance };
+  return { tutorial, metamodel, instance };
 }
 
-
-/** The most recently created tutorial run among the user's projects, if any. */
-export function latestTutorialRun(allProjects: Project[] | undefined): TutorialProjects | null {
-  const metamodels = (allProjects ?? [])
-    .filter(isTutorialMetamodel)
-    .sort((a, b) => b.id - a.id);
+/** The most recently created run of a tutorial among the user's projects, if any. */
+export function latestTutorialRun(
+  tutorial: TutorialDefinition,
+  allProjects: Project[] | undefined,
+): TutorialProjects | null {
+  const metamodels = (allProjects ?? []).filter(isMetamodelOf(tutorial)).sort((a, b) => b.id - a.id);
   return metamodels.length ? findTutorialProjects(metamodels[0], allProjects) : null;
 }

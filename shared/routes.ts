@@ -398,6 +398,30 @@ export const api = {
         200: z.object({ deletedProjects: z.number() }),
       },
     },
+    // One tutorial by its id (shared/tutorial.ts). The routes above create the
+    // first tutorial and remove the projects of all tutorials.
+    createOne: {
+      method: 'POST' as const,
+      path: '/api/tutorial/:tutorial',
+      responses: {
+        201: z.object({
+          metamodel: z.custom<typeof projects.$inferSelect>(),
+          instance: z.custom<typeof projects.$inferSelect>(),
+          metamodelViewId: z.number(),
+          instanceViewId: z.number(),
+        }),
+        404: errorSchemas.notFound,
+        500: errorSchemas.internal,
+      },
+    },
+    deleteOne: {
+      method: 'DELETE' as const,
+      path: '/api/tutorial/:tutorial',
+      responses: {
+        200: z.object({ deletedProjects: z.number() }),
+        404: errorSchemas.notFound,
+      },
+    },
   },
   views: {
     list: {

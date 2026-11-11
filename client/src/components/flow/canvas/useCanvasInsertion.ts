@@ -1,3 +1,4 @@
+import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { useReactFlow } from "@xyflow/react";
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
@@ -103,6 +104,7 @@ export function useCanvasInsertion() {
         setEdges((current) => [...current, ...copy.edges]);
         setSelectedEdgeId(null);
         setSelectedNodeId(copy.nodes.length === 1 ? copy.nodes[0].id : null);
+        emitTutorialSignal("pattern-inserted");
       } catch (error) {
         console.error("Failed to insert pattern into view:", error);
         toast({

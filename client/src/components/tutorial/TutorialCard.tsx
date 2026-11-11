@@ -4,32 +4,58 @@ import { useLocation } from "wouter";
 import { ArrowRight, CheckCircle2, GraduationCap, Loader2, Trash2 } from "lucide-react";
 import { api } from "@shared/routes";
 import type { Project, View } from "@shared/schema";
-import { TUTORIAL_LESSONS, TUTORIAL_STEPS } from "@shared/tutorial";
+import { TUTORIALS, tutorialSteps, type TutorialDefinition } from "@shared/tutorial";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiCall } from "@/lib/api-client";
 import {
+  clearTutorialProgress,
   countDone,
   currentStep,
   isTutorialFinished,
   loadTutorialProgress,
+  pendingRecap,
+  skippedSteps,
 } from "@/lib/tutorial-progress";
 import { latestTutorialRun } from "@/lib/tutorial-projects";
 
+/** The guided tutorials on the project list, in the order they build on each other. */
+export function TutorialCards({ projects }: { projects: Project[] | undefined }) {
+  return (
+    <div className="space-y-3" data-testid="tutorial-cards">
+      {TUTORIALS.map((tutorial, index) => (
+        <TutorialCard key={tutorial.id} tutorial={tutorial} projects={projects} isFirst={index === 0} />
+      ))}
+    </div>
+  );
+}
+
 /**
- * Entry point to the guided tutorial on the project list: start it, continue
- * where you left off, or clean it up once finished.
+ * Entry point to one guided tutorial: start it, continue where you left off,
+ * or clean it up once finished.
  */
-export function TutorialCard({ projects }: { projects: Project[] | undefined }) {
+function TutorialCard({
+  tutorial,
+  projects,
+  isFirst,
+}: {
+  tutorial: TutorialDefinition;
+  projects: Project[] | undefined;
+  /** The tutorial newcomers start with is introduced as such. */
+  isFirst: boolean;
+}) {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
-  const run = useMemo(() => latestTutorialRun(projects), [projects]);
-  const progress = run ? loadTutorialProgress(run.metamodel.id) : null;
-  const done = progress ? countDone(progress) : 0;
-  const next = progress ? currentStep(progress) : null;
-  const finished = progress ? isTutorialFinished(progress) : false;
+  const run = useMemo(() => latestTutorialRun(tutorial, projects), [tutorial, projects]);
+  const progress = run ? loadTutorialProgress(tutorial, run.metamodel.id) : null;
+  const total = tutorialSteps(tutorial).length;
+  const done = progress ? countDone(tutorial, progress) : 0;
+  const next = progress ? currentStep(tutorial, progress) : null;
+  const finished = progress ? isTutorialFinished(tutorial, progress) : false;
+  const skipped = progress ? skippedSteps(tutorial, progress).length : 0;
+  const recap = progress ? pendingRecap(tutorial, progress) : null;
 
   const openProject = async (project: Project) => {
     const views = await queryClient.fetchQuery<View[]>({
@@ -42,7 +68,7 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
   const start = async () => {
     setBusy(true);
     try {
-      const created = await apiCall(api.tutorial.create);
+      const created = await apiCall(api.tutorial.createOne, { params: { tutorial: tutorial.id } });
       await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
       setLocation(`/project/${created.metamodel.id}/view/${created.metamodelViewId}`);
     } catch (error) {
@@ -58,7 +84,8 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
   const remove = async () => {
     setBusy(true);
     try {
-      await apiCall(api.tutorial.delete);
+      await apiCall(api.tutorial.deleteOne, { params: { tutorial: tutorial.id } });
+      if (run) clearTutorialProgress(run.metamodel.id);
       await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
     } finally {
       setBusy(false);
@@ -68,18 +95,25 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
   if (run && finished) {
     return (
       <section
-        aria-label="Guided tutorial"
+        aria-label={`Tutorial: ${tutorial.title}`}
         className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-center"
-        data-testid="tutorial-card"
+        data-testid={`tutorial-card-${tutorial.id}`}
       >
         <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
         <p className="flex-1 text-sm">
-          <span className="font-semibold">Tutorial completed.</span>{" "}
-          <span className="text-muted-foreground">The two tutorial projects are still here if you want to look back.</span>
+          <span className="font-semibold">
+            {tutorial.title}:{" "}
+            {skipped > 0 ? `finished, ${skipped} ${skipped === 1 ? "step" : "steps"} skipped.` : "completed."}
+          </span>{" "}
+          <span className="text-muted-foreground">
+            {skipped > 0
+              ? "Open one of its projects to go back to the skipped steps."
+              : "Its two projects are still here if you want to look back."}
+          </span>
         </p>
-        <Button variant="outline" size="sm" onClick={remove} disabled={busy} data-testid="button-tutorial-remove">
+        <Button variant="outline" size="sm" onClick={remove} disabled={busy} data-testid={`button-tutorial-remove-${tutorial.id}`}>
           <Trash2 className="mr-2 h-4 w-4" />
-          Remove tutorial projects
+          Remove its projects
         </Button>
       </section>
     );
@@ -87,9 +121,9 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
 
   return (
     <section
-      aria-label="Guided tutorial"
+      aria-label={`Tutorial: ${tutorial.title}`}
       className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-r from-primary/[0.08] via-card to-card p-5 sm:p-6"
-      data-testid="tutorial-card"
+      data-testid={`tutorial-card-${tutorial.id}`}
     >
       <div className="flex flex-col gap-5 md:flex-row md:items-center">
         <div className="flex flex-1 items-start gap-4">
@@ -98,26 +132,31 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
           </div>
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-              {run ? "Guided tutorial in progress" : "New to Symlit?"}
+              {run ? `Tutorial in progress · ${tutorial.title}` : isFirst ? `New to Symlit? · ${tutorial.title}` : `Tutorial · ${tutorial.title}`}
             </p>
             <h2 className="mt-1 text-lg font-semibold tracking-tight">
-              {run ? "Pick up where you left off" : "Learn Symlit by building a delivery drone model"}
+              {run ? "Pick up where you left off" : tutorial.question}
             </h2>
             {run ? (
               <p className="mt-1 text-sm text-muted-foreground">
-                {done} of {TUTORIAL_STEPS.length} steps done
+                {done} of {total} steps done
+                {skipped > 0 ? ` · ${skipped} skipped` : null}
                 {next ? (
                   <>
                     {" "}· next: <span className="font-medium text-foreground">{next.title}</span>
                   </>
+                ) : recap ? (
+                  <> · next: one question about {recap.title.toLowerCase()}</>
                 ) : null}
               </p>
             ) : (
-              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
-                {TUTORIAL_LESSONS.length} short hands-on lessons, about 15 minutes. You define types in a
-                metamodel, build a typed model from them, validate it, tidy the layout, save a pattern and
-                export your work. Each step ticks off as you do it.
-              </p>
+              <>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{tutorial.summary}</p>
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {tutorial.lessons.length} hands-on lessons · about {tutorial.minutes} minutes
+                  {tutorial.prerequisite ? ` · ${tutorial.prerequisite}` : null}
+                </p>
+              </>
             )}
             {run && (
               <div
@@ -125,10 +164,10 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
                 role="progressbar"
                 aria-label="Tutorial progress"
                 aria-valuemin={0}
-                aria-valuemax={TUTORIAL_STEPS.length}
+                aria-valuemax={total}
                 aria-valuenow={done}
               >
-                <div className="h-full rounded-full bg-primary" style={{ width: `${(done / TUTORIAL_STEPS.length) * 100}%` }} />
+                <div className="h-full rounded-full bg-primary" style={{ width: `${(done / total) * 100}%` }} />
               </div>
             )}
           </div>
@@ -138,21 +177,30 @@ export function TutorialCard({ projects }: { projects: Project[] | undefined }) 
             <>
               <Button
                 onClick={() =>
-                  void openProject(next?.scope === "instance" && run.instance ? run.instance : run.metamodel)
+                  void openProject(
+                    (next?.scope ?? recap?.steps[recap.steps.length - 1].scope) === "instance" && run.instance
+                      ? run.instance
+                      : run.metamodel,
+                  )
                 }
-                data-testid="button-tutorial-continue"
+                data-testid={`button-tutorial-continue-${tutorial.id}`}
               >
                 Continue tutorial
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button variant="ghost" onClick={remove} disabled={busy}>
+              <Button variant="ghost" onClick={remove} disabled={busy} data-testid={`button-tutorial-remove-${tutorial.id}`}>
                 Remove
               </Button>
             </>
           ) : (
-            <Button onClick={start} disabled={busy} data-testid="button-tutorial-start">
+            <Button
+              variant={isFirst ? "default" : "outline"}
+              onClick={start}
+              disabled={busy}
+              data-testid={`button-tutorial-start-${tutorial.id}`}
+            >
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Start the guided tutorial
+              Start this tutorial
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           )}
