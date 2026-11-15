@@ -136,10 +136,7 @@ export function CanvasToolbar({
       onCenterSelectedVertical={() => onCenterSelected("x", selectedNodeIds)}
       onCenterSelectedHorizontal={() => onCenterSelected("y", selectedNodeIds)}
       onScreenshot={onScreenshot}
-      onValidate={() => {
-        onValidate();
-        emitTutorialSignal("validation-run");
-      }}
+      onValidate={onValidate}
       onStraightenEdge={straightenSelectedEdge}
       onToggleSnap={() => setSnapEnabled((current) => !current)}
       onToggleAlwaysShowAccent={() => setAlwaysShowAccent((current) => !current)}

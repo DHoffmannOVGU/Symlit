@@ -39,6 +39,7 @@ commit that fixed them.
   `POST /api/views/:viewId/nodes/:nodeId/insert` do not mark the project as edited.
 
 ### Client
+- **Guided tutorial, still open** (`docs/ux/TUTORIAL_DIDACTICS.md`): it has not been tried with learners yet (step 4 of the plan); a single lesson cannot be reset on its own (only the whole tutorial); what the coach records per step (time, hints, Show me) stays in the browser's local storage and has no export.
 - **Dark mode is half there.** `dark:` variants exist in about 17 places while about 52 backgrounds are
   light-only (`bg-white`, `bg-slate-50`), and nothing ever sets the `dark` class. A toggle needs a pass over
   those first; turning it on as is gives a half-dark UI.
@@ -56,6 +57,8 @@ commit that fixed them.
   project or copying the data directory.
 
 ## Done
+- A second guided tutorial, Production with PPR (`shared/tutorial-ppr.ts`, `server/templates/tutorial-ppr.json`): product, process and resource with requirements traced to what satisfies them. Tutorials are now a list (`shared/tutorial.ts`): each has its own template, lessons, question and project names; the coach, the progress logic, the start cards and the API (`/api/tutorial/:tutorial`) take the tutorial as a parameter. The coach stays on the right and gets shorter while validation results are open, so the sidebar stays usable; on the left it stays above the sidebar's bottom buttons.
+- The guided tutorial was redesigned as a lesson rather than a feature tour (`docs/ux/TUTORIAL_DIDACTICS.md`): six lessons around one question, steps that complete when the model shows their result (the canvas reports the open diagram to the coach), a model that starts with one gap and the rule that finds it, an explanation after every step, one question per lesson, skipped steps counted apart, a last lesson without step-by-step instructions, and "start over" with fresh projects. The coach moves aside while an editor, the rules panel, the validation results or the table is open, and stays usable next to an open dialog. Rule issues now name their element.
 - Project creation: two steps (start from an empty metamodel, an empty model or a template; then only the choices that apply), an empty model can be based on a metamodel (also from the metamodel's card), empty projects get a first diagram and open on it, the confirmation names metamodels a template brings, and projects can be duplicated (the copy keeps using the same metamodels).
 - Saving a diagram that contained a relationship id already used in another diagram failed with a 500 that showed the database's constraint error. It answers 400 with what to do; unexpected save errors no longer pass database messages to the browser.
 - In narrow windows the header pushed the save state and the Save button out of view. The names on the left and the metamodel selector give way now; the save state keeps its mark and drops its words.

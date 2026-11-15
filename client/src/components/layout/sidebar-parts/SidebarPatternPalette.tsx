@@ -127,6 +127,7 @@ export function SidebarPatternPalette({
                   }}
                   disabled={!currentViewId}
                   showOnHover
+                  data-testid={`button-insert-pattern-${pattern.id}`}
                   className={cn(
                     pattern.from ? "right-1" : "right-7",
                     currentViewId

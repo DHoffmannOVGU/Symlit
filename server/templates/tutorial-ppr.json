@@ -1,0 +1,556 @@
+{
+  "template": {
+    "id": "tutorial-ppr",
+    "name": "Guided tutorial: PPR",
+    "description": "The PPR types metamodel (product, process, resource, requirement) and the Bracket production model used by the PPR tutorial. The model starts incomplete on purpose: no process produces the bracket, and one requirement is not satisfied.",
+    "listed": false
+  },
+  "export": {
+    "version": 1,
+    "kind": "instance-model"
+  },
+  "project": {
+    "id": 6,
+    "name": "Tutorial \u00b7 Bracket production",
+    "description": "Model for the PPR tutorial: how a shelf bracket is produced, built from the PPR types metamodel.",
+    "projectType": "instance",
+    "referencedMetamodels": [
+      5
+    ],
+    "metamodelSetup": null
+  },
+  "views": [
+    {
+      "id": 6,
+      "projectId": 6,
+      "name": "Production",
+      "description": "Requirements, products, processes and resources of the bracket.",
+      "viewType": "view",
+      "modelRules": [
+        {
+          "id": "rule_requirement_satisfied",
+          "name": "Every requirement is satisfied",
+          "enabled": true,
+          "targetType": "mm:5:node_58b20314-464e-57cd-b52d-e3ad1c0092b1",
+          "condition": {
+            "kind": "group",
+            "combinator": "all",
+            "conditions": [
+              {
+                "kind": "comparison",
+                "source": "connected",
+                "direction": "incoming",
+                "quantifier": "none",
+                "targetType": "all",
+                "field": "name",
+                "operator": "exists"
+              }
+            ]
+          },
+          "outcome": {
+            "kind": "issue",
+            "severity": "warning",
+            "message": "Nothing satisfies this requirement yet."
+          }
+        }
+      ],
+      "nodes": [
+        {
+          "id": "node_2428311c-b70f-5f1f-974b-b5d072dc4068",
+          "projectId": 6,
+          "type": "part",
+          "data": {
+            "icon": "ClipboardCheck",
+            "type": "Requirement",
+            "color": "#7c3aed",
+            "label": "Carries 5 kg",
+            "typeId": "mm:5:node_58b20314-464e-57cd-b52d-e3ad1c0092b1",
+            "attributes": [
+              {
+                "id": "attr-criterion",
+                "name": "criterion",
+                "type": "string",
+                "unit": "",
+                "value": "No lasting deformation under a 5 kg static load",
+                "description": "How to tell that the requirement is met"
+              },
+              {
+                "id": "attr-source",
+                "name": "source",
+                "type": "string",
+                "unit": "",
+                "value": "Customer",
+                "description": "Who asks for it"
+              }
+            ],
+            "description": "The bracket holds a shelf with a load of 5 kg.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_0f1d5c97-8965-5470-8e9b-6db802a6675f",
+          "projectId": 6,
+          "type": "part",
+          "data": {
+            "icon": "ClipboardCheck",
+            "type": "Requirement",
+            "color": "#7c3aed",
+            "label": "Corrosion protection",
+            "typeId": "mm:5:node_58b20314-464e-57cd-b52d-e3ad1c0092b1",
+            "attributes": [
+              {
+                "id": "attr-criterion",
+                "name": "criterion",
+                "type": "string",
+                "unit": "",
+                "value": "No rust after 240 h in the salt spray test",
+                "description": "How to tell that the requirement is met"
+              },
+              {
+                "id": "attr-source",
+                "name": "source",
+                "type": "string",
+                "unit": "",
+                "value": "Customer",
+                "description": "Who asks for it"
+              }
+            ],
+            "description": "The bracket is used in damp rooms.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 300,
+            "y": 0
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_a989c2c5-9219-5b1c-a5c5-3e2310f65aa2",
+          "projectId": 6,
+          "type": "part",
+          "data": {
+            "icon": "Package",
+            "type": "Product",
+            "color": "#2563eb",
+            "label": "Steel sheet",
+            "typeId": "mm:5:node_acaa3f9d-01a4-51c3-b0cb-1acb83014bc4",
+            "attributes": [
+              {
+                "id": "attr-material",
+                "name": "material",
+                "type": "string",
+                "unit": "",
+                "value": "Steel S235",
+                "description": "What it is made of"
+              }
+            ],
+            "description": "Raw material, 3 mm thick.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 0,
+            "y": 230
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_e43ac1f9-90ff-5c3c-9756-7199c4248587",
+          "projectId": 6,
+          "type": "part",
+          "data": {
+            "icon": "Activity",
+            "type": "Process",
+            "color": "#d97706",
+            "label": "Laser cutting",
+            "typeId": "mm:5:node_b85eb01c-0f4b-5045-a86e-0491bef77d29",
+            "attributes": [
+              {
+                "id": "attr-cycle-time",
+                "name": "cycle time",
+                "type": "number",
+                "unit": "s",
+                "value": "20",
+                "description": "Time for one part"
+              }
+            ],
+            "description": "Cuts the outline of the bracket out of the sheet.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 300,
+            "y": 230
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_b90b548f-2740-58cc-8142-b156af07baea",
+          "projectId": 6,
+          "type": "part",
+          "data": {
+            "icon": "Package",
+            "type": "Product",
+            "color": "#2563eb",
+            "label": "Blank",
+            "typeId": "mm:5:node_acaa3f9d-01a4-51c3-b0cb-1acb83014bc4",
+            "attributes": [
+              {
+                "id": "attr-material",
+                "name": "material",
+                "type": "string",
+                "unit": "",
+                "value": "Steel S235",
+                "description": "What it is made of"
+              }
+            ],
+            "description": "The flat, cut-out part.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 600,
+            "y": 230
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_08e76707-a1f2-5dde-b0c1-e8128ae2059b",
+          "projectId": 6,
+          "type": "part",
+          "data": {
+            "icon": "Factory",
+            "type": "Resource",
+            "color": "#16a34a",
+            "label": "Laser cutter",
+            "typeId": "mm:5:node_beeafd77-3141-5969-869c-cafcbc9da3a9",
+            "attributes": [
+              {
+                "id": "attr-hourly-rate",
+                "name": "hourly rate",
+                "type": "number",
+                "unit": "EUR/h",
+                "value": "60",
+                "description": "Cost of one hour of use"
+              }
+            ],
+            "description": "Flatbed laser cutting machine.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 300,
+            "y": 460
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_334ff7f6-4bdf-55b1-918b-1bdb34f65d22",
+          "projectId": 6,
+          "type": "part",
+          "data": {
+            "icon": "Package",
+            "type": "Product",
+            "color": "#2563eb",
+            "label": "Bracket",
+            "typeId": "mm:5:node_acaa3f9d-01a4-51c3-b0cb-1acb83014bc4",
+            "attributes": [
+              {
+                "id": "attr-material",
+                "name": "material",
+                "type": "string",
+                "unit": "",
+                "value": "Steel S235",
+                "description": "What it is made of"
+              }
+            ],
+            "description": "The finished shelf bracket.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 600,
+            "y": 460
+          },
+          "parentId": null
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge_8efd12d9-6aa9-5b92-9ed3-fad2da2db3c0",
+          "viewId": 6,
+          "source": "node_a989c2c5-9219-5b1c-a5c5-3e2310f65aa2",
+          "target": "node_e43ac1f9-90ff-5c3c-9756-7199c4248587",
+          "edgeType": "association",
+          "sourceHandle": "right",
+          "targetHandle": "left",
+          "data": {
+            "edgeType": "association",
+            "label": "goes into"
+          }
+        },
+        {
+          "id": "edge_2179fd45-7cc3-5bca-9f26-30f182faa6a0",
+          "viewId": 6,
+          "source": "node_e43ac1f9-90ff-5c3c-9756-7199c4248587",
+          "target": "node_b90b548f-2740-58cc-8142-b156af07baea",
+          "edgeType": "association",
+          "sourceHandle": "right",
+          "targetHandle": "left",
+          "data": {
+            "edgeType": "association",
+            "label": "produces"
+          }
+        },
+        {
+          "id": "edge_6a89e47e-a858-5387-b72f-4312f6fdeb70",
+          "viewId": 6,
+          "source": "node_08e76707-a1f2-5dde-b0c1-e8128ae2059b",
+          "target": "node_e43ac1f9-90ff-5c3c-9756-7199c4248587",
+          "edgeType": "association",
+          "sourceHandle": "top",
+          "targetHandle": "bottom",
+          "data": {
+            "edgeType": "association",
+            "label": "executes"
+          }
+        }
+      ]
+    }
+  ],
+  "patterns": [],
+  "referencedMetamodels": [
+    {
+      "project": {
+        "id": 5,
+        "name": "Tutorial \u00b7 PPR types",
+        "description": "Metamodel for the PPR tutorial: product, process, resource, and the requirements they have to satisfy.",
+        "projectType": "metamodel",
+        "referencedMetamodels": [],
+        "metamodelSetup": null
+      },
+      "views": [
+        {
+          "id": 5,
+          "projectId": 5,
+          "name": "Types",
+          "description": "Product, process and resource, and how they relate.",
+          "viewType": "view",
+          "modelRules": [],
+          "nodes": [
+            {
+              "id": "node_a85752b2-f726-570c-a2eb-2e6e82c24f7a",
+              "projectId": 5,
+              "type": "partdef",
+              "data": {
+                "icon": "Boxes",
+                "type": "Object",
+                "color": "#64748b",
+                "label": "PPR element",
+                "description": "Anything that takes part in production: a product, a process or a resource."
+              },
+              "position": {
+                "x": 400,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_58b20314-464e-57cd-b52d-e3ad1c0092b1",
+              "projectId": 5,
+              "type": "requirementdef",
+              "data": {
+                "icon": "ClipboardCheck",
+                "type": "Need",
+                "color": "#7c3aed",
+                "label": "Requirement",
+                "attributes": [
+                  {
+                    "id": "attr-criterion",
+                    "name": "criterion",
+                    "type": "string",
+                    "unit": "",
+                    "value": "",
+                    "description": "How to tell that the requirement is met"
+                  },
+                  {
+                    "id": "attr-source",
+                    "name": "source",
+                    "type": "string",
+                    "unit": "",
+                    "value": "",
+                    "description": "Who asks for it"
+                  }
+                ],
+                "description": "Something the customer or a standard asks for, stated so that it can be checked."
+              },
+              "position": {
+                "x": 400,
+                "y": -230
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_acaa3f9d-01a4-51c3-b0cb-1acb83014bc4",
+              "projectId": 5,
+              "type": "partdef",
+              "data": {
+                "icon": "Package",
+                "type": "Object",
+                "color": "#2563eb",
+                "label": "Product",
+                "attributes": [
+                  {
+                    "id": "attr-material",
+                    "name": "material",
+                    "type": "string",
+                    "unit": "",
+                    "value": "",
+                    "description": "What it is made of"
+                  }
+                ],
+                "description": "What is made: raw material, intermediate parts and the finished product."
+              },
+              "position": {
+                "x": 0,
+                "y": 280
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_b85eb01c-0f4b-5045-a86e-0491bef77d29",
+              "projectId": 5,
+              "type": "actiondef",
+              "data": {
+                "icon": "Activity",
+                "type": "Behavior",
+                "color": "#d97706",
+                "label": "Process",
+                "attributes": [
+                  {
+                    "id": "attr-cycle-time",
+                    "name": "cycle time",
+                    "type": "number",
+                    "unit": "s",
+                    "value": "",
+                    "description": "Time for one part"
+                  }
+                ],
+                "description": "What is done: a step that turns products into other products."
+              },
+              "position": {
+                "x": 400,
+                "y": 280
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_beeafd77-3141-5969-869c-cafcbc9da3a9",
+              "projectId": 5,
+              "type": "agentdef",
+              "data": {
+                "icon": "Factory",
+                "type": "Performer",
+                "color": "#16a34a",
+                "label": "Resource",
+                "attributes": [
+                  {
+                    "id": "attr-hourly-rate",
+                    "name": "hourly rate",
+                    "type": "number",
+                    "unit": "EUR/h",
+                    "value": "",
+                    "description": "Cost of one hour of use"
+                  }
+                ],
+                "description": "What does it: a machine, a tool or a worker that carries out processes."
+              },
+              "position": {
+                "x": 800,
+                "y": 280
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_ee30276b-eef8-5728-ab4e-067e11266a9c",
+              "viewId": 5,
+              "source": "node_acaa3f9d-01a4-51c3-b0cb-1acb83014bc4",
+              "target": "node_a85752b2-f726-570c-a2eb-2e6e82c24f7a",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "generalization"
+              }
+            },
+            {
+              "id": "edge_9413e7c1-9c38-56e4-8b88-94fe05161d29",
+              "viewId": 5,
+              "source": "node_b85eb01c-0f4b-5045-a86e-0491bef77d29",
+              "target": "node_a85752b2-f726-570c-a2eb-2e6e82c24f7a",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "bottom",
+              "data": {
+                "edgeType": "generalization"
+              }
+            },
+            {
+              "id": "edge_14e2b6ed-8ba4-59d7-9d50-a85b1da863fc",
+              "viewId": 5,
+              "source": "node_beeafd77-3141-5969-869c-cafcbc9da3a9",
+              "target": "node_a85752b2-f726-570c-a2eb-2e6e82c24f7a",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "right",
+              "data": {
+                "edgeType": "generalization"
+              }
+            },
+            {
+              "id": "edge_0d83c8a4-807b-5ff2-b74e-ca8bfada3735",
+              "viewId": 5,
+              "source": "node_acaa3f9d-01a4-51c3-b0cb-1acb83014bc4",
+              "target": "node_b85eb01c-0f4b-5045-a86e-0491bef77d29",
+              "edgeType": "association",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "association",
+                "label": "goes into"
+              }
+            },
+            {
+              "id": "edge_5cab798b-cba7-56c0-a7e5-75fd82f329e3",
+              "viewId": 5,
+              "source": "node_b85eb01c-0f4b-5045-a86e-0491bef77d29",
+              "target": "node_acaa3f9d-01a4-51c3-b0cb-1acb83014bc4",
+              "edgeType": "association",
+              "sourceHandle": "bottom",
+              "targetHandle": "bottom",
+              "data": {
+                "edgeType": "association",
+                "label": "produces"
+              }
+            },
+            {
+              "id": "edge_5e8c4ed6-745c-51dd-bc8e-c159c941aade",
+              "viewId": 5,
+              "source": "node_beeafd77-3141-5969-869c-cafcbc9da3a9",
+              "target": "node_b85eb01c-0f4b-5045-a86e-0491bef77d29",
+              "edgeType": "association",
+              "sourceHandle": "left",
+              "targetHandle": "right",
+              "data": {
+                "edgeType": "association",
+                "label": "executes"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

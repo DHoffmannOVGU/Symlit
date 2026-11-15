@@ -1,6 +1,5 @@
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
-import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { newNodeId } from "@/lib/ids";
 import { isNeedKindLabel } from "@shared/metamodel-setup";
 import { applyTypeStyle, pickElementStyle, withElementStyle } from "@/lib/element-style";
@@ -42,9 +41,6 @@ export function useCanvasElementActions({
     (nodeId: string, data: NodeData) => {
       if (isExternalNode(nodeId)) return;
       takeSnapshot(nodes, edges);
-      const previousAttributes =
-        (nodes.find((n) => n.id === nodeId)?.data as NodeData | undefined)?.attributes?.length ?? 0;
-      if ((data.attributes?.length ?? 0) > previousAttributes) emitTutorialSignal("attribute-added");
       const nextNodes = nodes.map((n) =>
         n.id === nodeId
           ? {
