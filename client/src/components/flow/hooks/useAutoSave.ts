@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 
 /** How long the diagram must be left alone before it is saved. */
@@ -32,7 +31,6 @@ export function useAutoSave({ enabled, isDirty, isSaving, save }: UseAutoSavePar
       save({ quiet: true })
         .then(() => {
           failedFor.current = null;
-          emitTutorialSignal("saved");
         })
         .catch(() => {
           const state = diagramStore.getState();

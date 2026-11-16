@@ -16,12 +16,14 @@ import {
   Trash2,
 } from "lucide-react";
 import {
+  same,
   TUTORIALS,
   tutorialSteps,
   type TutorialDefinition,
   type TutorialLesson,
   type TutorialStep,
 } from "@shared/tutorial";
+import type { CoachPlace } from "./useTutorialCoach";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { announceCanvasOverlayChange } from "@/components/flow/utils/fit-options";
@@ -43,7 +45,12 @@ interface TutorialCoachProps {
   tutorial: TutorialDefinition;
   progress: TutorialProgress;
   /** Which tutorial project is open, used to say where a step happens. */
-  scope: "metamodel" | "instance";
+  place: CoachPlace;
+  /** The open project's name when it is neither the tutorial's metamodel nor its model. */
+  placeName?: string;
+  /** The open diagram and all diagrams of the open project, by name. */
+  diagram?: string;
+  diagrams?: string[];
   onShowMe: (step: TutorialStep) => void;
   onOpenStepDiagram: (step: TutorialStep) => void;
   onHintShown: (stepId: string) => void;
@@ -137,7 +144,10 @@ function useCoachPlacement() {
 export function TutorialCoach({
   tutorial,
   progress,
-  scope,
+  place,
+  placeName = "",
+  diagram = "",
+  diagrams = [],
   onShowMe,
   onOpenStepDiagram,
   onHintShown,
@@ -151,7 +161,18 @@ export function TutorialCoach({
   onShowTutorials,
   onRemoveTutorial,
 }: TutorialCoachProps) {
-  const projectLabel = (target: "metamodel" | "instance") => tutorial.projects[target];
+  /** What the place is called: a project of the tutorial, the project list, or another project. */
+  const placeLabel = (target: CoachPlace) =>
+    target === "projects" ? "All projects" : target === "elsewhere" ? placeName : tutorial.projects[target];
+  /** Where the learner has to go for a step, or null when they are there. */
+  const wayTo = (step: TutorialStep): string | null => {
+    if (step.scope !== place) return step.scope === "projects" ? "Go to All projects" : `Open ${placeLabel(step.scope)}`;
+    // Another diagram of this project, if it exists already (a step may be about creating it).
+    if (step.view && diagram && !same(step.view, diagram) && diagrams.some((name) => same(name, step.view!))) {
+      return `Open the diagram ${step.view}`;
+    }
+    return null;
+  };
   const done = countDone(tutorial, progress);
   const skipped = skippedSteps(tutorial, progress);
   const total = tutorialSteps(tutorial).length;
@@ -304,7 +325,7 @@ export function TutorialCoach({
               {skipped.length > 0 && <span data-testid="tutorial-skipped-count"> · {skipped.length} skipped</span>}
               {!finished && (
                 <>
-                  {" "}· in <span className="font-medium text-foreground">{projectLabel(scope)}</span>
+                  {" "}· in <span className="font-medium text-foreground">{placeLabel(place)}</span>
                 </>
               )}
             </p>
@@ -449,7 +470,7 @@ export function TutorialCoach({
                     const isCurrent = state === "current";
                     // The explanation of the step just done; all of them when looking back at a lesson.
                     const showDone = state === "done" && (step.id === lastDone?.id || !viewingActive);
-                    const elsewhere = step.scope !== scope;
+                    const way = wayTo(step);
                     return (
                       <li
                         key={step.id}
@@ -493,9 +514,9 @@ export function TutorialCoach({
                                   </p>
                                 )}
                                 <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                                  {elsewhere ? (
+                                  {way ? (
                                     <Button size="sm" className="h-8" onClick={() => onOpenStepDiagram(step)} data-testid="button-tutorial-open-project">
-                                      Open {projectLabel(step.scope)}
+                                      {way}
                                       <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                                     </Button>
                                   ) : (

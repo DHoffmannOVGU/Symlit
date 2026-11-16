@@ -4,8 +4,12 @@ import {
   TUTORIALS,
   tutorialSignals,
   tutorialSteps,
+  type TutorialAttribute,
   type TutorialElement,
   type TutorialModelState,
+  type TutorialRelationship,
+  type TutorialRule,
+  type TutorialRuleCondition,
 } from "@shared/tutorial";
 import { BASICS_TUTORIAL } from "@shared/tutorial-basics";
 import { PPR_TUTORIAL } from "@shared/tutorial-ppr";
@@ -45,23 +49,80 @@ const stepState = bind(progressOf.stepState);
 
 // --- a small model to check steps against ------------------------------------
 
+/** An attribute as the tutorial sees it; a number unless said otherwise. */
+const attribute = (name: string, value: string, extra: Partial<TutorialAttribute> = {}): TutorialAttribute => ({
+  name,
+  value,
+  type: "number",
+  unit: "",
+  formula: "",
+  references: [],
+  options: [],
+  ...extra,
+});
+
 const element = (
   id: string,
   name: string,
   type: string,
-  attributes: Record<string, string> = {},
+  attributes: Record<string, string> | TutorialAttribute[] = {},
+  extra: Partial<TutorialElement> = {},
 ): TutorialElement => ({
   id,
   name,
   type,
-  attributes: Object.entries(attributes).map(([attribute, value]) => ({ name: attribute, value })),
+  attributes: Array.isArray(attributes)
+    ? attributes
+    : Object.entries(attributes).map(([attributeName, value]) => attribute(attributeName, value)),
+  tags: [],
+  color: "",
+  ...extra,
+});
+
+/** A relationship from one element to another; an unnamed Association unless said otherwise. */
+const link = (from: string, to: string, kind = "association", name = ""): TutorialRelationship => ({ from, to, kind, name });
+
+/** One comparison of a rule, about the element itself unless said otherwise. */
+const condition = (extra: Partial<TutorialRuleCondition>): TutorialRuleCondition => ({
+  about: "self",
+  direction: "",
+  quantifier: "",
+  type: "",
+  field: "attribute",
+  attribute: "",
+  operator: "equals",
+  value: "",
+  ...extra,
+});
+
+/** A saved rule that reports an issue unless said otherwise. */
+const rule = (target: string, conditions: TutorialRuleCondition[], extra: Partial<TutorialRule> = {}): TutorialRule => ({
+  reportsIssue: true,
+  tag: "",
+  target,
+  attributes: conditions.map((candidate) => candidate.attribute).filter(Boolean),
+  connected: conditions.some((candidate) => candidate.about === "connected"),
+  conditions,
+  combinator: "all",
+  ...extra,
 });
 
 const model = (
   scope: TutorialModelState["scope"],
   elements: TutorialElement[],
   extra: Partial<TutorialModelState> = {},
-): TutorialModelState => ({ scope, elements, relationships: [], editingId: null, rules: [], dirty: false, ...extra });
+): TutorialModelState => ({
+  scope,
+  diagram: "Main",
+  diagrams: ["Main"],
+  metamodels: [],
+  elements,
+  relationships: [],
+  editingId: null,
+  rules: [],
+  dirty: false,
+  ...extra,
+});
 
 const startingTypes = [
   element("drone", "Drone", "Object", { mass: "", range: "" }),
@@ -167,13 +228,13 @@ test("a step completes when the model shows its result, whatever was clicked", (
   const cameraWithAttribute = [...startingTypes, element("new", "Camera", "Object", { resolution: "" })];
   progress = applyModelState(
     progress,
-    model("metamodel", cameraWithAttribute, { relationships: [{ from: "new", to: "drone" }] }),
+    model("metamodel", cameraWithAttribute, { relationships: [link("new", "drone")] }),
   );
   assert.equal(stepState(progress, step("add-attribute")), "done");
   assert.equal(stepState(progress, step("relate-types")), "current");
   progress = applyModelState(
     progress,
-    model("metamodel", cameraWithAttribute, { relationships: [{ from: "drone", to: "new" }] }),
+    model("metamodel", cameraWithAttribute, { relationships: [link("drone", "new")] }),
   );
   assert.equal(stepState(progress, step("relate-types")), "done");
 });
@@ -225,10 +286,19 @@ test("checking the model: the seeded gap has to be found, fixed and checked agai
   assert.equal(stepState(progress, step("answer-question")), "open");
 
   // The seeded rule is not the learner's rule; a tag rule is not a check either.
-  const seeded = { reportsIssue: true, target: "Battery", attributes: ["capacity"], connected: false };
-  progress = applyModelState(progress, model("instance", fixed, { rules: [seeded, { reportsIssue: false, target: "Drone", attributes: ["range"], connected: false }] }));
-  assert.equal(stepState(progress, step("add-rule")), "open");
-  const withRule = model("instance", fixed, { rules: [seeded, { reportsIssue: true, target: "Drone", attributes: ["Range"], connected: false }] });
+  const seeded = rule("Battery", [condition({ attribute: "capacity", operator: "missing" })]);
+  const lessThan15 = condition({ attribute: "range", operator: "less-than", value: "15" });
+  const notYet = [
+    rule("Drone", [lessThan15], { reportsIssue: false, tag: "Short range" }), // a tag is not a check
+    rule("Drone", [condition({ attribute: "range", operator: "greater-than", value: "15" })]), // the wrong way round
+    rule("Drone", [condition({ attribute: "range", operator: "less-than", value: "50" })]), // not the route's 15 km
+    rule("Battery", [lessThan15]), // not about drones
+  ];
+  for (const candidate of notYet) {
+    progress = applyModelState(progress, model("instance", fixed, { rules: [seeded, candidate] }));
+    assert.equal(stepState(progress, step("add-rule")), "open");
+  }
+  const withRule = model("instance", fixed, { rules: [seeded, rule("drone", [lessThan15])] });
   progress = applyModelState(progress, withRule);
   assert.equal(stepState(progress, step("add-rule")), "done");
 });
@@ -236,7 +306,7 @@ test("checking the model: the seeded gap has to be found, fixed and checked agai
 test("the unguided lesson asks for a saved, related, valued result", () => {
   let progress = atLesson("on-your-own");
   const charger = element("charger", "Charger", "Object", { power: "" });
-  const related = { relationships: [{ from: "charger", to: "battery" }] };
+  const related = { relationships: [link("charger", "battery")] };
   progress = applyModelState(progress, model("metamodel", [...startingTypes, charger], { ...related, dirty: true }));
   assert.equal(stepState(progress, step("own-type")), "current", "not saved yet");
   progress = applyModelState(progress, model("metamodel", [...startingTypes, element("charger", "Charger", "Object")], related));
@@ -245,7 +315,7 @@ test("the unguided lesson asks for a saved, related, valued result", () => {
   assert.equal(stepState(progress, step("own-type")), "done");
 
   const chargerElement = element("c1", "Depot charger", "Charger", { power: "300" });
-  const connected = model("instance", [...startingModel, chargerElement], { relationships: [{ from: "c1", to: "b" }] });
+  const connected = model("instance", [...startingModel, chargerElement], { relationships: [link("c1", "b")] });
   assert.equal(stepState(applyModelState(progress, model("instance", [...startingModel, chargerElement])), step("own-element")), "current");
   progress = applyModelState(progress, connected);
   assert.equal(stepState(progress, step("own-element")), "done");
@@ -392,9 +462,9 @@ test("PPR: requirement, product, process and resource have to be connected the P
     element("bracket", "Bracket", "Product", { material: "Steel" }),
   ];
   const chain = [
-    { from: "sheet", to: "cut" },
-    { from: "cut", to: "blank" },
-    { from: "laser", to: "cut" },
+    link("sheet", "cut"),
+    link("cut", "blank"),
+    link("laser", "cut"),
   ];
 
   // Requirements: a new one needs a criterion, and a product that has to satisfy it.
@@ -408,12 +478,12 @@ test("PPR: requirement, product, process and resource have to be connected the P
   progress = progressOf.applyModelState(
     P,
     progress,
-    model("instance", [...start, angle], { relationships: [...chain, { from: "r1", to: "bracket" }, { from: "r3", to: "bracket" }] }),
+    model("instance", [...start, angle], { relationships: [...chain, link("r1", "bracket"), link("r3", "bracket")] }),
   );
   assert.equal(stateOf(progress, "add-requirement"), "done");
   assert.equal(stateOf(progress, "trace-load"), "current");
   assert.equal(stateOf(progress, "trace-new"), "open");
-  const traced = [...chain, { from: "bracket", to: "r1" }, { from: "bracket", to: "r3" }];
+  const traced = [...chain, link("bracket", "r1"), link("bracket", "r3")];
   progress = progressOf.applyModelState(P, progress, model("instance", [...start, angle], { relationships: traced }));
   assert.equal(stateOf(progress, "trace-load"), "done");
   assert.equal(stateOf(progress, "trace-new"), "done");
@@ -422,20 +492,29 @@ test("PPR: requirement, product, process and resource have to be connected the P
   progress = at("derive-process");
   const bending = element("bend", "Bending", "Process", { "cycle time": "15" });
   const withBending = [...start, angle, bending];
-  progress = progressOf.applyModelState(P, progress, model("instance", withBending, { relationships: [...traced, { from: "bend", to: "blank" }] }));
+  progress = progressOf.applyModelState(P, progress, model("instance", withBending, { relationships: [...traced, link("bend", "blank")] }));
   assert.equal(stateOf(progress, "add-process"), "done");
   assert.equal(stateOf(progress, "process-input"), "current", "the product goes into the process, not the other way");
-  const produced = [...traced, { from: "blank", to: "bend" }, { from: "bend", to: "bracket" }];
+  const produced = [...traced, link("blank", "bend"), link("bend", "bracket")];
   progress = progressOf.applyModelState(P, progress, model("instance", withBending, { relationships: produced }));
   assert.equal(stateOf(progress, "process-output"), "done");
 
   // Completeness: the learner's rule is about processes and relationships.
   progress = at("check-completeness");
-  const seeded = { reportsIssue: true, target: "Requirement", attributes: [], connected: true };
+  const nothingPointsAtIt = condition({ about: "connected", direction: "incoming", quantifier: "none", field: "name", operator: "exists" });
+  const seeded = rule("Requirement", [nothingPointsAtIt]);
   const pprModel = (extra: Partial<TutorialModelState>) => model("instance", withBending, { relationships: produced, ...extra });
-  progress = progressOf.applyModelState(P, progress, pprModel({ rules: [seeded, { reportsIssue: true, target: "Process", attributes: ["cycle time"], connected: false }] }));
-  assert.equal(stateOf(progress, "add-rule"), "open", "a rule on a value is not the rule about resources");
-  const withRule = { rules: [seeded, { reportsIssue: true, target: "process", attributes: [], connected: true }] };
+  const notYet = [
+    rule("Process", [condition({ attribute: "cycle time", operator: "missing" })]), // a rule on a value
+    rule("Process", [nothingPointsAtIt]), // any element pointing at it would do, not only a Resource
+    rule("Process", [{ ...nothingPointsAtIt, type: "Resource", direction: "outgoing" }]), // resources execute processes, not the reverse
+    rule("Resource", [{ ...nothingPointsAtIt, type: "Process" }]), // the opposite rule
+  ];
+  for (const candidate of notYet) {
+    progress = progressOf.applyModelState(P, progress, pprModel({ rules: [seeded, candidate] }));
+    assert.equal(stateOf(progress, "add-rule"), "open");
+  }
+  const withRule = { rules: [seeded, rule("process", [{ ...nothingPointsAtIt, type: "Resource" }])] };
   progress = progressOf.applyModelState(P, progress, pprModel(withRule));
   assert.equal(stateOf(progress, "add-rule"), "done");
 
@@ -445,7 +524,7 @@ test("PPR: requirement, product, process and resource have to be connected the P
   progress = progressOf.applyModelState(P, progress, model("instance", [...withBending, press], { relationships: produced }));
   assert.equal(stateOf(progress, "add-resource"), "done");
   assert.equal(stateOf(progress, "assign-resource"), "current");
-  const executedBending = [...produced, { from: "press", to: "bend" }];
+  const executedBending = [...produced, link("press", "bend")];
   progress = progressOf.applyModelState(P, progress, model("instance", [...withBending, press], { relationships: executedBending }));
   assert.equal(stateOf(progress, "assign-resource"), "done");
 
@@ -455,16 +534,16 @@ test("PPR: requirement, product, process and resource have to be connected the P
   const coated = element("coated", "Coated bracket", "Product", { material: "" });
   const booth = element("booth", "Coating booth", "Resource", { "hourly rate": "" });
   const all = [...withBending, press, coating, coated, booth];
-  const halfDone = [...executedBending, { from: "bracket", to: "coat" }];
+  const halfDone = [...executedBending, link("bracket", "coat")];
   progress = progressOf.applyModelState(P, progress, model("instance", all, { relationships: halfDone }));
   assert.equal(stateOf(progress, "own-process"), "current", "a process with nothing coming out is not finished");
-  const transformed = [...halfDone, { from: "coat", to: "coated" }];
+  const transformed = [...halfDone, link("coat", "coated")];
   progress = progressOf.applyModelState(P, progress, model("instance", all, { relationships: transformed }));
   assert.equal(stateOf(progress, "own-process"), "done");
   assert.equal(stateOf(progress, "own-resource"), "current");
   assert.equal(stateOf(progress, "own-trace"), "open");
   const complete = model("instance", all, {
-    relationships: [...transformed, { from: "booth", to: "coat" }, { from: "coat", to: "r2" }],
+    relationships: [...transformed, link("booth", "coat"), link("coat", "r2")],
     ...withRule,
   });
   progress = progressOf.applyModelState(P, progress, complete);

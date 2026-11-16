@@ -4,6 +4,8 @@
  * and follows the real workflow with one question in mind.
  */
 import {
+  attributeOf,
+  comparesWith,
   editing,
   ELEMENT_CARD,
   hasValue,
@@ -15,9 +17,21 @@ import {
   VALIDATE,
   type TutorialDefinition,
   type TutorialLesson,
+  type TutorialModelState,
 } from "./tutorial-types";
 
 const QUESTION = "Can the drone Courier X1 fly the city route?";
+
+/**
+ * The learner's rule: a drone whose range is below the 15 km of the city
+ * route is reported. The texts that follow state that 18 km covers 15 km, so
+ * the rule has to say exactly that.
+ */
+const rangeRule = (state: TutorialModelState) =>
+  state.rules.some(
+    (rule) =>
+      rule.reportsIssue && same(rule.target, "Drone") && comparesWith(rule, "range", ["less-than"]) === 15,
+  );
 
 /** The types the tutorial metamodel starts with. */
 const STARTING_TYPES = ["Drone", "Battery", "Delivery"];
@@ -85,7 +99,8 @@ const LESSONS: TutorialLesson[] = [
         hint: "Clicking Object instead of dragging places it in a free spot. A camera is a thing, so Object is the right kind.",
         done: "A new type, still with a placeholder name.",
         scope: "metamodel",
-        check: (state) => state.elements.some((element) => !STARTING_TYPES.some((name) => same(name, element.name))),
+        // One type more than at the start: renaming an existing type is not adding one.
+        check: (state) => state.elements.length > STARTING_TYPES.length,
         highlight: ['[data-testid="button-create-sidebar-partdef"]'],
       },
       {
@@ -107,7 +122,7 @@ const LESSONS: TutorialLesson[] = [
         hint: "An attribute is a property every camera has. Leave Default value empty: each camera gets its own value later. In the unit list you can search, or type your own unit such as MP.",
         done: "Every camera created from now on starts with a resolution attribute.",
         scope: "metamodel",
-        check: (state) => named(state, "Camera").some((element) => element.attributes.length > 0),
+        check: (state) => named(state, "Camera").some((element) => attributeOf(element, "resolution") !== undefined),
         highlight: ['[data-testid="button-add-attribute"]', { selector: ELEMENT_CARD, text: "Camera" }],
       },
       {
@@ -259,11 +274,10 @@ const LESSONS: TutorialLesson[] = [
         title: "Write your own rule",
         instruction:
           "The city route is 15 km long. Press Add rule and set it up: name Range covers the city route; elements Drone; condition range · is less than · 15; then report an issue. Press Save in the rules panel.",
-        hint: "In the condition row, the second list picks the attribute (range) and the third the comparison. In the Then row, switch from add descriptor tag to report an issue. The panel's Save stores the rules; it is separate from the diagram's Save.",
+        hint: "The tutorial looks for exactly this rule: for Drone, range · is less than · 15, report an issue. In the condition row, the second list picks the attribute (range) and the third the comparison. In the Then row, switch from add descriptor tag to report an issue. The panel's Save stores the rules; it is separate from the diagram's Save.",
         done: "Your rule is stored with the diagram and checked on every validation.",
         scope: "instance",
-        check: (state) =>
-          state.rules.some((rule) => rule.reportsIssue && rule.attributes.some((name) => same(name, "range"))),
+        check: rangeRule,
         highlight: ['[data-testid="button-add-rule"]', '[data-testid="button-model-rules"]'],
       },
       {
@@ -274,8 +288,7 @@ const LESSONS: TutorialLesson[] = [
         done: "No issues: 18 km of range covers the 15 km route. Yes, Courier X1 can fly the city route, and the model will say so if that ever changes. Try it: set the range to 10, validate, then undo.",
         signal: "validation-passed",
         scope: "instance",
-        check: (state) =>
-          state.rules.some((rule) => rule.reportsIssue && rule.attributes.some((name) => same(name, "range"))),
+        check: rangeRule,
         highlight: [VALIDATE],
       },
     ],

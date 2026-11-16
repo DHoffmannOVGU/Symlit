@@ -16,12 +16,25 @@ export const DEFAULT_TUTORIAL = BASICS_TUTORIAL;
 export const findTutorial = (id: string | null | undefined) =>
   TUTORIALS.find((tutorial) => tutorial.id === id);
 
+/**
+ * Projects a tutorial creates beyond its metamodel and its model (a second
+ * metamodel, for example) carry the tutorial's template id with this suffix.
+ */
+export const TUTORIAL_EXTRA_SUFFIX = "+extra";
+
+const baseTemplateId = (templateId: string | null | undefined) =>
+  templateId?.endsWith(TUTORIAL_EXTRA_SUFFIX) ? templateId.slice(0, -TUTORIAL_EXTRA_SUFFIX.length) : templateId;
+
 /** The tutorial a project belongs to, by the template it was created from. */
 export const tutorialForTemplate = (templateId: string | null | undefined) =>
-  TUTORIALS.find((tutorial) => tutorial.templateId === templateId);
+  TUTORIALS.find((tutorial) => tutorial.templateId === baseTemplateId(templateId));
 
 export const isTutorialTemplate = (templateId: string | null | undefined) =>
   tutorialForTemplate(templateId) !== undefined;
+
+/** The project is one a tutorial created in addition to its metamodel and its model. */
+export const isTutorialExtra = (templateId: string | null | undefined) =>
+  !!templateId?.endsWith(TUTORIAL_EXTRA_SUFFIX) && isTutorialTemplate(templateId);
 
 export const tutorialSteps = (tutorial: TutorialDefinition) =>
   tutorial.lessons.flatMap((lesson) => lesson.steps);

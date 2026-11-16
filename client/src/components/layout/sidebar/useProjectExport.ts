@@ -38,7 +38,7 @@ export function useProjectExport(projectId: number): UseProjectExportResult {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(blobUrl);
-      emitTutorialSignal("exported");
+      emitTutorialSignal(options.format === "json" ? "exported" : "exported-csv");
       toast({
         title: "Export created",
         description: "Your download should start shortly.",

@@ -49,8 +49,20 @@ const executed = (state: TutorialModelState, process: TutorialElement) =>
 const satisfied = (state: TutorialModelState, requirement: TutorialElement) =>
   state.relationships.some((relationship) => relationship.to === requirement.id);
 
+/** The learner's rule: a Process that no Resource points at is reported. */
 const processRule = (state: TutorialModelState) =>
-  state.rules.some((rule) => rule.reportsIssue && rule.connected && same(rule.target, "Process"));
+  state.rules.some(
+    (rule) =>
+      rule.reportsIssue &&
+      same(rule.target, "Process") &&
+      rule.conditions.some(
+        (condition) =>
+          condition.about === "connected" &&
+          condition.direction === "incoming" &&
+          condition.quantifier === "none" &&
+          same(condition.type, "Resource"),
+      ),
+  );
 
 const LESSONS: TutorialLesson[] = [
   {

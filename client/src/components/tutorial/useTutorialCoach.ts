@@ -3,8 +3,15 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { api, buildUrl } from "@shared/routes";
 import type { Project, View } from "@shared/schema";
-import { findTutorialProjects } from "@/lib/tutorial-projects";
 import {
+  findTutorialProjects,
+  latestTutorialRun,
+  tutorialWorkspaceState,
+  type TutorialProjects,
+} from "@/lib/tutorial-projects";
+import {
+  same,
+  TUTORIALS,
   type TutorialModelState,
   type TutorialScope,
   type TutorialSignal,
@@ -17,34 +24,40 @@ import {
   answerQuestion,
   applyModelState,
   applySignal,
+  applyWorkspaceState,
   clearTutorialProgress,
   closeRecap,
+  currentStep,
+  isTutorialFinished,
   loadTutorialProgress,
   noteHelpUsed,
+  rememberTutorialFinished,
   returnToSkipped,
   saveTutorialProgress,
   skipStep,
   type TutorialProgress,
 } from "@/lib/tutorial-progress";
 
-interface UseTutorialCoachOptions {
-  project: Project | undefined;
-  allProjects: Project[] | undefined;
-  viewId: number | undefined;
-  isDiagramDirty: boolean;
-}
+/**
+ * Where the coach is shown: in one of the tutorial's two projects, on the
+ * project list, or in another project the tutorial created.
+ */
+export type CoachPlace = TutorialScope | "elsewhere";
 
-export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty }: UseTutorialCoachOptions) {
+/**
+ * The progress of one tutorial run and what can be done with it, wherever the
+ * coach is shown. `navigate` leaves the current page (asking first when a
+ * diagram has unsaved changes).
+ */
+function useTutorialRun(
+  run: TutorialProjects | null,
+  allProjects: Project[] | undefined,
+  navigate: (href: string) => void,
+) {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const tutorial = useMemo(() => findTutorialProjects(project, allProjects), [project, allProjects]);
-  const runId = tutorial?.metamodel.id;
-  const definition = tutorial?.tutorial;
-  const scope: TutorialScope | null = !tutorial || !project
-    ? null
-    : project.id === tutorial.metamodel.id
-      ? "metamodel"
-      : "instance";
+  const runId = run?.metamodel.id;
+  const definition = run?.tutorial;
 
   const [progress, setProgress] = useState<TutorialProgress | null>(null);
   useEffect(() => {
@@ -59,8 +72,116 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
     [definition, runId],
   );
   useEffect(() => {
-    if (runId && progress) saveTutorialProgress(runId, progress);
-  }, [runId, progress]);
+    if (!runId || !progress || !definition) return;
+    saveTutorialProgress(runId, progress);
+    // Kept apart from the run: it is still true after the projects are removed.
+    if (progress.finishedAt && isTutorialFinished(definition, progress)) {
+      rememberTutorialFinished(definition.id, progress.finishedAt);
+    }
+  }, [definition, runId, progress]);
+
+  // Steps on the project list complete when the list shows what they ask for.
+  useEffect(() => {
+    if (!run || !progress) return;
+    update((current) => applyWorkspaceState(run.tutorial, current, tutorialWorkspaceState(run, allProjects)));
+  }, [allProjects, progress, run, update]);
+
+  /**
+   * Opens where a step happens: the project list, or the step's diagram. A
+   * step that names no diagram counts in any diagram of its project, so a
+   * learner already in that project stays where they are.
+   */
+  const openStep = useCallback(
+    async (step: TutorialStep, here: { projectId?: number; viewId?: number }) => {
+      if (!run) return;
+      if (step.scope === "projects") {
+        navigate("/projects");
+        return;
+      }
+      const target = step.scope === "metamodel" ? run.metamodel : run.instance;
+      if (!target) return;
+      const inTarget = here.projectId === target.id && here.viewId !== undefined;
+      if (inTarget && !step.view) return;
+      const views = await queryClient.fetchQuery<View[]>({
+        queryKey: [api.views.list.path, target.id],
+        queryFn: () => apiCall(api.views.list, { params: { projectId: target.id } }),
+      });
+      const diagrams = views.filter((view) => view.viewType !== "pattern");
+      const view = (step.view ? diagrams.find((candidate) => same(candidate.name, step.view!)) : undefined) ?? diagrams[0];
+      if (inTarget && view?.id === here.viewId) return;
+      navigate(view ? `/project/${target.id}/view/${view.id}` : buildUrl("/project/:id", { id: target.id }));
+    },
+    [navigate, queryClient, run],
+  );
+
+  /** Throws the tutorial projects away and starts again with fresh ones. */
+  const restart = useCallback(async () => {
+    if (!definition) return;
+    if (runId) clearTutorialProgress(runId);
+    const params = { tutorial: definition.id };
+    await apiCall(api.tutorial.deleteOne, { params });
+    const created = await apiCall(api.tutorial.createOne, { params });
+    // Project numbers can repeat (after the database was reset): start clean.
+    clearTutorialProgress(created.metamodel.id);
+    await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
+    setLocation(`/project/${created.metamodel.id}/view/${created.metamodelViewId}`);
+  }, [definition, queryClient, runId, setLocation]);
+
+  /** Removes the projects of this tutorial. */
+  const remove = useCallback(async () => {
+    if (!definition) return;
+    await apiCall(api.tutorial.deleteOne, { params: { tutorial: definition.id } });
+    if (runId) clearTutorialProgress(runId);
+    await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
+  }, [definition, queryClient, runId]);
+
+  return {
+    definition,
+    progress,
+    update,
+    openStep,
+    restart,
+    remove,
+    skip: (stepId: string) => definition && update((current) => skipStep(definition, current, stepId)),
+    returnToSkipped: () => update(returnToSkipped),
+    answer: (lessonId: string, option: number) => update((current) => answerQuestion(current, lessonId, option)),
+    closeRecap: (lessonId: string) => definition && update((current) => closeRecap(definition, current, lessonId)),
+    noteHint: (stepId: string) => update((current) => noteHelpUsed(current, stepId, "hints")),
+    noteShowMe: (stepId: string) => update((current) => noteHelpUsed(current, stepId, "showMe")),
+    setCollapsed: (collapsed: boolean) => update((current) => ({ ...current, collapsed })),
+  };
+}
+
+interface UseTutorialCoachOptions {
+  project: Project | undefined;
+  allProjects: Project[] | undefined;
+  viewId: number | undefined;
+  isDiagramDirty: boolean;
+}
+
+/** The coach inside a project of a tutorial: it follows what is built in the open diagram. */
+export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty }: UseTutorialCoachOptions) {
+  const [, setLocation] = useLocation();
+  const tutorial = useMemo(() => findTutorialProjects(project, allProjects), [project, allProjects]);
+  const place: CoachPlace | null = !tutorial || !project
+    ? null
+    : project.id === tutorial.metamodel.id
+      ? "metamodel"
+      : project.id === tutorial.instance?.id
+        ? "instance"
+        : "elsewhere";
+  // Steps happen in the tutorial's metamodel or its model; elsewhere nothing completes.
+  const scope = place === "metamodel" || place === "instance" ? place : null;
+
+  const navigate = useCallback(
+    (href: string) => {
+      if (isDiagramDirty) dispatchDiagramEvent("diagram-leave-request", { href });
+      else setLocation(href);
+    },
+    [isDiagramDirty, setLocation],
+  );
+  const run = useTutorialRun(tutorial, allProjects, navigate);
+  const { definition, progress, update } = run;
 
   // What the open diagram contains, reported by the canvas.
   const [modelState, setModelState] = useState<TutorialModelState | null>(null);
@@ -100,84 +221,81 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
   // Features the learner used, reported by the canvas and the rest of the app.
   useEffect(() => {
     if (!scope) return;
-    const unsubscribers = [
-      subscribeDiagramEvent("diagram-save-request", (detail) => {
-        if (detail.viewId === viewId) signal("saved");
-      }),
-      subscribeDiagramEvent("tutorial-signal", (detail) => signal(detail.signal)),
-    ];
-    return () => unsubscribers.forEach((unsubscribe) => unsubscribe());
-  }, [scope, signal, viewId]);
+    return subscribeDiagramEvent("tutorial-signal", (detail) => signal(detail.signal));
+  }, [scope, signal]);
 
-  const navigate = useCallback(
-    (href: string) => {
-      if (isDiagramDirty) dispatchDiagramEvent("diagram-leave-request", { href });
-      else setLocation(href);
-    },
-    [isDiagramDirty, setLocation],
-  );
+  const here = useMemo(() => ({ projectId: project?.id, viewId }), [project?.id, viewId]);
+  const openStepDiagram = useCallback((step: TutorialStep) => run.openStep(step, here), [here, run]);
 
-  /** Opens the diagram a step happens in. Returns whether it was open already. */
-  const openStepDiagram = useCallback(
-    async (step: TutorialStep) => {
-      if (!tutorial) return false;
-      const target = step.scope === "metamodel" ? tutorial.metamodel : tutorial.instance;
-      if (!target) return false;
-      const views = await queryClient.fetchQuery<View[]>({
-        queryKey: [api.views.list.path, target.id],
-        queryFn: () => apiCall(api.views.list, { params: { projectId: target.id } }),
-      });
-      const firstView = views[0];
-      const alreadyThere = project?.id === target.id && (viewId ?? null) === (firstView?.id ?? null);
-      if (!alreadyThere) {
-        navigate(firstView ? `/project/${target.id}/view/${firstView.id}` : buildUrl("/project/:id", { id: target.id }));
-      }
-      return alreadyThere;
-    },
-    [navigate, project?.id, queryClient, tutorial, viewId],
-  );
-
-  /** Opens the diagram a step happens in and highlights what to use. */
+  /** Opens where a step happens and highlights what to use. */
   const showMe = useCallback(
     async (step: TutorialStep) => {
-      update((current) => noteHelpUsed(current, step.id, "showMe"));
-      await openStepDiagram(step);
+      run.noteShowMe(step.id);
+      await run.openStep(step, here);
       if (step.highlight?.length) await spotlight(step.highlight);
     },
-    [openStepDiagram, update],
+    [here, run],
   );
 
-  /** Throws the tutorial projects away and starts again with fresh ones. */
-  const restart = useCallback(async () => {
-    if (!definition) return;
-    if (runId) clearTutorialProgress(runId);
-    const params = { tutorial: definition.id };
-    await apiCall(api.tutorial.deleteOne, { params });
-    const created = await apiCall(api.tutorial.createOne, { params });
-    await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
-    setLocation(`/project/${created.metamodel.id}/view/${created.metamodelViewId}`);
-  }, [definition, queryClient, runId, setLocation]);
-
   return {
+    ...run,
     active: Boolean(tutorial && progress),
     tutorial,
-    definition,
-    scope,
-    progress,
-    skip: (stepId: string) => definition && update((current) => skipStep(definition, current, stepId)),
-    returnToSkipped: () => update(returnToSkipped),
-    answer: (lessonId: string, option: number) => update((current) => answerQuestion(current, lessonId, option)),
-    closeRecap: (lessonId: string) => definition && update((current) => closeRecap(definition, current, lessonId)),
-    /** Removes the projects of this tutorial. */
-    remove: async () => {
-      if (!definition) return;
-      await apiCall(api.tutorial.deleteOne, { params: { tutorial: definition.id } });
-      if (runId) clearTutorialProgress(runId);
-      await queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
+    place,
+    /** The name of the open project when it is neither the tutorial's metamodel nor its model. */
+    placeName: place === "elsewhere" ? (project?.name ?? "") : "",
+    diagram: modelState?.diagram ?? "",
+    diagrams: modelState?.diagrams ?? [],
+    showMe,
+    openStepDiagram,
+    navigate,
+  };
+}
+
+/**
+ * The coach on the project list. It appears when a running tutorial has
+ * reached a step that happens there, and stays until the page is left.
+ */
+export function useTutorialCoachOnProjectList(allProjects: Project[] | undefined) {
+  const [, setLocation] = useLocation();
+  const runs = useMemo(
+    () =>
+      TUTORIALS.map((tutorial) => latestTutorialRun(tutorial, allProjects)).filter(
+        (run): run is TutorialProjects => run !== null,
+      ),
+    [allProjects],
+  );
+  const [chosenId, setChosenId] = useState<string | null>(null);
+  useEffect(() => {
+    if (chosenId && runs.some((run) => run.tutorial.id === chosenId)) return;
+    const waiting = runs.find((run) => {
+      const stored = loadTutorialProgress(run.tutorial, run.metamodel.id);
+      return currentStep(run.tutorial, stored)?.scope === "projects";
+    });
+    setChosenId(waiting?.tutorial.id ?? null);
+  }, [chosenId, runs]);
+  const tutorial = useMemo(() => runs.find((run) => run.tutorial.id === chosenId) ?? null, [chosenId, runs]);
+
+  const navigate = useCallback((href: string) => setLocation(href), [setLocation]);
+  const run = useTutorialRun(tutorial, allProjects, navigate);
+  const openStepDiagram = useCallback((step: TutorialStep) => run.openStep(step, {}), [run]);
+  const showMe = useCallback(
+    async (step: TutorialStep) => {
+      run.noteShowMe(step.id);
+      await run.openStep(step, {});
+      if (step.highlight?.length) await spotlight(step.highlight);
     },
-    noteHint: (stepId: string) => update((current) => noteHelpUsed(current, stepId, "hints")),
-    restart,
-    setCollapsed: (collapsed: boolean) => update((current) => ({ ...current, collapsed })),
+    [run],
+  );
+
+  return {
+    ...run,
+    active: Boolean(tutorial && run.progress),
+    tutorial,
+    place: "projects" as CoachPlace,
+    placeName: "",
+    diagram: "",
+    diagrams: [] as string[],
     showMe,
     openStepDiagram,
     navigate,

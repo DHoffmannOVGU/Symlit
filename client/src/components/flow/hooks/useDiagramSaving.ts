@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { isSaveConflict, useSyncFlow, type InsertFlowEdge, type InsertFlowNode } from "@/hooks/use-flow";
 import { flowSyncInputSchema } from "@shared/routes";
 import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
@@ -40,6 +41,9 @@ export function useDiagramSaving() {
         throw error;
       }
       setSavedSignature(diagramSignature(payload.nodes, payload.edges, projectType));
+      // Reported once the save went through, whichever way it was started
+      // (the button, Ctrl+S, automatic saving, "Save and leave").
+      emitTutorialSignal("saved");
     },
     [diagramStore, projectType, setSavedSignature, syncMutation, viewId],
   );
