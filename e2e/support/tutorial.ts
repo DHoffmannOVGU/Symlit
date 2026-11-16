@@ -193,3 +193,55 @@ export async function expectFinished(page: Page, tutorial: TutorialDefinition) {
   await expect(finished).toContainText(tutorial.answer);
   await expect(page.getByTestId("tutorial-skipped-list")).toHaveCount(0);
 }
+
+/** Double-clicks the middle of a relationship's line: the one drawn last unless an index is given. */
+export async function openRelationship(page: Page, index?: number) {
+  await waitForStillCanvas(page);
+  const paths = page.locator(".react-flow__edge .react-flow__edge-path");
+  const count = await paths.count();
+  const point = await paths.nth(index ?? count - 1).evaluate((path) => {
+    const line = path as SVGPathElement;
+    const at = line.getPointAtLength(line.getTotalLength() / 2);
+    const matrix = line.getScreenCTM()!;
+    return { x: at.x * matrix.a + at.y * matrix.c + matrix.e, y: at.x * matrix.b + at.y * matrix.d + matrix.f };
+  });
+  await page.mouse.dblclick(point.x, point.y);
+  await expect(page.getByTestId("edge-attribute-panel")).toBeVisible();
+}
+
+/** Applies the open relationship editor. */
+export async function saveRelationship(page: Page) {
+  await page.getByTestId("button-save-edge").click();
+  await expect(page.getByTestId("edge-attribute-panel")).toBeHidden();
+}
+
+/** Shows an element of another diagram in the open one, from the Diagrams tab. */
+export async function showExistingElement(page: Page, fromDiagram: string, element: string) {
+  await page.getByRole("tab", { name: "Diagrams" }).click();
+  const insert = page.locator('[data-sidebar="sidebar"] li', { hasText: element }).last().locator('[data-testid^="button-insert-node-"]');
+  if (!(await insert.count())) {
+    await page.locator(`[data-testid^="button-toggle-view-elements-"][data-view-name="${fromDiagram}"]`).click();
+  }
+  await page.locator('[data-sidebar="sidebar"] li', { hasText: element }).last().hover();
+  await insert.click();
+  await expect(card(page, element).first()).toBeVisible();
+}
+
+/** Confirms the relationship Symlit suggests for the one just drawn, choosing by name when it offers several. */
+export async function confirmSuggestion(page: Page, choose?: string) {
+  const list = page.locator('select[aria-label="Choose metamodel relationship"]');
+  // With one allowed relationship there is nothing to choose; with several, a list.
+  if (choose && (await list.count()) > 0) {
+    const label = (await list.locator("option").allInnerTexts()).find((option) => option.includes(choose));
+    expect(label, `a suggested relationship named ${choose}`).toBeTruthy();
+    await list.selectOption({ label: label! });
+  } else if (choose) {
+    await expect(page.locator('[aria-label^="Confirm metamodel relationship"]').first()).toHaveAttribute(
+      "aria-label",
+      new RegExp(choose),
+    );
+  }
+  // The control sits on the line, which cards may overlap: click it directly.
+  await page.locator('[aria-label^="Confirm metamodel relationship"]').first().dispatchEvent("click");
+  await expect(page.locator('[aria-label^="Confirm metamodel relationship"]')).toHaveCount(0);
+}

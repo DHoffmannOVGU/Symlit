@@ -3,6 +3,7 @@ import type { ModelRule, ModelRuleCondition } from "@shared/schema";
 import type {
   TutorialAttribute,
   TutorialModelState,
+  TutorialRelationship,
   TutorialRule,
   TutorialRuleCondition,
 } from "@shared/tutorial";
@@ -55,6 +56,21 @@ const describeRule = (rule: ModelRule, typeName: TypeName): TutorialRule => {
   };
 };
 
+const describeRelationship = (edge: {
+  source: string;
+  target: string;
+  type?: string;
+  data?: unknown;
+}): TutorialRelationship => {
+  const data = edge.data as { edgeType?: string; label?: string } | undefined;
+  return {
+    from: edge.source,
+    to: edge.target,
+    kind: String(edge.type ?? data?.edgeType ?? "association"),
+    name: typeof data?.label === "string" ? data.label.trim() : "",
+  };
+};
+
 /** An element's attributes as the tutorial sees them, with calculated values worked out now. */
 const describeAttributes = (stored: NodeAttribute[]): TutorialAttribute[] => {
   // The stored result of a formula can lag behind (it is written when the
@@ -95,6 +111,8 @@ export function useTutorialModelReporter(enabled: boolean, isDirty: boolean) {
   const selectedNodeId = useDiagramStore((state) => state.selectedNodeId);
   const nodePanelOpen = useDiagramStore((state) => state.nodePanelOpen);
   const nodeTableFilter = useDiagramStore((state) => state.nodeTableFilter);
+  const selectedEdgeId = useDiagramStore((state) => state.selectedEdgeId);
+  const edgePanelOpen = useDiagramStore((state) => state.edgePanelOpen);
   const { viewId, projectId, projectType, localModelRules, activeModelRules, typeMetaById, referencedMetamodels } =
     useDiagramModel();
   const { data: view } = useView(enabled ? viewId : 0);
@@ -157,22 +175,17 @@ export function useTutorialModelReporter(enabled: boolean, isDirty: boolean) {
           color: typeof data?.color === "string" ? data.color : "",
         };
       }),
-      relationships: edges.map((edge) => {
-        const data = edge.data as { edgeType?: string; label?: string } | undefined;
-        return {
-          from: edge.source,
-          to: edge.target,
-          kind: String(edge.type ?? data?.edgeType ?? "association"),
-          name: typeof data?.label === "string" ? data.label.trim() : "",
-        };
-      }),
+      relationships: edges.map(describeRelationship),
       editingId: nodePanelOpen ? selectedNodeId : null,
+      editingRelationship:
+        (edgePanelOpen && edges.filter((edge) => edge.id === selectedEdgeId).map(describeRelationship)[0]) || null,
       tableFilter: nodeTableFilter.trim(),
       rules: localModelRules.map((rule) => describeRule(rule, typeName)),
       dirty: isDirty,
     };
   }, [
     activeModelRules,
+    edgePanelOpen,
     edges,
     enabled,
     isDirty,
@@ -183,6 +196,7 @@ export function useTutorialModelReporter(enabled: boolean, isDirty: boolean) {
     diagramNames,
     metamodelNames,
     projectType,
+    selectedEdgeId,
     selectedNodeId,
     typeMetaById,
     view,
