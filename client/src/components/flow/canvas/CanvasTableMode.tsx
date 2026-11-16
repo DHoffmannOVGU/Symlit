@@ -1,4 +1,5 @@
 import type { NodeAttribute } from "../types";
+import { recalculateDerivedAttributes } from "../utils/attribute-formula";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useElementSelection } from "../state/useElementSelection";
@@ -608,8 +609,12 @@ export function ConnectedCanvasTableMode(
               ...node,
               data: {
                 ...node.data,
-                attributes: (node.data.attributes ?? []).map((attr) =>
-                  attr.id === attributeId ? { ...attr, value } : attr,
+                // Formulas that use this value give a new result at once:
+                // the table, rules and exports read the stored result.
+                attributes: recalculateDerivedAttributes(
+                  (node.data.attributes ?? []).map((attr) =>
+                    attr.id === attributeId ? { ...attr, value } : attr,
+                  ),
                 ),
               },
             }

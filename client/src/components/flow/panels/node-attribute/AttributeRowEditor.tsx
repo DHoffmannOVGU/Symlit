@@ -32,7 +32,7 @@ import { UnitPicker } from "./UnitPicker";
 
 export type DerivedAttributeStateMap = globalThis.Map<
   string,
-  { value?: string; references: string[]; error?: string }
+  { value?: string; references: string[]; error?: string; pending?: string }
 >;
 
 export interface AttributeRowEditorProps {
@@ -508,7 +508,9 @@ export function AttributeRowEditor({
                   >
                     {derivedAttributeState.get(attr.id)?.error ||
                       derivedAttributeState.get(attr.id)?.value ||
-                      "Enter a formula"}
+                      (derivedAttributeState.get(attr.id)?.pending
+                        ? `Not calculated yet: ${derivedAttributeState.get(attr.id)?.pending}`
+                        : "Enter a formula")}
                   </div>
                 </div>
                 <div className="space-y-1">

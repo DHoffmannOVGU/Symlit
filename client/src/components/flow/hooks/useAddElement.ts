@@ -4,7 +4,7 @@ import { magicNodeTypeCatalog, type MagicNodeType } from "@shared/metamodel-setu
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { newNodeId } from "@/lib/ids";
 import { applyTypeStyle, pickElementStyle } from "@/lib/element-style";
-import { attributesFromType } from "@/lib/type-attributes";
+import { attributesForElementOfType } from "@/lib/type-attributes";
 import type { DiagramNode } from "../types";
 import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
@@ -25,7 +25,7 @@ export interface AddElementOptions {
 
 /** Adds a new element to the open diagram (undoable). */
 export function useAddElement() {
-  const { viewId, projectType, partDefStyleById, availablePartDefNodes } = useDiagramModel();
+  const { viewId, projectType, partDefStyleById, availablePartDefNodes, parentMap } = useDiagramModel();
   const diagramStore = useDiagramStoreApi();
   const setNodes = useDiagramStore((state) => state.setNodes);
   const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
@@ -67,9 +67,8 @@ export function useAddElement() {
         // A typed element starts out matching its type's style.
         const style = partDefStyleById.get(options.typeId) ?? { icon: options.icon, color: options.color };
         node.data = applyTypeStyle(node.data, pickElementStyle(style));
-        // ...and with copies of its type's attributes.
-        const typeNode = availablePartDefNodes.find((candidate) => candidate.id === options.typeId);
-        node.data.attributes = attributesFromType(options.typeId, typeNode?.data?.attributes);
+        // ...and with copies of its type's attributes, and of the types that type specializes.
+        node.data.attributes = attributesForElementOfType(options.typeId, availablePartDefNodes, parentMap);
       }
 
       setNodes((current) => [...current, node]);
@@ -79,6 +78,6 @@ export function useAddElement() {
         ...(options?.typeId ? { typeId: options.typeId } : {}),
       });
     },
-    [availablePartDefNodes, diagramStore, partDefStyleById, projectType, screenToFlowPosition, setNodes, takeSnapshot, viewId],
+    [availablePartDefNodes, diagramStore, parentMap, partDefStyleById, projectType, screenToFlowPosition, setNodes, takeSnapshot, viewId],
   );
 }
