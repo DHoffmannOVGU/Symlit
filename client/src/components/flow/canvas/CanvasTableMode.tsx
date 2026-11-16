@@ -291,6 +291,8 @@ export function CanvasTableMode({
                         <TableRow
                           key={row.id}
                           data-state={isSelected ? "selected" : undefined}
+                          data-testid="table-element-row"
+                          data-element-name={row.name}
                           className={cn(
                             "cursor-pointer",
                             isSelected && "bg-sky-50 hover:bg-sky-50",

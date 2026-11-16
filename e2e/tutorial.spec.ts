@@ -2,101 +2,34 @@ import { expect, test, type Page } from "@playwright/test";
 import { tutorialSteps, type TutorialDefinition } from "../shared/tutorial";
 import { BASICS_TUTORIAL } from "../shared/tutorial-basics";
 import { PPR_TUTORIAL } from "../shared/tutorial-ppr";
+import {
+  cancelEditor,
+  card,
+  connect,
+  expectDone,
+  finishLesson as finishLessonOf,
+  openOtherProject,
+  saveDiagram,
+  saveEditor,
+  startTutorial as startTutorialOf,
+  stepState,
+} from "./support/tutorial";
 
-// Full-stack: the real server creates the tutorial projects.
-// Tutorials are per workspace (one database), so these tests run one after
-// the other and must not run concurrently with themselves; avoid
-// `--repeat-each` for this file.
+// The two first tutorials (basics, PPR) and how the coach behaves. The other
+// tutorials have a file each (tutorial-*.spec.ts); helpers are in support/tutorial.ts.
 test.describe.configure({ mode: "serial" });
 
 const TUTORIAL_LESSONS = BASICS_TUTORIAL.lessons;
 const TOTAL = tutorialSteps(BASICS_TUTORIAL).length;
 
-const stepState = (page: Page, id: string) => page.getByTestId(`tutorial-step-${id}`).getAttribute("data-state");
-const expectDone = (page: Page, id: string) => expect.poll(() => stepState(page, id), { message: id }).toBe("done");
 const expectProgress = (page: Page, done: number, total = TOTAL) =>
   expect(page.getByTestId("tutorial-progress-count")).toContainText(`${done} of ${total}`);
-const card = (page: Page, name: string) => page.locator(".react-flow__node", { hasText: name });
-
-async function startTutorial(page: Page, tutorial: TutorialDefinition = BASICS_TUTORIAL) {
-  await page.request.delete("/api/tutorial");
-  await page.goto("/projects");
-  await page.getByTestId(`button-tutorial-start-${tutorial.id}`).click();
-  await expect(page.getByTestId("tutorial-coach")).toBeVisible();
-  await expect(page.getByTestId("tutorial-title")).toHaveText(tutorial.title);
-  await expect(page.locator(".react-flow__node").first()).toBeVisible();
-}
-
-/** Opens the other tutorial project with the coach's button and waits for its diagram. */
-async function openOtherProject(page: Page, expectCard: string) {
-  await page.getByTestId("button-tutorial-open-project").click();
-  await expect(card(page, expectCard).first()).toBeVisible();
-}
-
-/** Waits until the diagram has stopped moving (it re-fits when the coach changes sides). */
-async function waitForStillCanvas(page: Page) {
-  const viewport = page.locator(".react-flow__viewport");
-  let previous = "";
-  let stableFor = 0;
-  for (let attempt = 0; attempt < 40 && stableFor < 3; attempt += 1) {
-    const current = (await viewport.getAttribute("style")) ?? "";
-    stableFor = current === previous ? stableFor + 1 : 0;
-    previous = current;
-    await page.waitForTimeout(100);
-  }
-}
-
-async function connect(page: Page, from: string, fromSide: string, to: string, toSide: string) {
-  await waitForStillCanvas(page);
-  const center = async (name: string, side: string) => {
-    const handle = card(page, name).first().locator(`.react-flow__handle[data-handlepos="${side}"]`).first();
-    const box = (await handle.boundingBox())!;
-    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-  };
-  const start = await center(from, fromSide);
-  const end = await center(to, toSide);
-  await page.mouse.move(start.x, start.y);
-  await page.mouse.down();
-  await page.mouse.move(end.x, end.y, { steps: 12 });
-  await page.mouse.up();
-}
-
-const saveEditor = async (page: Page) => {
-  await page.getByTestId("button-save-attributes").click();
-  await expect(page.getByTestId("node-attribute-panel")).toBeHidden();
-};
-const cancelEditor = async (page: Page) => {
-  await page.getByTestId("button-cancel-attributes").click();
-  await expect(page.getByTestId("node-attribute-panel")).toBeHidden();
-};
-const saveDiagram = async (page: Page) => {
-  await page.getByTestId("button-save-diagram-header").click();
-  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
-};
-
-/** Answers the lesson's question (optionally wrongly first) and moves on. */
-async function finishLesson(
+const startTutorial = (page: Page, tutorial: TutorialDefinition = BASICS_TUTORIAL) => startTutorialOf(page, tutorial);
+const finishLesson = (
   page: Page,
   lessonIndex: number,
   options: { wrongFirst?: boolean; tutorial?: TutorialDefinition } = {},
-) {
-  const lessons = (options.tutorial ?? BASICS_TUTORIAL).lessons;
-  const lesson = lessons[lessonIndex];
-  const recap = page.getByTestId("tutorial-recap");
-  await expect(recap).toContainText(`You can now ${lesson.goal}`);
-  // The explanation of the lesson's last step is still shown.
-  await expect(recap.getByTestId("tutorial-step-done-text")).toContainText(lesson.steps[lesson.steps.length - 1].done);
-  const right = lesson.question!.options.findIndex((option) => option.correct);
-  if (options.wrongFirst) {
-    const wrong = right === 0 ? 1 : 0;
-    await page.getByTestId(`tutorial-answer-${wrong}`).click();
-    await expect(page.getByTestId("tutorial-answer-feedback")).toContainText("Not quite.");
-  }
-  await page.getByTestId(`tutorial-answer-${right}`).click();
-  await expect(page.getByTestId("tutorial-answer-feedback")).toHaveText(lesson.question!.options[right].feedback);
-  await page.getByTestId("button-tutorial-next-lesson").click();
-  await expect(page.getByTestId("tutorial-lesson-title")).toHaveText(lessons[lessonIndex + 1].title);
-}
+) => finishLessonOf(page, options.tutorial ?? BASICS_TUTORIAL, lessonIndex, options);
 
 test("a learner works through the whole tutorial, and every step checks the result", async ({ page }) => {
   test.setTimeout(180_000);
@@ -494,6 +427,7 @@ test("skipping is not doing, the coach stays out of the way, and the tutorial ca
   await expect(page.getByTestId("button-tutorial-start-ppr")).toBeVisible();
   await page.getByTestId("button-tutorial-remove-basics").click();
   await expect(page.getByTestId("button-tutorial-start-basics")).toBeVisible();
+  // Only this tutorial's projects: other tutorials may be running in the same workspace.
   const remaining = (await (await request.get("/api/projects")).json()) as Array<{ templateId: string | null }>;
-  expect(remaining.filter((project) => project.templateId?.startsWith("tutorial"))).toEqual([]);
+  expect(remaining.filter((project) => project.templateId === BASICS_TUTORIAL.templateId)).toEqual([]);
 });

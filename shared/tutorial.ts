@@ -3,13 +3,14 @@
  * from a project template, and guides through lessons in the two projects.
  */
 import { BASICS_TUTORIAL } from "./tutorial-basics";
+import { CALC_TUTORIAL } from "./tutorial-calc";
 import { PPR_TUTORIAL } from "./tutorial-ppr";
 import type { TutorialDefinition } from "./tutorial-types";
 
 export * from "./tutorial-types";
 
 /** In the order they are offered. */
-export const TUTORIALS: TutorialDefinition[] = [BASICS_TUTORIAL, PPR_TUTORIAL];
+export const TUTORIALS: TutorialDefinition[] = [BASICS_TUTORIAL, PPR_TUTORIAL, CALC_TUTORIAL];
 
 export const DEFAULT_TUTORIAL = BASICS_TUTORIAL;
 

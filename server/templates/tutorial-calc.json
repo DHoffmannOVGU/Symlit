@@ -1,0 +1,432 @@
+{
+  "template": {
+    "id": "tutorial-calc",
+    "name": "Guided tutorial: Calculate with attributes",
+    "description": "The Quote types metamodel and the Orders in May model used by the tutorial on calculated attributes. The print jobs start without any cost attributes: the learner defines them, with formulas, on the type.",
+    "listed": false
+  },
+  "export": {
+    "version": 1,
+    "kind": "instance-model"
+  },
+  "project": {
+    "id": 8,
+    "name": "Tutorial \u00b7 Orders in May",
+    "description": "Model for the tutorial on calculated attributes: the print jobs of one month.",
+    "projectType": "instance",
+    "referencedMetamodels": [
+      7
+    ],
+    "metamodelSetup": null
+  },
+  "views": [
+    {
+      "id": 8,
+      "projectId": 8,
+      "name": "Orders",
+      "description": "The customers and what they ordered in May.",
+      "viewType": "view",
+      "modelRules": [],
+      "nodes": [
+        {
+          "id": "node_42ab6aec-b4aa-5f39-a87b-7722e898c8db",
+          "projectId": 8,
+          "type": "part",
+          "data": {
+            "icon": "UserRound",
+            "type": "Customer",
+            "color": "#7c3aed",
+            "label": "Makerspace",
+            "typeId": "mm:7:node_1c045b87-90f4-5e8e-8102-9988bd97ce7b",
+            "description": "Regular customer, orders small parts.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 0,
+            "y": 40
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_0bc44537-e08a-5622-9c1e-5eb17452d8bb",
+          "projectId": 8,
+          "type": "part",
+          "data": {
+            "icon": "UserRound",
+            "type": "Customer",
+            "color": "#7c3aed",
+            "label": "Bike shop",
+            "typeId": "mm:7:node_1c045b87-90f4-5e8e-8102-9988bd97ce7b",
+            "description": "Orders spare parts in small series.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 0,
+            "y": 300
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_3c430d16-6268-5409-9fb9-8338908120e0",
+          "projectId": 8,
+          "type": "part",
+          "data": {
+            "icon": "Boxes",
+            "type": "Print job",
+            "color": "#2563eb",
+            "label": "Phone stand",
+            "typeId": "mm:7:node_d8e91837-8b56-5590-ad2c-a91565df1b31",
+            "attributes": [
+              {
+                "id": "attr-material",
+                "name": "material",
+                "type": "list",
+                "unit": "",
+                "value": "PLA",
+                "description": "The filament the part is printed from",
+                "options": [
+                  "PLA",
+                  "PETG",
+                  "ABS"
+                ]
+              },
+              {
+                "id": "attr-mass",
+                "name": "mass",
+                "type": "number",
+                "unit": "g",
+                "value": "60",
+                "description": "Mass of the printed part"
+              },
+              {
+                "id": "attr-print-time",
+                "name": "print time",
+                "type": "number",
+                "unit": "h",
+                "value": "3",
+                "description": "How long the printer runs"
+              },
+              {
+                "id": "attr-rush-order",
+                "name": "rush order",
+                "type": "boolean",
+                "unit": "",
+                "value": "false",
+                "description": "Needed within two days"
+              },
+              {
+                "id": "attr-price",
+                "name": "price",
+                "type": "number",
+                "unit": "\u20ac",
+                "value": "15",
+                "description": "What the customer pays"
+              }
+            ],
+            "description": "Ten were ordered; this is one of them.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 400,
+            "y": 0
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_5a2d433c-0159-5e04-bd67-30efa6a6607a",
+          "projectId": 8,
+          "type": "part",
+          "data": {
+            "icon": "Boxes",
+            "type": "Print job",
+            "color": "#2563eb",
+            "label": "Cable clip",
+            "typeId": "mm:7:node_d8e91837-8b56-5590-ad2c-a91565df1b31",
+            "attributes": [
+              {
+                "id": "attr-material",
+                "name": "material",
+                "type": "list",
+                "unit": "",
+                "value": "PLA",
+                "description": "The filament the part is printed from",
+                "options": [
+                  "PLA",
+                  "PETG",
+                  "ABS"
+                ]
+              },
+              {
+                "id": "attr-mass",
+                "name": "mass",
+                "type": "number",
+                "unit": "g",
+                "value": "",
+                "description": "Mass of the printed part"
+              },
+              {
+                "id": "attr-print-time",
+                "name": "print time",
+                "type": "number",
+                "unit": "h",
+                "value": "",
+                "description": "How long the printer runs"
+              },
+              {
+                "id": "attr-rush-order",
+                "name": "rush order",
+                "type": "boolean",
+                "unit": "",
+                "value": "false",
+                "description": "Needed within two days"
+              },
+              {
+                "id": "attr-price",
+                "name": "price",
+                "type": "number",
+                "unit": "\u20ac",
+                "value": "",
+                "description": "What the customer pays"
+              }
+            ],
+            "description": "Came in this morning; nothing is filled in yet.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 400,
+            "y": 170
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_33605619-fd84-51aa-b2e0-d3df4ca7cbd2",
+          "projectId": 8,
+          "type": "part",
+          "data": {
+            "icon": "Boxes",
+            "type": "Print job",
+            "color": "#2563eb",
+            "label": "Gear housing",
+            "typeId": "mm:7:node_d8e91837-8b56-5590-ad2c-a91565df1b31",
+            "attributes": [
+              {
+                "id": "attr-material",
+                "name": "material",
+                "type": "list",
+                "unit": "",
+                "value": "PETG",
+                "description": "The filament the part is printed from",
+                "options": [
+                  "PLA",
+                  "PETG",
+                  "ABS"
+                ]
+              },
+              {
+                "id": "attr-mass",
+                "name": "mass",
+                "type": "number",
+                "unit": "g",
+                "value": "240",
+                "description": "Mass of the printed part"
+              },
+              {
+                "id": "attr-print-time",
+                "name": "print time",
+                "type": "number",
+                "unit": "h",
+                "value": "14",
+                "description": "How long the printer runs"
+              },
+              {
+                "id": "attr-rush-order",
+                "name": "rush order",
+                "type": "boolean",
+                "unit": "",
+                "value": "true",
+                "description": "Needed within two days"
+              },
+              {
+                "id": "attr-price",
+                "name": "price",
+                "type": "number",
+                "unit": "\u20ac",
+                "value": "60",
+                "description": "What the customer pays"
+              }
+            ],
+            "description": "The largest order of the month.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 400,
+            "y": 340
+          },
+          "parentId": null
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge_1335f57b-51f6-5e03-8c17-dee3d0c33761",
+          "viewId": 8,
+          "source": "node_42ab6aec-b4aa-5f39-a87b-7722e898c8db",
+          "target": "node_3c430d16-6268-5409-9fb9-8338908120e0",
+          "edgeType": "association",
+          "sourceHandle": "right",
+          "targetHandle": "left",
+          "data": {
+            "edgeType": "association",
+            "label": "orders"
+          }
+        },
+        {
+          "id": "edge_20c5985d-505b-5c8b-a3d9-df9a191733eb",
+          "viewId": 8,
+          "source": "node_42ab6aec-b4aa-5f39-a87b-7722e898c8db",
+          "target": "node_5a2d433c-0159-5e04-bd67-30efa6a6607a",
+          "edgeType": "association",
+          "sourceHandle": "right",
+          "targetHandle": "left",
+          "data": {
+            "edgeType": "association",
+            "label": "orders"
+          }
+        },
+        {
+          "id": "edge_6e7ecdf9-b407-58dc-bb8a-99f42b8a42db",
+          "viewId": 8,
+          "source": "node_0bc44537-e08a-5622-9c1e-5eb17452d8bb",
+          "target": "node_33605619-fd84-51aa-b2e0-d3df4ca7cbd2",
+          "edgeType": "association",
+          "sourceHandle": "right",
+          "targetHandle": "left",
+          "data": {
+            "edgeType": "association",
+            "label": "orders"
+          }
+        }
+      ]
+    }
+  ],
+  "patterns": [],
+  "referencedMetamodels": [
+    {
+      "project": {
+        "id": 7,
+        "name": "Tutorial \u00b7 Quote types",
+        "description": "Metamodel for the tutorial on calculated attributes: what a print job is and what is known about it.",
+        "projectType": "metamodel",
+        "referencedMetamodels": [],
+        "metamodelSetup": null
+      },
+      "views": [
+        {
+          "id": 7,
+          "projectId": 7,
+          "name": "Types",
+          "description": "A customer orders print jobs.",
+          "viewType": "view",
+          "modelRules": [],
+          "nodes": [
+            {
+              "id": "node_1c045b87-90f4-5e8e-8102-9988bd97ce7b",
+              "projectId": 7,
+              "type": "agentdef",
+              "data": {
+                "icon": "UserRound",
+                "type": "Performer",
+                "color": "#7c3aed",
+                "label": "Customer",
+                "description": "Who orders a print job."
+              },
+              "position": {
+                "x": 0,
+                "y": 60
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_d8e91837-8b56-5590-ad2c-a91565df1b31",
+              "projectId": 7,
+              "type": "partdef",
+              "data": {
+                "icon": "Boxes",
+                "type": "Object",
+                "color": "#2563eb",
+                "label": "Print job",
+                "attributes": [
+                  {
+                    "id": "attr-material",
+                    "name": "material",
+                    "type": "list",
+                    "unit": "",
+                    "value": "PLA",
+                    "description": "The filament the part is printed from",
+                    "options": [
+                      "PLA",
+                      "PETG",
+                      "ABS"
+                    ]
+                  },
+                  {
+                    "id": "attr-mass",
+                    "name": "mass",
+                    "type": "number",
+                    "unit": "g",
+                    "value": "",
+                    "description": "Mass of the printed part"
+                  },
+                  {
+                    "id": "attr-print-time",
+                    "name": "print time",
+                    "type": "number",
+                    "unit": "h",
+                    "value": "",
+                    "description": "How long the printer runs"
+                  },
+                  {
+                    "id": "attr-rush-order",
+                    "name": "rush order",
+                    "type": "boolean",
+                    "unit": "",
+                    "value": "false",
+                    "description": "Needed within two days"
+                  },
+                  {
+                    "id": "attr-price",
+                    "name": "price",
+                    "type": "number",
+                    "unit": "\u20ac",
+                    "value": "",
+                    "description": "What the customer pays"
+                  }
+                ],
+                "description": "One part printed for a customer."
+              },
+              "position": {
+                "x": 420,
+                "y": 60
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_1f19838a-bc14-5b0a-bf7a-bae4ec6630b2",
+              "viewId": 7,
+              "source": "node_1c045b87-90f4-5e8e-8102-9988bd97ce7b",
+              "target": "node_d8e91837-8b56-5590-ad2c-a91565df1b31",
+              "edgeType": "association",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "association",
+                "label": "orders"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
