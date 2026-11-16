@@ -173,8 +173,15 @@ test("a saved diagram is still as saved after visiting another diagram", async (
   const cards = page.locator(".react-flow__node");
   await page.getByTestId("button-create-sidebar-partdef").click();
   await expect(cards).toHaveCount(1);
+  // After a save the diagram is fetched again. Wait for that copy to arrive:
+  // it must not replace the canvas, or the undo history would be gone.
+  const fetchedAgain = page.waitForResponse(
+    (response) => response.request().method() === "GET" && response.url().endsWith(`/api/views/${first.id}/flow`),
+  );
   await page.getByTestId("button-save-diagram-header").click();
+  await (await fetchedAgain).finished();
   await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   // Saving keeps the undo history of the open diagram.
   await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeEnabled();
 

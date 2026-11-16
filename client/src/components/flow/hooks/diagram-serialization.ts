@@ -35,6 +35,22 @@ type SerializableEdge = {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * Object keys in a fixed order. The database (jsonb) returns keys in its own
+ * order, not the one they were saved in, so the copy fetched after a save
+ * would otherwise never compare equal to what was sent.
+ */
+const canonical = (value: unknown): unknown => {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, canonical(value[key])]),
+  );
+};
+
 export const normalizeFlow = (
   nodes: SerializableNode[],
   edges: SerializableEdge[],
@@ -87,7 +103,7 @@ export const normalizeFlow = (
     })
     .sort((a, b) => a.id.localeCompare(b.id));
 
-  return JSON.stringify({ nodes: normalizedNodes, edges: normalizedEdges });
+  return JSON.stringify(canonical({ nodes: normalizedNodes, edges: normalizedEdges }));
 };
 
 /** Stored diagram -> canvas: restores sizes, canonical type labels, relationship styles and side handles. */
