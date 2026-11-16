@@ -45,6 +45,8 @@ export type NodeTableRow = {
   isReadOnly: boolean;
   parentId: string;
   attributes: NodeAttribute[];
+  /** The tags model rules give the element. */
+  tags: Array<{ label: string; color?: string }>;
 };
 
 export type EdgeTableRow = {
@@ -189,6 +191,8 @@ export function CanvasTableMode({
   onInlineNodeFieldChange,
   onInlineEdgeFieldChange,
 }: CanvasTableModeProps) {
+  // A column for tags appears as soon as a rule tags something in this diagram.
+  const showTags = nodeTableRows.some((row) => row.tags.length > 0);
   return (
     <div className="h-full w-full overflow-y-auto p-4 md:p-6" data-testid="canvas-table-mode">
       <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6">
@@ -240,7 +244,7 @@ export function CanvasTableMode({
               <Input
                 value={nodeTableFilter}
                 onChange={(event) => onNodeTableFilterChange(event.target.value)}
-                placeholder="Filter by name, type, description or attribute value"
+                placeholder="Filter by name, type, tag, description or attribute value"
                 data-testid="input-node-table-filter"
               />
             </div>
@@ -251,6 +255,7 @@ export function CanvasTableMode({
                     <TableHead className="min-w-[220px]">Name</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="min-w-[160px]">Description</TableHead>
+                    {showTags ? <TableHead className="min-w-[120px]" data-testid="table-tags-column">Tags</TableHead> : null}
                     {attributeColumns.map((name) => (
                       <TableHead key={name} className="min-w-[120px] whitespace-nowrap" data-testid={`table-attribute-column-${name}`}>
                         {name}
@@ -265,7 +270,7 @@ export function CanvasTableMode({
                   {filteredNodeTableRows.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={4 + attributeColumns.length}
+                        colSpan={4 + (showTags ? 1 : 0) + attributeColumns.length}
                         className="text-center text-muted-foreground"
                       >
                         {nodeTableRows.length === 0
@@ -385,6 +390,21 @@ export function CanvasTableMode({
                               className="h-8 border-transparent bg-transparent px-2 shadow-none focus-visible:border-slate-300 focus-visible:ring-1 focus-visible:ring-slate-300"
                             />
                           </TableCell>
+                          {showTags ? (
+                            <TableCell data-testid="table-tags">
+                              <div className="flex flex-wrap gap-1">
+                                {row.tags.map((tag) => (
+                                  <span
+                                    key={tag.label}
+                                    className="whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium"
+                                    style={tag.color ? { borderColor: tag.color, color: tag.color } : undefined}
+                                  >
+                                    {tag.label}
+                                  </span>
+                                ))}
+                              </div>
+                            </TableCell>
+                          ) : null}
                           {attributeColumns.map((name) => (
                             <AttributeCell
                               key={name}

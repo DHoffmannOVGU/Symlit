@@ -1,0 +1,736 @@
+{
+  "template": {
+    "id": "tutorial-classify",
+    "name": "Guided tutorial: Classify and review",
+    "description": "The Component types metamodel and the Control cabinet K1 model used by the tutorial on tags. The model has no rules yet: the learner writes the rules that classify the parts.",
+    "listed": false
+  },
+  "export": {
+    "version": 1,
+    "kind": "instance-model"
+  },
+  "project": {
+    "id": 10,
+    "name": "Tutorial \u00b7 Control cabinet K1",
+    "description": "Model for the tutorial on tags: the purchased parts of one control cabinet.",
+    "projectType": "instance",
+    "referencedMetamodels": [
+      9
+    ],
+    "metamodelSetup": null
+  },
+  "views": [
+    {
+      "id": 10,
+      "projectId": 10,
+      "name": "Parts",
+      "description": "The cabinet and the parts that have to be bought for it.",
+      "viewType": "view",
+      "modelRules": [],
+      "nodes": [
+        {
+          "id": "node_29f1140a-9e9f-570c-9bfd-11643a98a8b4",
+          "projectId": 10,
+          "type": "part",
+          "data": {
+            "icon": "Server",
+            "type": "Cabinet",
+            "color": "#475569",
+            "label": "K1",
+            "typeId": "mm:9:node_230b07e2-4846-5888-93bb-9f11cf41ff1f",
+            "description": "Control cabinet of the packaging line.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 345,
+            "y": 220
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_2827e43c-3bd2-545a-bc73-148945f98ae7",
+          "projectId": 10,
+          "type": "part",
+          "data": {
+            "icon": "Cpu",
+            "type": "Component",
+            "color": "#2563eb",
+            "label": "PLC",
+            "typeId": "mm:9:node_ad30b972-9097-5ba2-b8a4-69b573f318e7",
+            "attributes": [
+              {
+                "id": "attr-lead-time",
+                "name": "lead time",
+                "type": "number",
+                "unit": "d",
+                "value": "90",
+                "description": "Days from order to delivery"
+              },
+              {
+                "id": "attr-single-source",
+                "name": "single source",
+                "type": "boolean",
+                "unit": "",
+                "value": "true",
+                "description": "Only one supplier can deliver it"
+              },
+              {
+                "id": "attr-criticality",
+                "name": "criticality",
+                "type": "list",
+                "unit": "",
+                "value": "high",
+                "description": "How much the cabinet depends on it",
+                "options": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              {
+                "id": "attr-supplier",
+                "name": "supplier",
+                "type": "string",
+                "unit": "",
+                "value": "Kessler Automation",
+                "description": "Who it is ordered from"
+              }
+            ],
+            "description": "Runs the control program.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_cc5967cf-bfeb-5a4a-ac1c-2a01618c1a15",
+          "projectId": 10,
+          "type": "part",
+          "data": {
+            "icon": "Cpu",
+            "type": "Component",
+            "color": "#2563eb",
+            "label": "Power supply",
+            "typeId": "mm:9:node_ad30b972-9097-5ba2-b8a4-69b573f318e7",
+            "attributes": [
+              {
+                "id": "attr-lead-time",
+                "name": "lead time",
+                "type": "number",
+                "unit": "d",
+                "value": "20",
+                "description": "Days from order to delivery"
+              },
+              {
+                "id": "attr-single-source",
+                "name": "single source",
+                "type": "boolean",
+                "unit": "",
+                "value": "false",
+                "description": "Only one supplier can deliver it"
+              },
+              {
+                "id": "attr-criticality",
+                "name": "criticality",
+                "type": "list",
+                "unit": "",
+                "value": "high",
+                "description": "How much the cabinet depends on it",
+                "options": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              {
+                "id": "attr-supplier",
+                "name": "supplier",
+                "type": "string",
+                "unit": "",
+                "value": "Voltwerk",
+                "description": "Who it is ordered from"
+              }
+            ],
+            "description": "24 V supply for the controls.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 230,
+            "y": 0
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_efe6588b-8c3c-5837-bcc5-c66f455204e6",
+          "projectId": 10,
+          "type": "part",
+          "data": {
+            "icon": "Cpu",
+            "type": "Component",
+            "color": "#2563eb",
+            "label": "Contactor",
+            "typeId": "mm:9:node_ad30b972-9097-5ba2-b8a4-69b573f318e7",
+            "attributes": [
+              {
+                "id": "attr-lead-time",
+                "name": "lead time",
+                "type": "number",
+                "unit": "d",
+                "value": "10",
+                "description": "Days from order to delivery"
+              },
+              {
+                "id": "attr-single-source",
+                "name": "single source",
+                "type": "boolean",
+                "unit": "",
+                "value": "false",
+                "description": "Only one supplier can deliver it"
+              },
+              {
+                "id": "attr-criticality",
+                "name": "criticality",
+                "type": "list",
+                "unit": "",
+                "value": "medium",
+                "description": "How much the cabinet depends on it",
+                "options": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              {
+                "id": "attr-supplier",
+                "name": "supplier",
+                "type": "string",
+                "unit": "",
+                "value": "Voltwerk",
+                "description": "Who it is ordered from"
+              }
+            ],
+            "description": "Switches the drive motors.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 460,
+            "y": 0
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_f2d72532-f953-5c29-9fef-f4424c868709",
+          "projectId": 10,
+          "type": "part",
+          "data": {
+            "icon": "Cpu",
+            "type": "Component",
+            "color": "#2563eb",
+            "label": "Circuit breaker",
+            "typeId": "mm:9:node_ad30b972-9097-5ba2-b8a4-69b573f318e7",
+            "attributes": [
+              {
+                "id": "attr-lead-time",
+                "name": "lead time",
+                "type": "number",
+                "unit": "d",
+                "value": "14",
+                "description": "Days from order to delivery"
+              },
+              {
+                "id": "attr-single-source",
+                "name": "single source",
+                "type": "boolean",
+                "unit": "",
+                "value": "false",
+                "description": "Only one supplier can deliver it"
+              },
+              {
+                "id": "attr-criticality",
+                "name": "criticality",
+                "type": "list",
+                "unit": "",
+                "value": "high",
+                "description": "How much the cabinet depends on it",
+                "options": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              {
+                "id": "attr-supplier",
+                "name": "supplier",
+                "type": "string",
+                "unit": "",
+                "value": "Nordschalt",
+                "description": "Who it is ordered from"
+              }
+            ],
+            "description": "Protects the supply line.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 690,
+            "y": 0
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_f1b7ef35-deea-52ed-869f-ca9d1ff7a805",
+          "projectId": 10,
+          "type": "part",
+          "data": {
+            "icon": "Cpu",
+            "type": "Component",
+            "color": "#2563eb",
+            "label": "HMI panel",
+            "typeId": "mm:9:node_ad30b972-9097-5ba2-b8a4-69b573f318e7",
+            "attributes": [
+              {
+                "id": "attr-lead-time",
+                "name": "lead time",
+                "type": "number",
+                "unit": "d",
+                "value": "75",
+                "description": "Days from order to delivery"
+              },
+              {
+                "id": "attr-single-source",
+                "name": "single source",
+                "type": "boolean",
+                "unit": "",
+                "value": "true",
+                "description": "Only one supplier can deliver it"
+              },
+              {
+                "id": "attr-criticality",
+                "name": "criticality",
+                "type": "list",
+                "unit": "",
+                "value": "medium",
+                "description": "How much the cabinet depends on it",
+                "options": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              {
+                "id": "attr-supplier",
+                "name": "supplier",
+                "type": "string",
+                "unit": "",
+                "value": "Kessler Automation",
+                "description": "Who it is ordered from"
+              }
+            ],
+            "description": "Touch panel in the door.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 0,
+            "y": 440
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_e91fa164-5b26-5566-971e-774ed3957a41",
+          "projectId": 10,
+          "type": "part",
+          "data": {
+            "icon": "Cpu",
+            "type": "Component",
+            "color": "#2563eb",
+            "label": "Terminal block",
+            "typeId": "mm:9:node_ad30b972-9097-5ba2-b8a4-69b573f318e7",
+            "attributes": [
+              {
+                "id": "attr-lead-time",
+                "name": "lead time",
+                "type": "number",
+                "unit": "d",
+                "value": "5",
+                "description": "Days from order to delivery"
+              },
+              {
+                "id": "attr-single-source",
+                "name": "single source",
+                "type": "boolean",
+                "unit": "",
+                "value": "false",
+                "description": "Only one supplier can deliver it"
+              },
+              {
+                "id": "attr-criticality",
+                "name": "criticality",
+                "type": "list",
+                "unit": "",
+                "value": "low",
+                "description": "How much the cabinet depends on it",
+                "options": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              {
+                "id": "attr-supplier",
+                "name": "supplier",
+                "type": "string",
+                "unit": "",
+                "value": "Nordschalt",
+                "description": "Who it is ordered from"
+              }
+            ],
+            "description": "Connects the field wiring.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 230,
+            "y": 440
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_4ab28390-6cb3-5f8f-80da-480aa77d7687",
+          "projectId": 10,
+          "type": "part",
+          "data": {
+            "icon": "Cpu",
+            "type": "Component",
+            "color": "#2563eb",
+            "label": "Safety relay",
+            "typeId": "mm:9:node_ad30b972-9097-5ba2-b8a4-69b573f318e7",
+            "attributes": [
+              {
+                "id": "attr-lead-time",
+                "name": "lead time",
+                "type": "number",
+                "unit": "d",
+                "value": "45",
+                "description": "Days from order to delivery"
+              },
+              {
+                "id": "attr-single-source",
+                "name": "single source",
+                "type": "boolean",
+                "unit": "",
+                "value": "true",
+                "description": "Only one supplier can deliver it"
+              },
+              {
+                "id": "attr-criticality",
+                "name": "criticality",
+                "type": "list",
+                "unit": "",
+                "value": "high",
+                "description": "How much the cabinet depends on it",
+                "options": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              {
+                "id": "attr-supplier",
+                "name": "supplier",
+                "type": "string",
+                "unit": "",
+                "value": "Brandt Safety",
+                "description": "Who it is ordered from"
+              }
+            ],
+            "description": "Stops the line when a guard door opens.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 460,
+            "y": 440
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_55145940-e6ff-5048-9361-b13211f2392b",
+          "projectId": 10,
+          "type": "part",
+          "data": {
+            "icon": "Cpu",
+            "type": "Component",
+            "color": "#2563eb",
+            "label": "Fan",
+            "typeId": "mm:9:node_ad30b972-9097-5ba2-b8a4-69b573f318e7",
+            "attributes": [
+              {
+                "id": "attr-lead-time",
+                "name": "lead time",
+                "type": "number",
+                "unit": "d",
+                "value": "7",
+                "description": "Days from order to delivery"
+              },
+              {
+                "id": "attr-single-source",
+                "name": "single source",
+                "type": "boolean",
+                "unit": "",
+                "value": "false",
+                "description": "Only one supplier can deliver it"
+              },
+              {
+                "id": "attr-criticality",
+                "name": "criticality",
+                "type": "list",
+                "unit": "",
+                "value": "low",
+                "description": "How much the cabinet depends on it",
+                "options": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              {
+                "id": "attr-supplier",
+                "name": "supplier",
+                "type": "string",
+                "unit": "",
+                "value": "Voltwerk",
+                "description": "Who it is ordered from"
+              }
+            ],
+            "description": "Cools the cabinet.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 690,
+            "y": 440
+          },
+          "parentId": null
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge_be66b919-376c-5cb6-b5c1-e15ceca247ef",
+          "viewId": 10,
+          "source": "node_29f1140a-9e9f-570c-9bfd-11643a98a8b4",
+          "target": "node_2827e43c-3bd2-545a-bc73-148945f98ae7",
+          "edgeType": "aggregation",
+          "sourceHandle": "top",
+          "targetHandle": "bottom",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "contains"
+          }
+        },
+        {
+          "id": "edge_a3e131f9-22d1-5a6e-ada0-5a101f579c81",
+          "viewId": 10,
+          "source": "node_29f1140a-9e9f-570c-9bfd-11643a98a8b4",
+          "target": "node_cc5967cf-bfeb-5a4a-ac1c-2a01618c1a15",
+          "edgeType": "aggregation",
+          "sourceHandle": "top",
+          "targetHandle": "bottom",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "contains"
+          }
+        },
+        {
+          "id": "edge_ec71cc25-9f9f-5872-ba66-44344194301e",
+          "viewId": 10,
+          "source": "node_29f1140a-9e9f-570c-9bfd-11643a98a8b4",
+          "target": "node_efe6588b-8c3c-5837-bcc5-c66f455204e6",
+          "edgeType": "aggregation",
+          "sourceHandle": "top",
+          "targetHandle": "bottom",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "contains"
+          }
+        },
+        {
+          "id": "edge_48df669a-9cda-54ec-b8e3-cf3b36ebe041",
+          "viewId": 10,
+          "source": "node_29f1140a-9e9f-570c-9bfd-11643a98a8b4",
+          "target": "node_f2d72532-f953-5c29-9fef-f4424c868709",
+          "edgeType": "aggregation",
+          "sourceHandle": "top",
+          "targetHandle": "bottom",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "contains"
+          }
+        },
+        {
+          "id": "edge_e9a4bf82-7f2b-54cb-acbf-6ec15a4236a0",
+          "viewId": 10,
+          "source": "node_29f1140a-9e9f-570c-9bfd-11643a98a8b4",
+          "target": "node_f1b7ef35-deea-52ed-869f-ca9d1ff7a805",
+          "edgeType": "aggregation",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "contains"
+          }
+        },
+        {
+          "id": "edge_a2262c77-3759-5d0a-8ca4-8bee5a25dde1",
+          "viewId": 10,
+          "source": "node_29f1140a-9e9f-570c-9bfd-11643a98a8b4",
+          "target": "node_e91fa164-5b26-5566-971e-774ed3957a41",
+          "edgeType": "aggregation",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "contains"
+          }
+        },
+        {
+          "id": "edge_b1f4a5fe-a4ef-5330-8623-65e48a63e159",
+          "viewId": 10,
+          "source": "node_29f1140a-9e9f-570c-9bfd-11643a98a8b4",
+          "target": "node_4ab28390-6cb3-5f8f-80da-480aa77d7687",
+          "edgeType": "aggregation",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "contains"
+          }
+        },
+        {
+          "id": "edge_a6b1bd05-3dbb-52dc-a38c-7642fd4107f7",
+          "viewId": 10,
+          "source": "node_29f1140a-9e9f-570c-9bfd-11643a98a8b4",
+          "target": "node_55145940-e6ff-5048-9361-b13211f2392b",
+          "edgeType": "aggregation",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "contains"
+          }
+        }
+      ]
+    }
+  ],
+  "patterns": [],
+  "referencedMetamodels": [
+    {
+      "project": {
+        "id": 9,
+        "name": "Tutorial \u00b7 Part types",
+        "description": "Metamodel for the tutorial on tags: what is known about the parts of a control cabinet.",
+        "projectType": "metamodel",
+        "referencedMetamodels": [],
+        "metamodelSetup": null
+      },
+      "views": [
+        {
+          "id": 9,
+          "projectId": 9,
+          "name": "Types",
+          "description": "A cabinet contains components.",
+          "viewType": "view",
+          "modelRules": [],
+          "nodes": [
+            {
+              "id": "node_230b07e2-4846-5888-93bb-9f11cf41ff1f",
+              "projectId": 9,
+              "type": "partdef",
+              "data": {
+                "icon": "Server",
+                "type": "Object",
+                "color": "#475569",
+                "label": "Cabinet",
+                "description": "A control cabinet that is built and delivered as one unit."
+              },
+              "position": {
+                "x": 0,
+                "y": 60
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_ad30b972-9097-5ba2-b8a4-69b573f318e7",
+              "projectId": 9,
+              "type": "partdef",
+              "data": {
+                "icon": "Cpu",
+                "type": "Object",
+                "color": "#2563eb",
+                "label": "Component",
+                "attributes": [
+                  {
+                    "id": "attr-lead-time",
+                    "name": "lead time",
+                    "type": "number",
+                    "unit": "d",
+                    "value": "",
+                    "description": "Days from order to delivery"
+                  },
+                  {
+                    "id": "attr-single-source",
+                    "name": "single source",
+                    "type": "boolean",
+                    "unit": "",
+                    "value": "false",
+                    "description": "Only one supplier can deliver it"
+                  },
+                  {
+                    "id": "attr-criticality",
+                    "name": "criticality",
+                    "type": "list",
+                    "unit": "",
+                    "value": "medium",
+                    "description": "How much the cabinet depends on it",
+                    "options": [
+                      "low",
+                      "medium",
+                      "high"
+                    ]
+                  },
+                  {
+                    "id": "attr-supplier",
+                    "name": "supplier",
+                    "type": "string",
+                    "unit": "",
+                    "value": "",
+                    "description": "Who it is ordered from"
+                  }
+                ],
+                "description": "A purchased component built into a cabinet."
+              },
+              "position": {
+                "x": 420,
+                "y": 60
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_f321f7a1-7afa-5369-8550-d27e3b3371ea",
+              "viewId": 9,
+              "source": "node_230b07e2-4846-5888-93bb-9f11cf41ff1f",
+              "target": "node_ad30b972-9097-5ba2-b8a4-69b573f318e7",
+              "edgeType": "aggregation",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "aggregation",
+                "label": "contains"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

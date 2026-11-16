@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { tutorialSteps, type TutorialDefinition } from "../shared/tutorial";
 import { BASICS_TUTORIAL } from "../shared/tutorial-basics";
+import { CALC_TUTORIAL } from "../shared/tutorial-calc";
 import { PPR_TUTORIAL } from "../shared/tutorial-ppr";
 import {
   cancelEditor,
@@ -327,8 +328,8 @@ test("the PPR tutorial leads from a requirement to product, process and resource
   await expect(page.getByTestId("tutorial-finished-title")).toHaveText(P.finishedTitle);
   await expect(page.getByTestId("tutorial-finished-summary")).toContainText(`${total} of ${total} steps done`);
   await expect(finished).toContainText(P.answer);
-  // The last tutorial has no next one to point to.
-  await expect(page.getByTestId("button-tutorial-next-tutorial")).toHaveCount(0);
+  // It points on to the tutorial after it.
+  await expect(page.getByTestId("button-tutorial-next-tutorial")).toContainText(CALC_TUTORIAL.title);
 });
 
 test("skipping is not doing, the coach stays out of the way, and the tutorial can start over", async ({ page, request }) => {
@@ -423,8 +424,9 @@ test("skipping is not doing, the coach stays out of the way, and the tutorial ca
   // The project list shows where to continue, and removing cleans up.
   await page.goto("/projects");
   await expect(page.getByTestId("tutorial-card-basics")).toContainText(`0 of ${TOTAL} steps done`);
-  // The other tutorial is offered independently of this one.
-  await expect(page.getByTestId("button-tutorial-start-ppr")).toBeVisible();
+  // The other tutorials are offered independently of this one.
+  await expect(page.getByTestId("tutorial-card-ppr")).toBeVisible();
+  await expect(page.getByTestId("tutorial-card-calc")).toBeVisible();
   await page.getByTestId("button-tutorial-remove-basics").click();
   await expect(page.getByTestId("button-tutorial-start-basics")).toBeVisible();
   // Only this tutorial's projects: other tutorials may be running in the same workspace.

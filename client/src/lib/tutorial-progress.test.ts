@@ -119,6 +119,7 @@ const model = (
   elements,
   relationships: [],
   editingId: null,
+  tableFilter: "",
   rules: [],
   dirty: false,
   ...extra,

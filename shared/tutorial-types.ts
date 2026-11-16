@@ -127,6 +127,8 @@ export interface TutorialModelState {
   relationships: TutorialRelationship[];
   /** The element whose editor is open, if any. */
   editingId: string | null;
+  /** What the elements table is filtered by; empty when it is not. */
+  tableFilter: string;
   /** The saved model rules of this diagram. */
   rules: TutorialRule[];
   /** The diagram has changes that are not saved yet. */

@@ -190,10 +190,13 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
   useEffect(() => {
     setModelState(null);
     if (!scope || !viewId) return;
-    return subscribeDiagramEvent("tutorial-model-state", (detail) => {
+    const unsubscribe = subscribeDiagramEvent("tutorial-model-state", (detail) => {
       // Reported while the canvas renders; defer so we never update state mid-render.
       if (detail.viewId === viewId) queueMicrotask(() => setModelState(detail.state));
     });
+    // The canvas reports only changes, and may have reported before this was listening.
+    dispatchDiagramEvent("tutorial-model-state-request", {});
+    return unsubscribe;
   }, [scope, viewId]);
 
   // Steps that ask for a result complete when the model shows it.

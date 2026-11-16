@@ -148,7 +148,7 @@ function ConditionEditor({ condition, onChange, onDelete, targetOptions, attribu
 }
 
 export function ModelRulesPanel({ open, onClose, height: panelHeight, onHeightChange }: Props) {
-  const { viewId, projectId, projectType, localModelRules: initialRules, referencedModelRules } = useDiagramModel();
+  const { viewId, projectId, projectType, localModelRules: initialRules, referencedModelRules, typeMetaById } = useDiagramModel();
   const inheritedRules = projectType === "instance" ? referencedModelRules : NO_RULES;
   const nodes = useDiagramStore((state) => state.nodes);
   const edges = useDiagramStore((state) => state.edges);
@@ -160,9 +160,18 @@ export function ModelRulesPanel({ open, onClose, height: panelHeight, onHeightCh
   useEffect(() => setRules(initialRules), [initialRules, viewId]);
 
   const targetOptions = useMemo(() => getModelRuleTargetOptions(nodes), [nodes]);
-  const getTargetLabel = (target: string) => target === "all"
-    ? "all objects"
-    : [...targetOptions.builtInTypes, ...targetOptions.viewTypes].find((option) => option.value === target)?.label ?? target;
+  const getTargetLabel = (target: string) => {
+    if (target === "all") return "all objects";
+    const options = [...targetOptions.builtInTypes, ...targetOptions.viewTypes];
+    // A rule from a metamodel names one of its types as "node:<type id>".
+    const typeId = target.startsWith("node:") ? target.slice("node:".length) : target;
+    return (
+      options.find((option) => option.value === target)?.label ??
+      options.find((option) => option.value === typeId)?.label ??
+      typeMetaById.get(typeId)?.label ??
+      target
+    );
+  };
   const attributes = useMemo(() => getModelRuleAttributeOptions(nodes), [nodes]);
   const allRules = useMemo(() => [...inheritedRules, ...rules], [inheritedRules, rules]);
   const inheritedRuleIds = useMemo(() => new Set(inheritedRules.map((rule) => rule.id)), [inheritedRules]);
