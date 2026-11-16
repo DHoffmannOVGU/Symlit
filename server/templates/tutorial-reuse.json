@@ -1,0 +1,706 @@
+{
+  "template": {
+    "id": "tutorial-reuse",
+    "name": "Guided tutorial: Reuse and variants",
+    "description": "The Sensor node types metamodel (with a pattern library), the Radio modules metamodel that builds on it, and the Sensor node S1 model used by the tutorial on reuse.",
+    "listed": false
+  },
+  "export": {
+    "version": 1,
+    "kind": "instance-model"
+  },
+  "project": {
+    "id": 16,
+    "name": "Tutorial \u00b7 Sensor node S1",
+    "description": "Model for the tutorial on reuse: the first sensor node, battery powered, measuring temperature.",
+    "projectType": "instance",
+    "referencedMetamodels": [
+      13
+    ],
+    "metamodelSetup": null
+  },
+  "views": [
+    {
+      "id": 16,
+      "projectId": 16,
+      "name": "Node",
+      "description": "What S1 is built from.",
+      "viewType": "view",
+      "modelRules": [],
+      "nodes": [
+        {
+          "id": "node_c184d2e7-2e03-5ab6-806b-b1141766beea",
+          "projectId": 16,
+          "type": "part",
+          "data": {
+            "icon": "Radio",
+            "type": "Sensor node",
+            "color": "#475569",
+            "label": "S1",
+            "typeId": "mm:13:node_37c629ba-ca5f-52b3-9ac8-12e5c798401d",
+            "description": "Battery-powered temperature node for a greenhouse.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 250,
+            "y": 0
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_6bfd8b6d-eebe-5a6b-81e4-861d5c90fb87",
+          "projectId": 16,
+          "type": "part",
+          "data": {
+            "icon": "Cpu",
+            "type": "Microcontroller",
+            "color": "#2563eb",
+            "label": "Controller",
+            "typeId": "mm:13:node_f4937b5e-905f-5afb-bffa-e67bf2b99513",
+            "attributes": [
+              {
+                "id": "attr-current",
+                "name": "current",
+                "type": "number",
+                "unit": "mA",
+                "value": "5",
+                "description": "Current it draws when awake"
+              }
+            ],
+            "description": "Low-power microcontroller.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 0,
+            "y": 260
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_e2ca01f7-a7a1-57d5-aee7-cc8053b01eb1",
+          "projectId": 16,
+          "type": "part",
+          "data": {
+            "icon": "Eye",
+            "type": "Sensor",
+            "color": "#7c3aed",
+            "label": "Temperature sensor",
+            "typeId": "mm:13:node_edb32d1a-c462-5e66-8609-61ae7a9b74bb",
+            "attributes": [
+              {
+                "id": "attr-quantity",
+                "name": "quantity",
+                "type": "list",
+                "unit": "",
+                "value": "temperature",
+                "description": "What it measures",
+                "options": [
+                  "temperature",
+                  "humidity",
+                  "air pressure"
+                ]
+              }
+            ],
+            "description": "Digital temperature sensor.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 250,
+            "y": 260
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_eadde5e1-7a56-5453-a28c-50215a9f5923",
+          "projectId": 16,
+          "type": "part",
+          "data": {
+            "icon": "Battery",
+            "type": "Battery",
+            "color": "#16a34a",
+            "label": "Battery pack",
+            "typeId": "mm:13:node_474c7f76-7ca3-515e-9027-6dee546946ea",
+            "attributes": [
+              {
+                "id": "attr-capacity",
+                "name": "capacity",
+                "type": "number",
+                "unit": "mAh",
+                "value": "2500",
+                "description": "Usable capacity"
+              }
+            ],
+            "description": "Two AA cells.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 500,
+            "y": 260
+          },
+          "parentId": null
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge_a020770d-0121-5f7d-ac7c-39596ec3f1d1",
+          "viewId": 16,
+          "source": "node_c184d2e7-2e03-5ab6-806b-b1141766beea",
+          "target": "node_6bfd8b6d-eebe-5a6b-81e4-861d5c90fb87",
+          "edgeType": "aggregation",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "has"
+          }
+        },
+        {
+          "id": "edge_b5426345-9e0a-517c-9463-bdbeda3aaafa",
+          "viewId": 16,
+          "source": "node_c184d2e7-2e03-5ab6-806b-b1141766beea",
+          "target": "node_e2ca01f7-a7a1-57d5-aee7-cc8053b01eb1",
+          "edgeType": "aggregation",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "has"
+          }
+        },
+        {
+          "id": "edge_9c1fc76a-2c7e-580c-9e25-ffb66efd3322",
+          "viewId": 16,
+          "source": "node_c184d2e7-2e03-5ab6-806b-b1141766beea",
+          "target": "node_eadde5e1-7a56-5453-a28c-50215a9f5923",
+          "edgeType": "aggregation",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "aggregation",
+            "label": "has"
+          }
+        },
+        {
+          "id": "edge_b4ff1fe7-f2bf-5eb3-9108-96f5b887a426",
+          "viewId": 16,
+          "source": "node_6bfd8b6d-eebe-5a6b-81e4-861d5c90fb87",
+          "target": "node_e2ca01f7-a7a1-57d5-aee7-cc8053b01eb1",
+          "edgeType": "association",
+          "sourceHandle": "right",
+          "targetHandle": "left",
+          "data": {
+            "edgeType": "association",
+            "label": "reads"
+          }
+        },
+        {
+          "id": "edge_eefa6c28-7416-5b3a-b825-e7502218bd9c",
+          "viewId": 16,
+          "source": "node_eadde5e1-7a56-5453-a28c-50215a9f5923",
+          "target": "node_6bfd8b6d-eebe-5a6b-81e4-861d5c90fb87",
+          "edgeType": "association",
+          "sourceHandle": "bottom",
+          "targetHandle": "bottom",
+          "data": {
+            "edgeType": "association",
+            "label": "powers"
+          }
+        }
+      ]
+    }
+  ],
+  "patterns": [],
+  "referencedMetamodels": [
+    {
+      "project": {
+        "id": 13,
+        "name": "Tutorial \u00b7 Sensor node types",
+        "description": "Metamodel for the tutorial on reuse: a sensor node and the parts it is built from.",
+        "projectType": "metamodel",
+        "referencedMetamodels": [],
+        "metamodelSetup": null
+      },
+      "views": [
+        {
+          "id": 13,
+          "projectId": 13,
+          "name": "Types",
+          "description": "A sensor node has a controller, sensors and a power supply.",
+          "viewType": "view",
+          "modelRules": [],
+          "nodes": [
+            {
+              "id": "node_37c629ba-ca5f-52b3-9ac8-12e5c798401d",
+              "projectId": 13,
+              "type": "partdef",
+              "data": {
+                "icon": "Radio",
+                "type": "Object",
+                "color": "#475569",
+                "label": "Sensor node",
+                "description": "A small device that measures something outdoors and reports it."
+              },
+              "position": {
+                "x": 330,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_f4937b5e-905f-5afb-bffa-e67bf2b99513",
+              "projectId": 13,
+              "type": "partdef",
+              "data": {
+                "icon": "Cpu",
+                "type": "Object",
+                "color": "#2563eb",
+                "label": "Microcontroller",
+                "attributes": [
+                  {
+                    "id": "attr-current",
+                    "name": "current",
+                    "type": "number",
+                    "unit": "mA",
+                    "value": "",
+                    "description": "Current it draws when awake"
+                  }
+                ],
+                "description": "Reads the sensors and sends the readings."
+              },
+              "position": {
+                "x": 0,
+                "y": 260
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_edb32d1a-c462-5e66-8609-61ae7a9b74bb",
+              "projectId": 13,
+              "type": "partdef",
+              "data": {
+                "icon": "Eye",
+                "type": "Object",
+                "color": "#7c3aed",
+                "label": "Sensor",
+                "attributes": [
+                  {
+                    "id": "attr-quantity",
+                    "name": "quantity",
+                    "type": "list",
+                    "unit": "",
+                    "value": "temperature",
+                    "description": "What it measures",
+                    "options": [
+                      "temperature",
+                      "humidity",
+                      "air pressure"
+                    ]
+                  }
+                ],
+                "description": "Measures one quantity."
+              },
+              "position": {
+                "x": 250,
+                "y": 260
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_474c7f76-7ca3-515e-9027-6dee546946ea",
+              "projectId": 13,
+              "type": "partdef",
+              "data": {
+                "icon": "Battery",
+                "type": "Object",
+                "color": "#16a34a",
+                "label": "Battery",
+                "attributes": [
+                  {
+                    "id": "attr-capacity",
+                    "name": "capacity",
+                    "type": "number",
+                    "unit": "mAh",
+                    "value": "",
+                    "description": "Usable capacity"
+                  }
+                ],
+                "description": "Stores the energy."
+              },
+              "position": {
+                "x": 500,
+                "y": 260
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_b1fc5eff-7ff1-56ba-835a-36851e894d31",
+              "projectId": 13,
+              "type": "partdef",
+              "data": {
+                "icon": "Sun",
+                "type": "Object",
+                "color": "#d97706",
+                "label": "Solar panel",
+                "attributes": [
+                  {
+                    "id": "attr-power",
+                    "name": "power",
+                    "type": "number",
+                    "unit": "W",
+                    "value": "",
+                    "description": "Peak power"
+                  }
+                ],
+                "description": "Recharges the battery in daylight."
+              },
+              "position": {
+                "x": 750,
+                "y": 260
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_7c349040-4883-5795-a07b-d3b8081cfc01",
+              "viewId": 13,
+              "source": "node_37c629ba-ca5f-52b3-9ac8-12e5c798401d",
+              "target": "node_f4937b5e-905f-5afb-bffa-e67bf2b99513",
+              "edgeType": "aggregation",
+              "sourceHandle": "bottom",
+              "targetHandle": "top",
+              "data": {
+                "edgeType": "aggregation",
+                "label": "has"
+              }
+            },
+            {
+              "id": "edge_6737f2f5-8398-58bf-ae65-af481f64c0a9",
+              "viewId": 13,
+              "source": "node_37c629ba-ca5f-52b3-9ac8-12e5c798401d",
+              "target": "node_edb32d1a-c462-5e66-8609-61ae7a9b74bb",
+              "edgeType": "aggregation",
+              "sourceHandle": "bottom",
+              "targetHandle": "top",
+              "data": {
+                "edgeType": "aggregation",
+                "label": "has"
+              }
+            },
+            {
+              "id": "edge_d36afa53-d93f-5b79-9da6-53cbdeef5e4d",
+              "viewId": 13,
+              "source": "node_37c629ba-ca5f-52b3-9ac8-12e5c798401d",
+              "target": "node_474c7f76-7ca3-515e-9027-6dee546946ea",
+              "edgeType": "aggregation",
+              "sourceHandle": "bottom",
+              "targetHandle": "top",
+              "data": {
+                "edgeType": "aggregation",
+                "label": "has"
+              }
+            },
+            {
+              "id": "edge_02fd6581-b69f-5eaf-a4e1-0b9ad0777601",
+              "viewId": 13,
+              "source": "node_37c629ba-ca5f-52b3-9ac8-12e5c798401d",
+              "target": "node_b1fc5eff-7ff1-56ba-835a-36851e894d31",
+              "edgeType": "aggregation",
+              "sourceHandle": "bottom",
+              "targetHandle": "top",
+              "data": {
+                "edgeType": "aggregation",
+                "label": "has"
+              }
+            },
+            {
+              "id": "edge_59d27d53-9d0e-502d-8f6d-8121f95cd212",
+              "viewId": 13,
+              "source": "node_f4937b5e-905f-5afb-bffa-e67bf2b99513",
+              "target": "node_edb32d1a-c462-5e66-8609-61ae7a9b74bb",
+              "edgeType": "association",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "association",
+                "label": "reads"
+              }
+            },
+            {
+              "id": "edge_c964721c-08eb-509d-9278-717f341bcbce",
+              "viewId": 13,
+              "source": "node_474c7f76-7ca3-515e-9027-6dee546946ea",
+              "target": "node_f4937b5e-905f-5afb-bffa-e67bf2b99513",
+              "edgeType": "association",
+              "sourceHandle": "bottom",
+              "targetHandle": "bottom",
+              "data": {
+                "edgeType": "association",
+                "label": "powers"
+              }
+            },
+            {
+              "id": "edge_84e1405e-7467-5180-b852-f55d0b200ddd",
+              "viewId": 13,
+              "source": "node_b1fc5eff-7ff1-56ba-835a-36851e894d31",
+              "target": "node_474c7f76-7ca3-515e-9027-6dee546946ea",
+              "edgeType": "association",
+              "sourceHandle": "left",
+              "targetHandle": "right",
+              "data": {
+                "edgeType": "association",
+                "label": "charges"
+              }
+            }
+          ]
+        }
+      ],
+      "patterns": [
+        {
+          "id": 15,
+          "projectId": 13,
+          "name": "Solar supply",
+          "description": "A battery with a solar panel that recharges it.",
+          "viewType": "pattern",
+          "modelRules": [],
+          "nodes": [
+            {
+              "id": "node_8ff53eec-e242-52dd-bd9d-f1171a9be861",
+              "projectId": 13,
+              "type": "part",
+              "data": {
+                "icon": "Battery",
+                "type": "Battery",
+                "color": "#16a34a",
+                "label": "Battery 3000",
+                "typeId": "mm:13:node_474c7f76-7ca3-515e-9027-6dee546946ea",
+                "attributes": [
+                  {
+                    "id": "attr-capacity",
+                    "name": "capacity",
+                    "type": "number",
+                    "unit": "mAh",
+                    "value": "3000",
+                    "description": "Usable capacity"
+                  }
+                ],
+                "description": "",
+                "inheritStyle": true
+              },
+              "position": {
+                "x": -130,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_f990f261-6489-5c96-b349-8992936e1b02",
+              "projectId": 13,
+              "type": "part",
+              "data": {
+                "icon": "Sun",
+                "type": "Solar panel",
+                "color": "#d97706",
+                "label": "Solar panel 1 W",
+                "typeId": "mm:13:node_b1fc5eff-7ff1-56ba-835a-36851e894d31",
+                "attributes": [
+                  {
+                    "id": "attr-power",
+                    "name": "power",
+                    "type": "number",
+                    "unit": "W",
+                    "value": "1",
+                    "description": "Peak power"
+                  }
+                ],
+                "description": "",
+                "inheritStyle": true
+              },
+              "position": {
+                "x": 130,
+                "y": 0
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_ef198d03-7bae-5d1a-85ec-f9b63d974a1b",
+              "viewId": 15,
+              "source": "node_f990f261-6489-5c96-b349-8992936e1b02",
+              "target": "node_8ff53eec-e242-52dd-bd9d-f1171a9be861",
+              "edgeType": "association",
+              "sourceHandle": "left",
+              "targetHandle": "right",
+              "data": {
+                "edgeType": "association",
+                "label": "charges"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": {
+        "id": 14,
+        "name": "Tutorial \u00b7 Radio modules",
+        "description": "Metamodel for the tutorial on reuse: radio modules a sensor node can send through. Builds on Sensor node types.",
+        "projectType": "metamodel",
+        "referencedMetamodels": [
+          13
+        ],
+        "metamodelSetup": null
+      },
+      "views": [
+        {
+          "id": 14,
+          "projectId": 14,
+          "name": "Radio",
+          "description": "Radio modules, and how a sensor node uses them.",
+          "viewType": "view",
+          "modelRules": [],
+          "nodes": [
+            {
+              "id": "node_37c629ba-ca5f-52b3-9ac8-12e5c798401d",
+              "projectId": 13,
+              "type": "partdef",
+              "data": {
+                "icon": "Radio",
+                "type": "Object",
+                "color": "#475569",
+                "label": "Sensor node",
+                "description": "A small device that measures something outdoors and reports it."
+              },
+              "position": {
+                "x": 0,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_57e08a59-d5d6-5025-b24c-1d7cbc338174",
+              "projectId": 14,
+              "type": "partdef",
+              "data": {
+                "icon": "Share2",
+                "type": "Object",
+                "color": "#0891b2",
+                "label": "Radio module",
+                "attributes": [
+                  {
+                    "id": "attr-range",
+                    "name": "range",
+                    "type": "number",
+                    "unit": "km",
+                    "value": "",
+                    "description": "How far it reaches outdoors"
+                  }
+                ],
+                "description": "Sends the readings to a gateway."
+              },
+              "position": {
+                "x": 350,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_a763be0f-d38f-54ad-9136-ac926c984b39",
+              "projectId": 14,
+              "type": "partdef",
+              "data": {
+                "icon": "Globe",
+                "type": "Object",
+                "color": "#0e7490",
+                "label": "LoRa module",
+                "attributes": [
+                  {
+                    "id": "attr-range",
+                    "name": "range",
+                    "type": "number",
+                    "unit": "km",
+                    "value": "",
+                    "description": "How far it reaches outdoors"
+                  }
+                ],
+                "description": "Long range, little data, little energy."
+              },
+              "position": {
+                "x": 200,
+                "y": 260
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_c9449974-f468-59f7-b601-86dd8982fa03",
+              "projectId": 14,
+              "type": "partdef",
+              "data": {
+                "icon": "Link2",
+                "type": "Object",
+                "color": "#155e75",
+                "label": "Bluetooth module",
+                "attributes": [
+                  {
+                    "id": "attr-range",
+                    "name": "range",
+                    "type": "number",
+                    "unit": "km",
+                    "value": "",
+                    "description": "How far it reaches outdoors"
+                  }
+                ],
+                "description": "Short range, for setting up a node on site."
+              },
+              "position": {
+                "x": 500,
+                "y": 260
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_cdf6c370-2687-5dd1-b42d-276c7924db25",
+              "viewId": 14,
+              "source": "node_a763be0f-d38f-54ad-9136-ac926c984b39",
+              "target": "node_57e08a59-d5d6-5025-b24c-1d7cbc338174",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "generalization"
+              }
+            },
+            {
+              "id": "edge_6bc056f6-f25e-5868-819e-fa162bd37ba6",
+              "viewId": 14,
+              "source": "node_c9449974-f468-59f7-b601-86dd8982fa03",
+              "target": "node_57e08a59-d5d6-5025-b24c-1d7cbc338174",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "right",
+              "data": {
+                "edgeType": "generalization"
+              }
+            },
+            {
+              "id": "edge_4cb2c12a-9db4-5f88-b9a4-30363e7339a5",
+              "viewId": 14,
+              "source": "node_37c629ba-ca5f-52b3-9ac8-12e5c798401d",
+              "target": "node_57e08a59-d5d6-5025-b24c-1d7cbc338174",
+              "edgeType": "association",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "association",
+                "label": "sends via"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

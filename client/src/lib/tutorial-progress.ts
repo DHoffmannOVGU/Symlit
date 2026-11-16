@@ -132,7 +132,13 @@ function completable(tutorial: TutorialDefinition, progress: TutorialProgress): 
   const active = activeLessonIndex(tutorial, progress);
   const lessons =
     active === -1 ? tutorial.lessons : [tutorial.lessons[active], ...tutorial.lessons.slice(0, active)];
-  return lessons.flatMap((lesson) => lesson.steps).filter((step) => !isCompleted(progress, step.id));
+  return lessons.flatMap((lesson) =>
+    lesson.steps.filter(
+      (step, index) =>
+        !isCompleted(progress, step.id) &&
+        (!step.afterPrevious || lesson.steps.slice(0, index).every((earlier) => isPassed(progress, earlier.id))),
+    ),
+  );
 }
 
 function complete(
@@ -158,12 +164,17 @@ function complete(
 }
 
 /** The step happens in the open project and, when it names one, in the open diagram. */
-const inPlace = (step: TutorialStep, state: TutorialModelState) =>
-  state.scope === step.scope && (!step.view || same(step.view, state.diagram));
+/**
+ * The step happens where the learner is and, when it names one, in the open
+ * diagram. Where the learner is is the tutorial's metamodel or model (the
+ * state's own scope) or, given as `place`, a variant of the model.
+ */
+const inPlace = (step: TutorialStep, state: TutorialModelState, place: TutorialScope) =>
+  step.scope === place && (!step.view || same(step.view, state.diagram));
 
-const checkPasses = (step: TutorialStep, state: TutorialModelState | null) => {
+const checkPasses = (step: TutorialStep, state: TutorialModelState | null, place: TutorialScope) => {
   if (!step.check && !step.view) return true;
-  return !!state && inPlace(step, state) && (!step.check || step.check(state));
+  return !!state && inPlace(step, state, place) && (!step.check || step.check(state));
 };
 
 /**
@@ -179,7 +190,7 @@ export function applySignal(
   now = Date.now(),
 ): TutorialProgress {
   const step = completable(tutorial, progress).find(
-    (candidate) => candidate.signal === signal && candidate.scope === scope && checkPasses(candidate, state),
+    (candidate) => candidate.signal === signal && candidate.scope === scope && checkPasses(candidate, state, scope),
   );
   return step ? complete(tutorial, progress, [step], now) : progress;
 }
@@ -193,9 +204,10 @@ export function applyModelState(
   progress: TutorialProgress,
   state: TutorialModelState,
   now = Date.now(),
+  place: TutorialScope = state.scope,
 ): TutorialProgress {
   const steps = completable(tutorial, progress).filter(
-    (candidate) => !candidate.signal && !!candidate.check && checkPasses(candidate, state),
+    (candidate) => !candidate.signal && !!candidate.check && checkPasses(candidate, state, place),
   );
   return complete(tutorial, progress, steps, now);
 }

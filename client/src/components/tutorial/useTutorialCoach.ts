@@ -31,6 +31,7 @@ import {
   isTutorialFinished,
   loadTutorialProgress,
   noteHelpUsed,
+  pendingRecap,
   rememberTutorialFinished,
   returnToSkipped,
   saveTutorialProgress,
@@ -94,11 +95,12 @@ function useTutorialRun(
   const openStep = useCallback(
     async (step: TutorialStep, here: { projectId?: number; viewId?: number }) => {
       if (!run) return;
-      if (step.scope === "projects") {
+      if (step.scope === "projects" || (step.scope === "variant" && run.variants.length === 0)) {
         navigate("/projects");
         return;
       }
-      const target = step.scope === "metamodel" ? run.metamodel : run.instance;
+      const target =
+        step.scope === "metamodel" ? run.metamodel : step.scope === "variant" ? run.variants[0] : run.instance;
       if (!target) return;
       const inTarget = here.projectId === target.id && here.viewId !== undefined;
       if (inTarget && !step.view) return;
@@ -169,9 +171,11 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
       ? "metamodel"
       : project.id === tutorial.instance?.id
         ? "instance"
-        : "elsewhere";
-  // Steps happen in the tutorial's metamodel or its model; elsewhere nothing completes.
-  const scope = place === "metamodel" || place === "instance" ? place : null;
+        : tutorial.variants.some((variant) => variant.id === project.id)
+          ? "variant"
+          : "elsewhere";
+  // Steps happen in the tutorial's metamodel, its model or a variant of it; elsewhere nothing completes.
+  const scope: TutorialScope | null = place === "metamodel" || place === "instance" || place === "variant" ? place : null;
 
   const navigate = useCallback(
     (href: string) => {
@@ -201,8 +205,9 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
 
   // Steps that ask for a result complete when the model shows it.
   useEffect(() => {
-    if (modelState && progress && definition) update((current) => applyModelState(definition, current, modelState));
-  }, [definition, modelState, progress, update]);
+    if (!modelState || !progress || !definition || !scope) return;
+    update((current) => applyModelState(definition, current, modelState, Date.now(), scope));
+  }, [definition, modelState, progress, scope, update]);
 
   const signal = useCallback(
     (name: TutorialSignal) => {
@@ -246,7 +251,7 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
     tutorial,
     place,
     /** The name of the open project when it is neither the tutorial's metamodel nor its model. */
-    placeName: place === "elsewhere" ? (project?.name ?? "") : "",
+    placeName: place === "elsewhere" || place === "variant" ? (project?.name ?? "") : "",
     diagram: modelState?.diagram ?? "",
     diagrams: modelState?.diagrams ?? [],
     showMe,
@@ -271,9 +276,13 @@ export function useTutorialCoachOnProjectList(allProjects: Project[] | undefined
   const [chosenId, setChosenId] = useState<string | null>(null);
   useEffect(() => {
     if (chosenId && runs.some((run) => run.tutorial.id === chosenId)) return;
+    // A run waits here when its next step happens here, or when a lesson that
+    // ended here waits for its question.
     const waiting = runs.find((run) => {
       const stored = loadTutorialProgress(run.tutorial, run.metamodel.id);
-      return currentStep(run.tutorial, stored)?.scope === "projects";
+      const recap = pendingRecap(run.tutorial, stored);
+      const where = currentStep(run.tutorial, stored)?.scope ?? recap?.steps[recap.steps.length - 1].scope;
+      return where === "projects";
     });
     setChosenId(waiting?.tutorial.id ?? null);
   }, [chosenId, runs]);

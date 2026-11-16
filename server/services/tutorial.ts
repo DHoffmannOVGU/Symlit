@@ -48,6 +48,18 @@ export async function deleteTutorial(userId: number, tutorial?: TutorialDefiniti
   const tutorialProjects = projects.filter((project) =>
     tutorial ? tutorialForTemplate(project.templateId) === tutorial : isTutorialTemplate(project.templateId),
   );
+  // Models the learner made during the tutorial that use its metamodels (copies
+  // of its model): without the metamodels they would be left broken.
+  const metamodelIds = new Set(
+    tutorialProjects.filter((project) => project.projectType === "metamodel").map((project) => project.id),
+  );
+  const variants = projects.filter(
+    (project) =>
+      !tutorialProjects.includes(project) &&
+      project.projectType === "instance" &&
+      ((project.referencedMetamodels as number[] | null) ?? []).some((id) => metamodelIds.has(id)),
+  );
+  tutorialProjects.push(...variants);
   // Models first, so none ever references a deleted metamodel.
   const order = (project: Project) => (project.projectType === "instance" ? 0 : 1);
   tutorialProjects.sort((a, b) => order(a) - order(b));

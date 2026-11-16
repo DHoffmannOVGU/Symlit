@@ -158,7 +158,7 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "save-metamodel",
         title: "Save the metamodel",
-        instruction: "Save Machine types.",
+        instruction: "Save Machine types at the top right.",
         done: "Saved. The model can use the new relationship and the new type.",
         signal: "saved",
         scope: "metamodel",

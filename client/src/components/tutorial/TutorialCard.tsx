@@ -175,6 +175,10 @@ function TutorialCard({
     const scope = next?.scope ?? recap?.steps[recap.steps.length - 1].scope;
     // A step on the project list is continued right here; the coach shows it.
     if (scope === "projects") return;
+    if (scope === "variant") {
+      if (run.variants[0]) void open(run.variants[0]);
+      return;
+    }
     void open(scope === "instance" && run.instance ? run.instance : run.metamodel);
   };
 

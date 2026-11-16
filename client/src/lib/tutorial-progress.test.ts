@@ -180,7 +180,9 @@ for (const tutorial of TUTORIALS) {
       }
     }
     for (const candidate of steps) {
-      assert.ok(candidate.signal || candidate.check, `${candidate.id} can complete`);
+      assert.ok(candidate.signal || candidate.check || candidate.checkProjects, `${candidate.id} can complete`);
+      // A step on the project list is checked there; elsewhere a check of the project list means nothing.
+      assert.equal(candidate.scope === "projects", !!candidate.checkProjects, `${candidate.id} is checked where it happens`);
       if (candidate.signal) assert.ok((tutorialSignals as readonly string[]).includes(candidate.signal), candidate.id);
       assert.ok(candidate.instruction.length > 20, `${candidate.id} explains what to do`);
       assert.ok(candidate.done.length > 20, `${candidate.id} explains what happened`);
@@ -189,7 +191,7 @@ for (const tutorial of TUTORIALS) {
 
   test(`${tutorial.id}: most steps check a result in the model, not only that a button was pressed`, () => {
     const steps = tutorialSteps(tutorial);
-    const checked = steps.filter((candidate) => candidate.check).length;
+    const checked = steps.filter((candidate) => candidate.check || candidate.checkProjects).length;
     assert.ok(checked / steps.length >= 0.6, `${checked} of ${steps.length} steps check the model`);
   });
 }
@@ -555,4 +557,26 @@ test("PPR: requirement, product, process and resource have to be connected the P
   assert.ok(!progressOf.isTutorialFinished(P, progress));
   progress = progressOf.applySignal(P, progress, "validation-passed", "instance", complete);
   assert.ok(progressOf.isTutorialFinished(P, progress));
+});
+
+test("a step marked afterPrevious waits for the steps before it, even when its check holds from the start", async () => {
+  const { REUSE_TUTORIAL: R } = await import("@shared/tutorial-reuse");
+  const index = R.lessons.findIndex((lesson) => lesson.id === "copy");
+  const before = R.lessons.slice(0, index);
+  let progress: TutorialProgress = {
+    ...EMPTY_TUTORIAL_PROGRESS,
+    completed: before.flatMap((lesson) => lesson.steps.map((candidate) => candidate.id)),
+    recapped: before.map((lesson) => lesson.id),
+  };
+  const original = model("instance", [
+    element("s1", "S1", "Sensor node"),
+    element("t", "Temperature sensor", "Sensor", [attribute("quantity", "temperature", { type: "list" })]),
+  ]);
+  // In S1 before anything was copied: the original looks as it always did, which proves nothing yet.
+  progress = progressOf.applyModelState(R, progress, original);
+  assert.equal(progressOf.stepState(R, progress, tutorialSteps(R).find((s) => s.id === "check-original")!), "open");
+  // Once the copy was made and changed, the same look at S1 counts.
+  for (const id of ["duplicate", "rename-node", "change-sensor"]) progress = progressOf.skipStep(R, progress, id);
+  progress = progressOf.applyModelState(R, progress, original);
+  assert.equal(progressOf.stepState(R, progress, tutorialSteps(R).find((s) => s.id === "check-original")!), "done");
 });

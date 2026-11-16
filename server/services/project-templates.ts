@@ -6,6 +6,7 @@ import tutorial from "../templates/tutorial.json";
 import tutorialCalc from "../templates/tutorial-calc.json";
 import tutorialClassify from "../templates/tutorial-classify.json";
 import tutorialPpr from "../templates/tutorial-ppr.json";
+import tutorialReuse from "../templates/tutorial-reuse.json";
 import tutorialStructure from "../templates/tutorial-structure.json";
 import { importProjectFile, ProjectFileError } from "./project-import";
 
@@ -16,7 +17,7 @@ import { importProjectFile, ProjectFileError } from "./project-import";
  * docs/decisions/project-templates.md.
  */
 
-const BUILT_IN: unknown[] = [systemContext, requirementsBaseline, tutorial, tutorialPpr, tutorialCalc, tutorialClassify, tutorialStructure];
+const BUILT_IN: unknown[] = [systemContext, requirementsBaseline, tutorial, tutorialPpr, tutorialCalc, tutorialClassify, tutorialStructure, tutorialReuse];
 
 const templates: Array<ProjectFile & { template: NonNullable<ProjectFile["template"]> }> =
   BUILT_IN.map((raw) => {

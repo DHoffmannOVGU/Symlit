@@ -6,13 +6,14 @@ import { BASICS_TUTORIAL } from "./tutorial-basics";
 import { CALC_TUTORIAL } from "./tutorial-calc";
 import { CLASSIFY_TUTORIAL } from "./tutorial-classify";
 import { PPR_TUTORIAL } from "./tutorial-ppr";
+import { REUSE_TUTORIAL } from "./tutorial-reuse";
 import { STRUCTURE_TUTORIAL } from "./tutorial-structure";
 import type { TutorialDefinition } from "./tutorial-types";
 
 export * from "./tutorial-types";
 
 /** In the order they are offered. */
-export const TUTORIALS: TutorialDefinition[] = [BASICS_TUTORIAL, PPR_TUTORIAL, CALC_TUTORIAL, CLASSIFY_TUTORIAL, STRUCTURE_TUTORIAL];
+export const TUTORIALS: TutorialDefinition[] = [BASICS_TUTORIAL, PPR_TUTORIAL, CALC_TUTORIAL, CLASSIFY_TUTORIAL, STRUCTURE_TUTORIAL, REUSE_TUTORIAL];
 
 export const DEFAULT_TUTORIAL = BASICS_TUTORIAL;
 

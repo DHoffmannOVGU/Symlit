@@ -22,7 +22,23 @@ export interface TutorialProjects {
   instance: Project | undefined;
   /** Further projects the tutorial created, such as a second metamodel. */
   extras: Project[];
+  /** Models the learner made that use the tutorial's metamodels, newest first. */
+  variants: Project[];
 }
+
+const hasVariantSteps = (tutorial: TutorialDefinition) =>
+  tutorial.lessons.some((lesson) => lesson.steps.some((step) => step.scope === "variant"));
+
+/** Models that use one of the given metamodels and are not the run's own. */
+const variantsOf = (metamodelIds: number[], own: number[], allProjects: Project[]) =>
+  allProjects
+    .filter(
+      (candidate) =>
+        candidate.projectType === "instance" &&
+        !own.includes(candidate.id) &&
+        ((candidate.referencedMetamodels as number[] | null) ?? []).some((id) => metamodelIds.includes(id)),
+    )
+    .sort((a, b) => b.id - a.id);
 
 /**
  * Finds the tutorial run a project belongs to. A run's projects are created
@@ -35,7 +51,21 @@ export function findTutorialProjects(
 ): TutorialProjects | null {
   if (!project || !allProjects) return null;
   const tutorial = tutorialForTemplate(project.templateId);
-  if (!tutorial) return null;
+  if (!tutorial) {
+    // A model the learner made from a tutorial's model, which still uses its
+    // metamodel, belongs to that tutorial's run when the tutorial has steps there.
+    const used = (project.referencedMetamodels as number[] | null) ?? [];
+    const metamodelOfTutorial = allProjects.find(
+      (candidate) =>
+        used.includes(candidate.id) &&
+        candidate.projectType === "metamodel" &&
+        !!tutorialForTemplate(candidate.templateId) &&
+        hasVariantSteps(tutorialForTemplate(candidate.templateId)!),
+    );
+    return metamodelOfTutorial && project.projectType === "instance"
+      ? findTutorialProjects(metamodelOfTutorial, allProjects)
+      : null;
+  }
   const metamodels = allProjects.filter(isMetamodelOf(tutorial)).sort((a, b) => a.id - b.id);
   // The run's metamodel is the last one created at or before this project.
   const metamodel = [...metamodels].reverse().find((candidate) => candidate.id <= project.id);
@@ -43,11 +73,16 @@ export function findTutorialProjects(
   const nextRun = metamodels.find((candidate) => candidate.id > metamodel.id);
   const inRun = (candidate: Project) =>
     candidate.id > metamodel.id && (nextRun === undefined || candidate.id < nextRun.id);
+  const instance = allProjects.filter(isInstanceOf(tutorial)).find(inRun);
+  const extras = allProjects.filter(isExtraOf(tutorial)).filter(inRun);
+  const metamodelIds = [metamodel.id, ...extras.filter((extra) => extra.projectType === "metamodel").map((extra) => extra.id)];
+  const own = [metamodel.id, ...(instance ? [instance.id] : []), ...extras.map((extra) => extra.id)];
   return {
     tutorial,
     metamodel,
-    instance: allProjects.filter(isInstanceOf(tutorial)).find(inRun),
-    extras: allProjects.filter(isExtraOf(tutorial)).filter(inRun),
+    instance,
+    extras,
+    variants: hasVariantSteps(tutorial) ? variantsOf(metamodelIds, own, allProjects) : [],
   };
 }
 
@@ -67,6 +102,10 @@ export function tutorialWorkspaceState(
 ): TutorialWorkspaceState {
   const own = new Set([run.metamodel.id, run.instance?.id, ...run.extras.map((extra) => extra.id)]);
   return {
+    tutorialMetamodels: [
+      run.metamodel.id,
+      ...run.extras.filter((extra) => extra.projectType === "metamodel").map((extra) => extra.id),
+    ],
     projects: (allProjects ?? []).map((project) => ({
       id: project.id,
       name: project.name,

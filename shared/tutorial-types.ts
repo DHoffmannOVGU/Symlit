@@ -27,13 +27,15 @@ export const tutorialSignals = [
 export type TutorialSignal = (typeof tutorialSignals)[number];
 
 /**
- * Where a step happens: in the tutorial's metamodel, in its model, or on the
- * project list (duplicating, importing, starting from a template).
+ * Where a step happens: in the tutorial's metamodel, in its model, on the
+ * project list (duplicating, importing), or in a variant: a model the learner
+ * made during the tutorial (a copy of its model, for example) that uses the
+ * tutorial's metamodel.
  */
-export type TutorialScope = "metamodel" | "instance" | "projects";
+export type TutorialScope = "metamodel" | "instance" | "projects" | "variant";
 
 /** The two projects every tutorial has. */
-export type TutorialProjectScope = Exclude<TutorialScope, "projects">;
+export type TutorialProjectScope = "metamodel" | "instance";
 
 // --- what the tutorial can see of the open diagram ---------------------------
 
@@ -153,7 +155,18 @@ export interface TutorialWorkspaceProject {
 /** What a step on the project list can check. */
 export interface TutorialWorkspaceState {
   projects: TutorialWorkspaceProject[];
+  /** The ids of the metamodels the tutorial created. */
+  tutorialMetamodels: number[];
 }
+
+/** Models the learner made that use one of the tutorial's metamodels: copies of its model, for example. */
+export const variantsIn = (workspace: TutorialWorkspaceState) =>
+  workspace.projects.filter(
+    (project) =>
+      !project.ofTutorial &&
+      project.kind === "instance" &&
+      project.metamodels.some((id) => workspace.tutorialMetamodels.includes(id)),
+  );
 
 export const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 export const named = (state: TutorialModelState, name: string) =>
@@ -247,6 +260,12 @@ export interface TutorialStep {
   check?: (state: TutorialModelState) => boolean;
   /** For a step on the project list: what the list of projects has to show. */
   checkProjects?: (workspace: TutorialWorkspaceState) => boolean;
+  /**
+   * The step only completes once the steps before it in its lesson are done
+   * or skipped: for a check that is true from the start and only means
+   * something after them (looking at the original after changing a copy).
+   */
+  afterPrevious?: boolean;
   /** What "Show me" highlights, tried in order. Without one there is no "Show me". */
   highlight?: TutorialHighlight[];
 }

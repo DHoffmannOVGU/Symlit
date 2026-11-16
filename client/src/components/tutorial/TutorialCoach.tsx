@@ -163,7 +163,15 @@ export function TutorialCoach({
 }: TutorialCoachProps) {
   /** What the place is called: a project of the tutorial, the project list, or another project. */
   const placeLabel = (target: CoachPlace) =>
-    target === "projects" ? "All projects" : target === "elsewhere" ? placeName : tutorial.projects[target];
+    target === "projects"
+      ? "All projects"
+      : target === "elsewhere"
+        ? placeName
+        : target === "variant"
+          ? place === "variant" && placeName
+            ? placeName
+            : `your copy of ${tutorial.projects.instance}`
+          : tutorial.projects[target];
   /** Where the learner has to go for a step, or null when they are there. */
   const wayTo = (step: TutorialStep): string | null => {
     if (step.scope !== place) return step.scope === "projects" ? "Go to All projects" : `Open ${placeLabel(step.scope)}`;
