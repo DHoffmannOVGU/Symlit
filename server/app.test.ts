@@ -232,6 +232,30 @@ describe("views and diagrams", () => {
     assert.deepEqual(loaded.json.nodes[0].position, { x: 42, y: 24 });
   });
 
+  test("inserting an element says how the diagram's revision changed, so the next save is not a conflict", async () => {
+    const project = await createProject();
+    const first = await createView(project.id, "First");
+    const second = await createView(project.id, "Second");
+    const flow = sampleFlow(`rev${project.id}`);
+    await request("POST", `/api/views/${first.id}/sync`, flow);
+    const opened = (await request("GET", `/api/views/${second.id}/flow`)).json.revision;
+
+    const insert = await request("POST", `/api/views/${second.id}/nodes/${flow.nodes[0].id}/insert`, {
+      position: { x: 10, y: 10 },
+    });
+    assert.equal(insert.json.revisionBefore, opened);
+    const now = (await request("GET", `/api/views/${second.id}/flow`)).json;
+    assert.equal(insert.json.revision, now.revision);
+    assert.notEqual(insert.json.revision, opened);
+
+    // Based on the old revision the save is refused; on the new one it goes through.
+    const nodes = now.nodes.map((node: any) => ({ id: node.id, type: node.type, position: { x: 20, y: 20 }, data: node.data }));
+    const stale = await request("POST", `/api/views/${second.id}/sync`, { nodes, edges: [], baseRevision: opened });
+    assert.equal(stale.status, 409, stale.text);
+    const current = await request("POST", `/api/views/${second.id}/sync`, { nodes, edges: [], baseRevision: insert.json.revision });
+    assert.equal(current.status, 200, current.text);
+  });
+
   test("rejects edges whose endpoints are missing", async () => {
     const project = await createProject();
     const view = await createView(project.id);

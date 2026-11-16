@@ -134,7 +134,8 @@ export class FlowConflictError extends Error {
   }
 }
 
-async function currentRevision(viewId: number): Promise<string | null> {
+/** The revision of a diagram as it is stored now; null for a damaged one. */
+export async function currentRevision(viewId: number): Promise<string | null> {
   try {
     return flowRevision(await getFlow(viewId));
   } catch {

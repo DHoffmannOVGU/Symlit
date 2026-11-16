@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { z } from "zod";
 import { api } from "@shared/routes";
 import { storage } from "../storage";
-import { FlowConflictError, flowRevision, RelationshipIdTakenError } from "../services/flow-mutations";
+import { currentRevision, FlowConflictError, flowRevision, RelationshipIdTakenError } from "../services/flow-mutations";
 import { validateView } from "../services/model-validation";
 
 export function registerFlowRoutes(app: Express) {
@@ -74,8 +74,9 @@ export function registerFlowRoutes(app: Express) {
       const viewId = Number(req.params.viewId);
       const nodeId = String(req.params.nodeId);
       const input = api.flow.insertNode.input.parse(req.body);
+      const revisionBefore = await currentRevision(viewId);
       await storage.insertNodeIntoView(viewId, nodeId, input.position);
-      res.json({ success: true });
+      res.json({ success: true, revisionBefore, revision: await currentRevision(viewId) });
     } catch (err) {
       if (err instanceof z.ZodError) {
         res.status(400).json({ message: err.errors[0].message });
