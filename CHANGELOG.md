@@ -20,9 +20,16 @@ DATABASE_URL. No account, no external requests.
   pattern libraries for the models that use them.
 - Project templates: start from an example; a template can bring its
   metamodel along. Templates use the JSON export format.
-- Two guided tutorials whose steps check the result in the model: Symlit
-  basics (the tool, 26 steps) and Production with PPR (product, process,
-  resource and requirements tracing, 22 steps). Export (JSON/CSV).
+- Six guided tutorials whose steps check the result in the model, each with
+  its own example: Symlit basics, Production with PPR, Calculate with
+  attributes, Classify and review, Structure and views, Reuse and variants.
+  Export (JSON/CSV).
+- Attributes: calculated values follow their inputs everywhere (editor,
+  table, new elements); an input without a value means "not calculated yet"
+  instead of blocking the editor; elements inherit the attributes of the
+  types their type specializes. The help lists how formulas work.
+- Rules that tag: tags have a column in the table, and the table filter
+  finds them.
 - Versioned database migrations applied on start; strict server-side
   validation of elements and relationships.
 - Projects: the list shows when a project was last edited and can be sorted;
@@ -39,5 +46,12 @@ DATABASE_URL. No account, no external requests.
   Symlit. If you open Symlit under a host name other than `localhost` or an
   IP address, add it to `SYMLIT_ALLOWED_HOSTS`.
 - Tests: unit, API (PGlite and PostgreSQL 16) and browser (Playwright) in CI.
+
+### Fixed
+- Saving a diagram with an element created since it was opened reset the
+  undo history.
+- Saving a diagram after showing an existing element in it was refused as if
+  the diagram had been changed somewhere else.
+- In a formula, a minus sign after * or / was applied wrongly (2 * -3 gave -3).
 
 Docs: README.md, docs/ARCHITECTURE.md, docs/BACKLOG.md.

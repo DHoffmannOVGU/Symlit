@@ -457,6 +457,10 @@ export function AttributeRowEditor({
                   Type `[` to open attribute suggestions. Keep typing to
                   filter, then use arrow keys with `Enter` or `Tab` to insert.
                 </p>
+                <p className="text-[11px] text-muted-foreground" data-testid={`formula-syntax-${index}`}>
+                  Use + - * /, parentheses and numbers such as 0.5. Other
+                  attributes of this element go in square brackets, by name.
+                </p>
                 {extractFormulaReferences(
                   formulaDrafts[attr.id] ??
                     getDisplayFormula(attr.formula ?? "", attributes, attr.id),

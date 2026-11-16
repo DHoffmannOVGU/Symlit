@@ -12,6 +12,10 @@
 On the project list, **Import** opens a JSON export as a **new project**. Nothing existing is
 overwritten.
 
+A model can only be opened together with the metamodels it uses. For a file that someone else
+will import, tick **Referenced metamodel definitions** in the export dialog: the file then
+brings the metamodels along, and importing creates them as new projects next to the model.
+
 ## Moving a workspace
 
 To move everything to another machine, either export and import the projects one by one, or

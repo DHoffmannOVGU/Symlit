@@ -18,14 +18,17 @@ there. Symlit offers the relationships the metamodel allows between the two type
 ## Several diagrams
 
 A project can have several diagrams. An element is stored once and can appear in more than
-one diagram, so each diagram can show a different aspect of the same model.
+one diagram, so each diagram can show a different aspect of the same model. To show an existing
+element in the open diagram, open the **Diagrams** tab, list the elements of the diagram it is
+in (the arrow next to the diagram's name) and press the arrow next to the element. Its name and
+values are the same everywhere; its position and its relationships belong to each diagram.
 
-## Build and flow mode
+## Several metamodels
 
-- **Build mode** is for editing the model.
-- **Flow mode** steps through the behavior of your model: mark a start and an end element,
-  then run or step through the flow from the toolbar. The flow card shows progress, the
-  current tick and the active elements.
+The metamodel selector in the header (*1 Metamodel selected*) chooses which metamodels a model
+uses. Each adds a group of types to the palette. A relationship between elements of two
+metamodels is allowed when one of them defines it, for which it has to build on the other and
+show its type.
 
 ## Checking the model
 

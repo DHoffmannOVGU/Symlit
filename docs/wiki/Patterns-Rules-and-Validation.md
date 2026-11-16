@@ -11,7 +11,16 @@ A pattern is a reusable snippet of elements and relationships.
 ## Model rules
 
 A model rule has a condition. When it holds for an element, the rule either **tags** the
-element or **reports an issue**. Rules are defined in the rules panel and run when you validate.
+element or **reports an issue**. Rules are defined in the rules panel. Tags show on the cards
+and in the table as long as the condition holds; issues are listed when you validate.
+
+A condition compares a field of the element (its name, description, type or an attribute) or of
+the elements a relationship leads to. Several conditions can be combined: **all** of them must
+hold, or **any** of them.
+
+A rule in a **metamodel** applies to every model built from it; in the model it is listed under
+*Rules from metamodels* and cannot be changed there. A rule in a model's diagram applies to that
+diagram.
 
 ## Validation
 

@@ -10,7 +10,7 @@ Symlit uses one vocabulary throughout: **element, type, relationship, diagram**.
 | **Kind** | The built-in category of a type: Object, Behavior, Concern, Performer, Need, Event or Capability. |
 | **Element** | A thing in a model, typed by a type from a referenced metamodel. |
 | **Relationship** | A typed connection between two elements: Association, Aggregation, Composition, Generalization, Dependency or Realization. |
-| **Attribute** | A named value on a type (with an optional unit or derived formula); elements fill in the values. |
+| **Attribute** | A named value on a type (with an optional unit, or calculated by a formula); elements fill in the values. |
 | **Diagram** | A view of a project. An element is stored once per project and can appear in several diagrams. |
 | **Pattern** | A saved selection of elements and relationships that can be inserted again. |
 | **Model rule** | A condition that tags elements or reports issues when it holds. |

@@ -11,7 +11,9 @@ The same editor is used for metamodels and models.
 
 ## Table view
 
-Table view lists the elements of the diagram as rows, with their attributes as columns.
+Table view lists the elements of the diagram as rows, with their attributes as columns. Values
+can be edited in place; calculated values follow at once. When a model rule tags elements, the
+tags get a column too, and the filter finds elements by tag.
 
 ## Saving
 

@@ -554,6 +554,46 @@ describe("guided tutorial", () => {
     assert.ok(!model.edges.some((edge: Relationship) => requirements.some((node: Element) => node.id === edge.target)));
   });
 
+  test("every tutorial's template creates a metamodel and a model that follows it", async () => {
+    const { TUTORIALS } = await import("@shared/tutorial");
+    for (const tutorial of TUTORIALS) {
+      const res = await request("POST", `/api/tutorial/${tutorial.id}`);
+      assert.equal(res.status, 201, `${tutorial.id}: ${res.text}`);
+      const { metamodel, instance, metamodelViewId, instanceViewId } = res.json;
+      assert.equal(metamodel.templateId, tutorial.templateId, tutorial.id);
+      assert.equal(instance.templateId, tutorial.templateId, tutorial.id);
+      assert.ok(instance.referencedMetamodels.includes(metamodel.id), tutorial.id);
+      assert.ok(metamodelViewId && instanceViewId, tutorial.id);
+      // Whatever the model is meant to lack, it is typed by its metamodel and
+      // uses only relationships the metamodel allows.
+      const { issues } = (await request("POST", `/api/views/${instanceViewId}/validate`)).json;
+      assert.deepEqual(issues, [], `${tutorial.id}: ${JSON.stringify(issues)}`);
+      const removed = await request("DELETE", `/api/tutorial/${tutorial.id}`);
+      assert.ok(removed.json.deletedProjects >= 2, tutorial.id);
+    }
+  });
+
+  test("a tutorial's extra projects are marked and removed with it", async () => {
+    const { metamodel, instance } = (await request("POST", "/api/tutorial/reuse")).json;
+    const projects = (await request("GET", "/api/projects")).json as Array<{
+      id: number;
+      name: string;
+      templateId: string | null;
+      referencedMetamodels: number[];
+    }>;
+    const extras = projects.filter((project) => project.templateId === "tutorial-reuse+extra");
+    assert.deepEqual(extras.map((project) => project.name), ["Tutorial · Radio modules"]);
+    // The second metamodel builds on the first.
+    assert.deepEqual(extras[0].referencedMetamodels, [metamodel.id]);
+    // A copy of the model made by the learner goes with the tutorial too.
+    const copy = await request("POST", `/api/projects/${instance.id}/duplicate`, {});
+    assert.equal(copy.status, 201, copy.text);
+    const removed = await request("DELETE", "/api/tutorial/reuse");
+    assert.equal(removed.json.deletedProjects, 4);
+    const left = (await request("GET", "/api/projects")).json as Array<{ id: number }>;
+    assert.ok(!left.some((project) => [metamodel.id, instance.id, extras[0].id, copy.json.project.id].includes(project.id)));
+  });
+
   test("tutorials are created and removed one at a time; an unknown one is a 404", async () => {
     await request("DELETE", "/api/tutorial");
     await request("POST", "/api/tutorial/basics");

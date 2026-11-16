@@ -16,12 +16,25 @@ npm run dev
 
 Open http://localhost:5000. On first start Symlit creates a demo project.
 
-## Take the tutorial
+## Take a tutorial
 
-Press **Start the guided tutorial** on the project list. It builds a small drone model with
-you in about 15 minutes: seven hands-on lessons covering metamodels, typed models, validation,
-model rules, table view, auto layout, patterns and export. Steps tick off as you work, and
-**Show me** points at the right button.
+The project list offers six guided tutorials. Start with **Symlit basics**: it builds a small
+drone model with you in about 25 minutes, from types and elements to validation, model rules,
+the table view, patterns and export. The others each take one subject further, with an example
+of their own:
+
+| Tutorial | Example | What you learn |
+| --- | --- | --- |
+| Symlit basics | Delivery drone | the tool |
+| Production with PPR | Shelf bracket | product, process, resource; tracing requirements |
+| Calculate with attributes | 3D-printing quotes | attribute types, formulas, a rule on a calculated value |
+| Classify and review | Control cabinet | rules that tag, combined conditions, rules for every model, the table |
+| Structure and views | Espresso machine | relationship kinds, Generalization, several diagrams |
+| Reuse and variants | Sensor nodes | type styles, copies, pattern libraries, a second metamodel, project files |
+
+Steps tick off when the model shows their result. **Hint** helps you think, **Show me** points
+at what to use, and a skipped step stays marked as skipped. Each lesson ends with one question,
+and the last lesson of each tutorial is done without step-by-step instructions.
 
 ## Other ways to run it
 

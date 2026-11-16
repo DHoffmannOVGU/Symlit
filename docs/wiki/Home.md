@@ -9,14 +9,14 @@ cloud services.
 
 ## Start here
 
-- **[Getting started](Getting-Started):** install, run, and take the guided tutorial.
+- **[Getting started](Getting-Started):** install, run, and take a guided tutorial.
 - **[Concepts](Concepts):** metamodels, models, elements, relationships, diagrams.
 
 ## Using Symlit
 
 - **[Projects](Projects):** create, duplicate, import and delete projects; templates.
 - **[Metamodels](Metamodels):** types, attributes, units, styling, inheritance.
-- **[Models](Models):** typed elements, validated relationships, flow mode.
+- **[Models](Models):** typed elements, validated relationships, several metamodels and diagrams.
 - **[Diagram editor](Diagram-Editor):** canvas, table view, saving, shortcuts.
 - **[Patterns, rules and validation](Patterns-Rules-and-Validation)**
 - **[Import and export](Import-and-Export)**

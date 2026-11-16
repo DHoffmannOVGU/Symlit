@@ -4,6 +4,37 @@ What to build next for the guided tutorials: which tutorials, which concepts eac
 what the app has to be able to do first, and the checklists a step, a lesson and a whole tutorial
 have to pass. The reasoning behind the two existing tutorials is in `TUTORIAL_DIDACTICS.md`.
 
+## Status
+
+Steps 1 to 5 of section 6 are built: the groundwork, the app fixes, and tutorials 3 to 6. Step 6,
+trying the tutorials with learners, is open. All six tutorials are walked by a browser test from
+the first step to the end screen, with at least one wrong way per lesson that must not count.
+
+How the decisions in section 6 were taken, as the most conservative choice where it was a
+product decision:
+
+| Decision | Taken |
+| --- | --- |
+| Adding up across elements | Not built. Formulas stay inside one element; tutorial 3 has no budget lesson. In the backlog. |
+| Attributes along a Generalization | Implemented: a new element gets the attributes of its type and of the types it specializes. The wiki is now right. Style is still per type. |
+| Flow mode | Not made reachable. The README and the wiki no longer claim it; in the backlog. |
+| The examples | As proposed: print jobs, a control cabinet, an espresso machine, sensor nodes. |
+
+Where the result differs from section 3:
+
+- **Tutorial 4** calls its type *Component*, not *Part*: the app reads a type named Part as the
+  built-in kind Object when a diagram is loaded (an old rename), which would confuse every list.
+- **Tutorial 5** takes Composition and Generalization from its metamodel's setup; a metamodel
+  created in the UI with the default purpose offers neither, and the setup cannot be changed later.
+- **Tutorial 6** does not make the learner start from a template: there is nothing in the
+  example to start from, and a look at the template list cannot be checked. Lesson 2 explains that
+  templates work like a copy. Its import lesson ends with removing what was imported, because the
+  imported projects carry the same names as the learner's own. The pattern library and the second
+  metamodel's reference to the first come with the template, since the UI cannot make either.
+- Two app faults were found by walking the tutorials and fixed: saving after showing an existing
+  element in a diagram was refused as a conflict, and the canvas and the coach triggered each
+  other's rendering without end.
+
 ## Basis and its limits
 
 - A feature inventory of the app, made by reading the code, the browser tests and the wiki, and
@@ -272,14 +303,19 @@ most of the remaining gaps in section 4.
 
 ## Known weaknesses of the tutorial system
 
-Found while mapping it; step 1 above addresses the first five.
+Found while mapping it. Fixed, as part of step 1:
 
-- Saving with Ctrl+S, or with "Save and leave", does not complete a "save" step.
-- A "save" step completes when the save is requested, not when it succeeded.
-- Several checks are looser than the text that follows them. The basics rule step accepts any
-  issue rule that mentions *range*, and the next text then states that 18 km covers 15 km.
-- A skipped earlier step takes the next matching action, so the learner has to validate twice.
-- Progress is stored under the metamodel project's number. After the database is reset, numbers
-  repeat and a new run starts with old progress.
-- Each tutorial takes about 200 px of the project list before it is started.
+- Saving with Ctrl+S, or with "Save and leave", did not complete a "save" step.
+- A "save" step completed when the save was requested, not when it succeeded.
+- Several checks were looser than the text that follows them (the basics rule step accepted any
+  issue rule that mentions *range*). They now check what the texts say.
+- A skipped earlier step took the next matching action. The current lesson's steps come first.
+- Progress was stored under the metamodel project's number, and after the database was reset a
+  new run started with old progress. Starting a tutorial clears it.
+- Each tutorial took about 200 px of the project list. The cards are compact and can be folded away.
+
+Still open:
+
 - "Show me" for a field assumes the attribute is the first in the list.
+- A step that combines the signal "view-opened" with a check is judged on the diagram that was open
+  before. No step does; `afterPrevious` covers the case that needed it.

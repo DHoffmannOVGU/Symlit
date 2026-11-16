@@ -14,7 +14,7 @@ export function DiagramHelpDialog({
 }: DiagramHelpDialogProps) {
   return (
     <Dialog open={helpDialogOpen} onOpenChange={setHelpDialogOpen}>
-            <DialogContent className="sm:max-w-[620px]">
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[620px]">
               <DialogHeader>
                 <DialogTitle>{helpContent.title}</DialogTitle>
               </DialogHeader>
@@ -42,6 +42,19 @@ export function DiagramHelpDialog({
                   </div>
                 </div>
     
+                {helpContent.formulas?.length ? (
+                  <div className="space-y-3" data-testid="help-formulas">
+                    <h3 className="text-sm font-semibold">Calculated attributes</h3>
+                    <ul className="space-y-2 text-sm text-muted-foreground">
+                      {helpContent.formulas.map((item) => (
+                        <li key={item} className="rounded-lg border bg-muted/20 px-3 py-2">
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold">How it works</h3>
                   <ul className="space-y-2 text-sm text-muted-foreground">
