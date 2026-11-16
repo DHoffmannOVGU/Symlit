@@ -144,7 +144,7 @@ const LESSONS: TutorialLesson[] = [
         title: "Capture a new requirement",
         instruction:
           "The customer adds: the bracket has to fit into the corner between wall and shelf. Add a Requirement named Mounting angle and fill in its criterion, for example 90 degrees, plus or minus 1.",
-        hint: "Drag Requirement from the Add elements tab, double-click it, set the name and the criterion and press Save Changes. A criterion with a number and a tolerance can be measured; \"fits well\" cannot.",
+        hint: "Drag Requirement from the Add elements tab, double-click it, set the name and the criterion and press Apply. A criterion with a number and a tolerance can be measured; \"fits well\" cannot.",
         done: "A requirement with a criterion can be checked on the finished part. Without one, nobody can say whether it is met.",
         scope: "instance",
         check: (state) => ownRequirements(state).some((element) => hasValue(element, "criterion")),
@@ -185,7 +185,7 @@ const LESSONS: TutorialLesson[] = [
         title: "Add the Bending process",
         instruction:
           "Add a Process named Bending and give it a cycle time, for example 15.",
-        hint: "Drag Process from the Add elements tab, double-click it, set the name and the value and press Save Changes. The tutorial looks for a process named exactly Bending.",
+        hint: "Drag Process from the Add elements tab, double-click it, set the name and the value and press Apply. The tutorial looks for a process named exactly Bending.",
         done: "Bending exists, but it is not connected to any product yet.",
         scope: "instance",
         check: (state) =>
@@ -295,7 +295,7 @@ const LESSONS: TutorialLesson[] = [
         id: "add-resource",
         title: "Add a resource for bending",
         instruction: "Add a Resource for the Bending process, for example a Press brake, and give it an hourly rate.",
-        hint: "Drag Resource from the Add elements tab, double-click it, set the name and the value and press Save Changes.",
+        hint: "Drag Resource from the Add elements tab, double-click it, set the name and the value and press Apply.",
         done: "The workshop has a machine that could bend. The model does not say yet that it does.",
         scope: "instance",
         check: (state) =>

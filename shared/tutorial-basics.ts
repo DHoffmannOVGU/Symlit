@@ -92,9 +92,9 @@ const LESSONS: TutorialLesson[] = [
         id: "name-type",
         title: "Name it Camera",
         instruction:
-          "Double-click the new type, change its Name to Camera and press Save Changes at the bottom of the editor.",
-        hint: "The tutorial looks for a type named exactly Camera. Save Changes keeps what you edited in the editor; it does not store the diagram yet.",
-        done: "Symlit saves in two steps. Save Changes keeps your edits to one type or element. Save at the top right stores the whole diagram; until then the header shows Unsaved changes.",
+          "Double-click the new type, change its Name to Camera and press Apply at the bottom of the editor.",
+        hint: "The tutorial looks for a type named exactly Camera. Apply puts what you edited into the diagram; it does not store the diagram yet.",
+        done: "Symlit saves in two steps. Apply puts your edits to one type or element into the diagram. Save at the top right stores the whole diagram; until then the header shows Unsaved changes.",
         scope: "metamodel",
         check: (state) => named(state, "Camera").length > 0,
         highlight: ['[data-testid="input-node-label"]', { selector: ELEMENT_CARD, text: "New Object" }],
@@ -103,7 +103,7 @@ const LESSONS: TutorialLesson[] = [
         id: "add-attribute",
         title: "Give it an attribute",
         instruction:
-          "Open Camera again and press Add attribute. Name the attribute resolution, pick a unit if you like, and press Add attribute. Then press Save Changes.",
+          "Open Camera again and press Add attribute. Name the attribute resolution, pick a unit if you like, and press Add attribute. Then press Apply.",
         hint: "An attribute is a property every camera has. Leave Default value empty: each camera gets its own value later. In the unit list you can search, or type your own unit such as MP.",
         done: "Every camera created from now on starts with a resolution attribute.",
         scope: "metamodel",
@@ -163,7 +163,7 @@ const LESSONS: TutorialLesson[] = [
         id: "set-value",
         title: "Fill in its values",
         instruction:
-          "Double-click the new camera. It already has the resolution attribute from its type. Enter a value such as 12, give the camera a name such as Nose camera, and press Save Changes.",
+          "Double-click the new camera. It already has the resolution attribute from its type. Enter a value such as 12, give the camera a name such as Nose camera, and press Apply.",
         done: "An element starts with a copy of its type's attributes and then keeps its own values. If a type gains an attribute later, existing elements keep what they have; their editor offers to add the new attribute.",
         scope: "instance",
         check: (state) => ofType(state, "Camera").some((element) => hasValue(element)),
@@ -225,7 +225,7 @@ const LESSONS: TutorialLesson[] = [
         id: "fix-issue",
         title: "Fix the issue",
         instruction:
-          "Click the issue to find Pack B on the canvas. Double-click Pack B, enter a capacity such as 160 and press Save Changes.",
+          "Click the issue to find Pack B on the canvas. Double-click Pack B, enter a capacity such as 160 and press Apply.",
         hint: "The results stay open while you work. Every battery in the model needs a capacity value.",
         done: "Pack B now has a capacity.",
         scope: "instance",
@@ -414,7 +414,7 @@ const LESSONS: TutorialLesson[] = [
 
 const NOT_COVERED = [
   "Several diagrams per project: an element is stored once and can appear in many",
-  "Generalization: a type inherits attributes and relationships from another",
+  "Generalization: a specialized type may be used wherever its general type is allowed in a relationship",
   "Derived attributes: values calculated from other attributes with a formula",
   "Tags: rules that label elements instead of reporting issues",
 ];
