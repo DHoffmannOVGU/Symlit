@@ -474,14 +474,18 @@ test("skipping is not doing, the coach stays out of the way, and the tutorial ca
   await expect(page.getByTestId("tutorial-step-open-type")).toHaveAttribute("data-state", "current");
 
   // Starting over replaces the projects and the progress.
-  const projectsBefore = (await (await request.get("/api/projects")).json()) as Array<{ id: number; templateId: string | null }>;
+  type ProjectRow = { id: number; templateId: string | null };
+  const tutorialIds = (list: ProjectRow[]) => list.filter((project) => project.templateId === "tutorial").map((project) => project.id);
+  const projectsBefore = (await (await request.get("/api/projects")).json()) as ProjectRow[];
+  const urlBefore = page.url();
   await page.getByTestId("button-tutorial-restart").click();
   await page.getByTestId("button-tutorial-restart-confirm").click();
+  // The fresh metamodel opens once it exists.
+  await expect(page).not.toHaveURL(urlBefore);
   await expect(page.locator(".react-flow__node")).toHaveCount(3);
   await expectProgress(page, 0);
   await expect(page.getByTestId("tutorial-skipped-count")).toHaveCount(0);
-  const projectsAfter = (await (await request.get("/api/projects")).json()) as Array<{ id: number; templateId: string | null }>;
-  const tutorialIds = (list: typeof projectsAfter) => list.filter((project) => project.templateId === "tutorial").map((project) => project.id);
+  const projectsAfter = (await (await request.get("/api/projects")).json()) as ProjectRow[];
   expect(tutorialIds(projectsAfter)).toHaveLength(2);
   expect(tutorialIds(projectsAfter).some((id) => tutorialIds(projectsBefore).includes(id))).toBe(false);
 

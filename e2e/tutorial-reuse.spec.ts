@@ -180,7 +180,10 @@ test("Reuse and variants: styles, a copy, a pattern library, a second metamodel,
   // Remove the three imported projects, marked because their names are taken;
   // deleting a metamodel names the model that uses it.
   const all = await projects(page);
-  const marked = all.filter((project) => project.name.endsWith(" (imported)"));
+  // Other tests share the workspace and may import projects of their own.
+  const marked = all.filter(
+    (project) => project.name.endsWith(" (imported)") && /Sensor node|Radio modules/.test(project.name),
+  );
   expect(marked.map((project) => project.name).sort()).toEqual([
     "Sensor node S2 (imported)",
     "Tutorial · Radio modules (imported)",
