@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ConfirmTutorialRemoval, RemovedProjectsList, type RemovedProject } from "./ConfirmTutorialRemoval";
 import {
   ArrowRight,
   CheckCircle2,
@@ -51,6 +52,10 @@ interface TutorialCoachProps {
   /** The open diagram and all diagrams of the open project, by name. */
   diagram?: string;
   diagrams?: string[];
+  /** The tutorial works in a copy of its model, and the learner has none (any more). */
+  noCopy?: boolean;
+  /** What removing or restarting the tutorial deletes. */
+  removedProjects?: RemovedProject[];
   onShowMe: (step: TutorialStep) => void;
   onOpenStepDiagram: (step: TutorialStep) => void;
   onHintShown: (stepId: string) => void;
@@ -148,6 +153,8 @@ export function TutorialCoach({
   placeName = "",
   diagram = "",
   diagrams = [],
+  noCopy = false,
+  removedProjects = [],
   onShowMe,
   onOpenStepDiagram,
   onHintShown,
@@ -174,6 +181,9 @@ export function TutorialCoach({
           : tutorial.projects[target];
   /** Where the learner has to go for a step, or null when they are there. */
   const wayTo = (step: TutorialStep): string | null => {
+    if (step.scope === "variant" && noCopy) {
+      return place === "projects" ? `Make a copy of ${tutorial.projects.instance} first` : "Go to All projects";
+    }
     if (step.scope !== place) return step.scope === "projects" ? "Go to All projects" : `Open ${placeLabel(step.scope)}`;
     // Another diagram of this project, if it exists already (a step may be about creating it).
     if (step.view && diagram && !same(step.view, diagram) && diagrams.some((name) => same(name, step.view!))) {
@@ -384,9 +394,10 @@ export function TutorialCoach({
         <div className="space-y-3 p-4" data-testid="tutorial-restart-confirm">
           <p className="font-semibold">Start the tutorial over?</p>
           <p className="text-sm leading-6 text-muted-foreground">
-            The two tutorial projects are replaced by fresh ones and your progress starts at zero. Use this
-            when something in the tutorial model went wrong and you would rather begin again.
+            The tutorial projects are replaced by fresh ones and your progress starts at zero. Use this
+            when something in the tutorial model went wrong and you would rather begin again. Deleted:
           </p>
+          <RemovedProjectsList projects={removedProjects} />
           <div className="flex gap-2">
             <Button size="sm" onClick={() => void restart()} disabled={restarting} data-testid="button-tutorial-restart-confirm">
               {restarting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="mr-2 h-3.5 w-3.5" />}
@@ -405,6 +416,7 @@ export function TutorialCoach({
           onReturnToSkipped={onReturnToSkipped}
           onStartOwnProject={onStartOwnProject}
           onRemoveTutorial={onRemoveTutorial}
+          removedProjects={removedProjects}
           onRestart={() => setConfirmRestart(true)}
         />
       ) : (
@@ -687,6 +699,7 @@ function FinishedCard({
   onStartOwnProject,
   onShowTutorials,
   onRemoveTutorial,
+  removedProjects,
   onRestart,
 }: {
   tutorial: TutorialDefinition;
@@ -695,6 +708,7 @@ function FinishedCard({
   onStartOwnProject: () => void;
   onShowTutorials: () => void;
   onRemoveTutorial: () => void;
+  removedProjects: RemovedProject[];
   onRestart: () => void;
 }) {
   const done = countDone(tutorial, progress);
@@ -801,10 +815,12 @@ function FinishedCard({
           Start your own project
         </Button>
         <p className="text-center text-xs text-muted-foreground">Blank, or from one of the templates.</p>
-        <Button variant="outline" onClick={onRemoveTutorial} data-testid="button-tutorial-remove">
-          <Trash2 className="mr-2 h-4 w-4" />
-          Remove the tutorial projects
-        </Button>
+        <ConfirmTutorialRemoval title={tutorial.title} projects={removedProjects} onConfirm={onRemoveTutorial}>
+          <Button variant="outline" data-testid="button-tutorial-remove">
+            <Trash2 className="mr-2 h-4 w-4" />
+            Remove the tutorial projects
+          </Button>
+        </ConfirmTutorialRemoval>
         <Button variant="ghost" size="sm" onClick={onRestart}>
           <RotateCcw className="mr-2 h-3.5 w-3.5" />
           Go through it again

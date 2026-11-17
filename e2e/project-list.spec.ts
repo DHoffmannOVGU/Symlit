@@ -64,6 +64,10 @@ test("a project file exported from one project imports as a new one", async ({ p
   await expect(page).toHaveURL(/\/project\/\d+\/view\/\d+$/);
   expect(page.url()).not.toContain(`/project/${project.id}/`);
   await expect(page.locator(".react-flow__node", { hasText: "Gearbox" })).toBeVisible();
+  // Next to the original it came from, the copy is marked so the two can be told apart.
+  const names = ((await (await request.get("/api/projects")).json()) as Array<{ name: string }>).map((p) => p.name);
+  expect(names).toContain("Round trip");
+  expect(names).toContain("Round trip (imported)");
 
   await page.goto("/projects");
   await page.getByTestId("input-import-project").setInputFiles({ name: "notes.json", mimeType: "application/json", buffer: Buffer.from("not json") });

@@ -1,10 +1,5 @@
 import type { Project } from "@shared/schema";
-import {
-  isTutorialTemplate,
-  TUTORIAL_EXTRA_SUFFIX,
-  tutorialForTemplate,
-  type TutorialDefinition,
-} from "@shared/tutorial";
+import { projectsRemovedWithTutorial, TUTORIAL_EXTRA_SUFFIX, type TutorialDefinition } from "@shared/tutorial";
 import { storage } from "../storage";
 import { createProjectFromTemplate } from "./project-templates";
 
@@ -44,25 +39,7 @@ export async function createTutorial(userId: number, tutorial: TutorialDefinitio
  * is given. Returns how many were removed.
  */
 export async function deleteTutorial(userId: number, tutorial?: TutorialDefinition): Promise<number> {
-  const projects = await storage.getProjectsByUser(userId);
-  const tutorialProjects = projects.filter((project) =>
-    tutorial ? tutorialForTemplate(project.templateId) === tutorial : isTutorialTemplate(project.templateId),
-  );
-  // Models the learner made during the tutorial that use its metamodels (copies
-  // of its model): without the metamodels they would be left broken.
-  const metamodelIds = new Set(
-    tutorialProjects.filter((project) => project.projectType === "metamodel").map((project) => project.id),
-  );
-  const variants = projects.filter(
-    (project) =>
-      !tutorialProjects.includes(project) &&
-      project.projectType === "instance" &&
-      ((project.referencedMetamodels as number[] | null) ?? []).some((id) => metamodelIds.has(id)),
-  );
-  tutorialProjects.push(...variants);
-  // Models first, so none ever references a deleted metamodel.
-  const order = (project: Project) => (project.projectType === "instance" ? 0 : 1);
-  tutorialProjects.sort((a, b) => order(a) - order(b));
-  for (const project of tutorialProjects) await storage.deleteProject(project.id);
-  return tutorialProjects.length;
+  const removed = projectsRemovedWithTutorial(await storage.getProjectsByUser(userId), tutorial);
+  for (const project of removed) await storage.deleteProject(project.id);
+  return removed.length;
 }

@@ -15,6 +15,7 @@
 import {
   attributeOf,
   calculatedFrom,
+  calculates,
   comparesWith,
   editing,
   ELEMENT_CARD,
@@ -43,6 +44,18 @@ const typeCalculates = (state: TutorialModelState, name: string, from: string[])
   return !!type && calculatedFrom(type, name, from);
 };
 const hasNumber = (element: TutorialElement, name: string) => numberOf(element, name) !== null;
+/** The type calculates the attribute as the step asks, however the formula is written: [inputs, result] pairs. */
+const typeGives = (state: TutorialModelState, name: string, cases: Array<[Record<string, number>, number]>) => {
+  const type = jobType(state);
+  return !!type && calculates(type, name, cases);
+};
+/** price - total cost, not the other way round: a job that loses money has a negative margin. */
+const marginIsRight = (state: TutorialModelState) =>
+  typeGives(state, "margin", [
+    [{ price: 10, "total cost": 4 }, 6],
+    [{ price: 3, "total cost": 5 }, -2],
+  ]);
+const NEW_JOB = (job: TutorialElement) => !["Phone stand", "Gear housing", "Cable clip"].some((name) => same(name, job.name));
 
 /** The learner's rule: a print job whose margin is below zero is reported. */
 const marginRule = (state: TutorialModelState) =>
@@ -56,7 +69,7 @@ const LESSONS: TutorialLesson[] = [
     title: "Attributes have types",
     goal: "tell the attribute types apart and fill in a number, a choice from a list and a Yes/No value",
     why:
-      "A print job is described by what is known about it: what it is made of, how heavy it is, how long it prints, what the customer pays. Each of these is an attribute, and each has a type that says what kind of value it takes. The type decides how the value is entered, and what can be done with it later: only numbers can be calculated with.",
+      "To find the print job that loses money, its cost has to be worked out from what is known about it: what it is made of, how heavy it is, how long it prints, what the customer pays. Each of these is an attribute, and its type decides how the value is entered and what can be done with it later: only numbers can be calculated with.",
     steps: [
       {
         id: "open-job-type",
@@ -81,17 +94,19 @@ const LESSONS: TutorialLesson[] = [
         id: "fill-job",
         title: "Fill in the new job",
         instruction:
-          "Double-click Cable clip and fill it in: material PETG, mass 20, print time 1, price 6. Press Apply, then Save at the top right.",
-        hint: "material is chosen from its list, the numbers are typed. The units (g, h, €) come from the type and are shown next to the values. Apply puts the values into the diagram; Save stores the diagram.",
+          "First guess: could you type petg into material? Then double-click Cable clip and fill it in: material PETG, mass 20, print time 1, price 6, and the customer needs it tomorrow: rush order Yes. Press Apply, then Save at the top right.",
+        hint: "material is chosen from its list, the numbers are typed, and rush order is a switch. The units (g, h, €) come from the type and are shown next to the values. Apply puts the values into the diagram; Save stores the diagram.",
         done: "Each type of attribute has its own way of being entered. Because material is a list, nobody can write PET-G or petg by mistake, and a rule can rely on the three spellings that exist.",
         scope: "instance",
+        // Later lessons calculate with these numbers: they have to be the ones given.
         check: (state) =>
           named(state, "Cable clip").some(
             (job) =>
               same(attributeOf(job, "material")?.value ?? "", "PETG") &&
-              hasNumber(job, "mass") &&
-              hasNumber(job, "print time") &&
-              hasNumber(job, "price"),
+              numberOf(job, "mass") === 20 &&
+              numberOf(job, "print time") === 1 &&
+              numberOf(job, "price") === 6 &&
+              attributeOf(job, "rush order")?.value === "true",
           ) && !state.dirty,
         highlight: [{ selector: ELEMENT_CARD, text: "Cable clip" }],
       },
@@ -127,11 +142,15 @@ const LESSONS: TutorialLesson[] = [
         id: "add-machine-cost",
         title: "Calculate the machine cost",
         instruction:
-          "Open Print job again and add an attribute named machine cost. Set its Type to Derived Formula and enter the formula [print time] * [machine rate]. Press Add attribute, then Apply.",
+          "Open Print job again and add an attribute named machine cost. Set its Type to Derived Formula and enter the formula [print time] * [machine rate]. First guess: what can the type calculate, when no print time is filled in on it? Look at the Calculated Value, then press Add attribute and Apply.",
         hint: "Other attributes are referred to by their name in square brackets; typing [ offers the names. A formula can use + - * / and parentheses, and numbers written with a point (0.5).",
         done: "The Calculated Value says it cannot be calculated yet: the type has no print time. That is as it should be. The type holds the formula; each job will supply its own print time.",
         scope: "metamodel",
-        check: (state) => typeCalculates(state, "machine cost", ["print time", "machine rate"]),
+        check: (state) =>
+          typeGives(state, "machine cost", [
+            [{ "print time": 3, "machine rate": 4 }, 12],
+            [{ "print time": 2, "machine rate": 5 }, 10],
+          ]),
         highlight: [ADD_ATTRIBUTE, JOB_TYPE],
       },
       {
@@ -166,6 +185,20 @@ const LESSONS: TutorialLesson[] = [
       "The machine is not the only cost. The material costs by weight, and what matters in the end is what is left of the price. Each of these is a small formula. A formula may refer to an attribute that is itself calculated, so a calculation is built up in steps that can each be read and checked.",
     steps: [
       {
+        id: "rename-rate",
+        title: "Rename an input",
+        instruction:
+          "First guess: machine cost refers to machine rate. If machine rate gets another name, does machine cost still work? Open Print job, click machine rate in the attribute list, rename it to hourly rate and press Apply. Then look at the formula of machine cost.",
+        hint: "Clicking an attribute's line opens it; its name is at the top. Press Done, then Apply.",
+        done: "machine cost now reads [print time] * [hourly rate]. A formula refers to the attribute itself, not to its name, so renaming is safe. Deleting an input is not: the formula would have nothing to calculate with.",
+        scope: "metamodel",
+        check: (state) =>
+          !!jobType(state) &&
+          !attributeOf(jobType(state), "machine rate") &&
+          typeCalculates(state, "machine cost", ["print time", "hourly rate"]),
+        highlight: ['[data-testid^="button-attr-open-"]', JOB_TYPE],
+      },
+      {
         id: "add-material-cost",
         title: "Calculate the material cost",
         instruction:
@@ -173,7 +206,12 @@ const LESSONS: TutorialLesson[] = [
         hint: "The mass is in grams and the price is per kilogram, so the mass is divided by 1000. Units are not converted for you: a formula calculates with the numbers as they are.",
         done: "Two inputs, one result. The division by 1000 is the unit conversion, written into the formula.",
         scope: "metamodel",
-        check: (state) => typeCalculates(state, "material cost", ["mass", "material price"]),
+        // 200 g at 25 € per kilogram cost 5 €: without the conversion it would be 5000.
+        check: (state) =>
+          typeGives(state, "material cost", [
+            [{ mass: 200, "material price": 25 }, 5],
+            [{ mass: 1000, "material price": 30 }, 30],
+          ]),
         highlight: [ADD_ATTRIBUTE, JOB_TYPE],
       },
       {
@@ -183,7 +221,11 @@ const LESSONS: TutorialLesson[] = [
           "Add a Derived Formula attribute total cost with the formula [machine cost] + [material cost]. Apply.",
         done: "total cost refers to two attributes that are themselves calculated. When a print time changes, the machine cost follows, and the total cost follows that.",
         scope: "metamodel",
-        check: (state) => typeCalculates(state, "total cost", ["machine cost", "material cost"]),
+        check: (state) =>
+          typeGives(state, "total cost", [
+            [{ "machine cost": 12, "material cost": 1.5 }, 13.5],
+            [{ "machine cost": 1, "material cost": 2 }, 3],
+          ]),
         highlight: [ADD_ATTRIBUTE, JOB_TYPE],
       },
       {
@@ -191,10 +233,10 @@ const LESSONS: TutorialLesson[] = [
         title: "Calculate what is left",
         instruction:
           "Add a Derived Formula attribute margin with the formula [price] - [total cost]. Apply.",
-        hint: "The margin is what remains of the price after the cost. Below zero, the job loses money.",
+        hint: "Price first: [price] - [total cost]. The other way round, a job that loses money would show a positive margin. Below zero, the job loses money.",
         done: "The whole calculation is four short formulas, each with a name that says what it means.",
         scope: "metamodel",
-        check: (state) => typeCalculates(state, "margin", ["price", "total cost"]),
+        check: marginIsRight,
         highlight: [ADD_ATTRIBUTE, JOB_TYPE],
       },
       {
@@ -204,14 +246,14 @@ const LESSONS: TutorialLesson[] = [
         done: "Saved. A print job now knows how to work out its cost and its margin.",
         signal: "saved",
         scope: "metamodel",
-        check: (state) => typeCalculates(state, "margin", ["price", "total cost"]),
+        check: marginIsRight,
         highlight: [SAVE_DIAGRAM],
       },
     ],
     question: {
-      prompt: "The printer gets more expensive and the machine rate of a job is changed from 4 to 5. What happens to that job's margin?",
+      prompt: "The printer gets more expensive and the hourly rate of a job is changed from 4 to 5. What happens to that job's margin?",
       options: [
-        { text: "Nothing, the margin only depends on price and total cost", feedback: "It does, and the total cost depends on the machine cost, which depends on the machine rate." },
+        { text: "Nothing, the margin only depends on price and total cost", feedback: "It does, and the total cost depends on the machine cost, which depends on the hourly rate." },
         {
           text: "It is recalculated, through machine cost and total cost",
           correct: true,
@@ -232,8 +274,8 @@ const LESSONS: TutorialLesson[] = [
         id: "add-missing",
         title: "Give Phone stand the new attributes",
         instruction:
-          "Open Orders in May and double-click Phone stand. Its editor says that Print job defines attributes this element does not have: press Add. Enter the material price 25, then Apply.",
-        hint: "PLA costs 25 € per kilogram. The machine rate arrives with its default of 4.",
+          "Open Orders in May and double-click Phone stand. Its editor says that Print job defines attributes this element does not have: press Add. Enter the material price 25. Before you press Apply, work out its total cost: 3 h at 4 €, plus 60 g of PLA at 25 € per kilogram. Then compare and Apply.",
+        hint: "PLA costs 25 € per kilogram. The hourly rate arrives with its default of 4.",
         done: "Phone stand worked it out for itself: 12 € for the machine, 1.50 € for the material, 13.50 € in total, and 1.50 € left of its price.",
         scope: "instance",
         check: (state) => named(state, "Phone stand").some((job) => numberOf(job, "total cost") === 13.5),
@@ -247,7 +289,12 @@ const LESSONS: TutorialLesson[] = [
         hint: "In the table, values are edited in place. Watch the calculated columns while you type: they are not editable, they follow.",
         done: "The table shows the same calculation for every job, side by side. Calculated values are results: they change when their inputs do, wherever those are edited.",
         scope: "instance",
-        check: (state) => jobs(state).length >= 3 && jobs(state).every((job) => hasNumber(job, "margin")),
+        check: (state) =>
+          jobs(state).length >= 3 &&
+          jobs(state).every((job) => hasNumber(job, "margin")) &&
+          ["Gear housing", "Cable clip"].every((name) =>
+            named(state, name).some((job) => numberOf(job, "material price") === 30),
+          ),
         highlight: ['[data-testid="button-toolbar-table"]', '[data-testid="button-add-missing-attributes"]'],
       },
       {
@@ -258,10 +305,8 @@ const LESSONS: TutorialLesson[] = [
         hint: "A new element starts with everything its type has now, formulas included. Nothing has to be added afterwards.",
         done: "Lamp shade came with the formulas and calculated its margin as soon as its numbers were in: 6.50 €.",
         scope: "instance",
-        check: (state) =>
-          jobs(state).some(
-            (job) => !["Phone stand", "Gear housing", "Cable clip"].some((name) => same(name, job.name)) && hasNumber(job, "margin"),
-          ),
+        // 44 € of machine time and 4.50 € of material leave 6.50 € of 55 €.
+        check: (state) => jobs(state).some((job) => NEW_JOB(job) && numberOf(job, "margin") === 6.5),
         highlight: [{ selector: '[data-testid^="button-insert-referenced-class-"]', text: "Print job" }],
       },
     ],
@@ -298,7 +343,7 @@ const LESSONS: TutorialLesson[] = [
         id: "add-rule",
         title: "Write the rule",
         instruction:
-          "Switch back to Diagram and open Model rules. Add a rule named No job below cost. Elements: Print job. Condition: margin · is less than · 0. Then: report an issue, with a message such as Costs more than it brings in. Save the rules.",
+          "Switch back to Diagram and open Model rules. Add a rule named No job below cost. In the list next to its name, which says All object types, choose Print job (under Built-in types). Condition: margin · is less than · 0. Then: report an issue, with a message such as Costs more than it brings in. Save the rules.",
         hint: "In the condition row, the second list picks the attribute and the third the comparison. In the Then row, switch from add descriptor tag to report an issue. The rules panel has its own Save.",
         done: "The rule does not calculate anything. It reads the result of your formulas, which is why the margin had to be an attribute.",
         scope: "instance",
@@ -308,22 +353,26 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "validate",
         title: "Validate",
-        instruction: "Close the rules panel and press Validate.",
+        instruction: "First guess: which jobs will be reported? Then close the rules panel and press Validate.",
+        hint: "If nothing is reported, the price of Gear housing was raised already: set it back to 60 and validate, to see the rule find it.",
         done: "Gear housing is reported, and marked on the canvas. From now on every job below cost is found without anyone looking for it.",
         signal: "validation-run",
         scope: "instance",
-        check: marginRule,
+        // The rule has to find something: a validation with nothing to find shows nothing.
+        check: (state) => marginRule(state) && jobs(state).some((job) => (numberOf(job, "margin") ?? 0) < 0),
         highlight: [VALIDATE],
       },
       {
         id: "fix-price",
         title: "Correct the quote",
         instruction:
-          "Raise the price of Gear housing until its margin is no longer negative, for example to 70. Edit it in the table or in its editor.",
+          "Raise the price of Gear housing until its margin is no longer negative, for example to 70. Edit it in the table or in its editor, then save the diagram.",
         hint: "The cost is 63.20 €, so any price from there on works. The margin follows the price at once.",
-        done: "No job is below cost any more. You changed one number; the model worked out the rest.",
+        done: "No job is below cost any more, and the corrected quote is saved. You changed one number; the model worked out the rest.",
         scope: "instance",
-        check: (state) => jobs(state).length >= 3 && jobs(state).every((job) => (numberOf(job, "margin") ?? -1) >= 0),
+        afterPrevious: true,
+        check: (state) =>
+          jobs(state).length >= 3 && jobs(state).every((job) => (numberOf(job, "margin") ?? -1) >= 0) && !state.dirty,
         highlight: [{ selector: ELEMENT_CARD, text: "Gear housing" }, '[data-testid="button-toolbar-table"]'],
       },
       {
@@ -367,7 +416,7 @@ const LESSONS: TutorialLesson[] = [
         scope: "metamodel",
         check: (state) =>
           typeCalculates(state, "energy cost", ["print time"]) &&
-          typeCalculates(state, "total cost", ["machine cost", "material cost", "energy cost"]) &&
+          typeGives(state, "total cost", [[{ "machine cost": 1, "material cost": 2, "energy cost": 4 }, 7]]) &&
           !state.dirty,
       },
       {
@@ -389,12 +438,16 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "own-validate",
         title: "Check all jobs",
-        instruction: "Validate. Fix whatever is reported until there are no issues, then save the diagram.",
-        hint: "Your rule from lesson 5 reports every job with a negative margin.",
-        done: "Every job of the month, old and new, covers its cost.",
+        instruction: "Save the diagram and validate. If something is reported, fix it, save and validate again.",
+        hint: "Your rule from lesson 5 reports every job with a negative margin. A job without a margin is not reported: its margin counts as nothing, not as below zero.",
+        done: "Every job of the month, old and new, has a margin and covers its cost, and it is saved.",
         signal: "validation-passed",
         scope: "instance",
-        check: (state) => jobs(state).some((job) => calculatedFrom(job, "total cost", ["energy cost"])),
+        check: (state) =>
+          marginRule(state) &&
+          jobs(state).every((job) => hasNumber(job, "margin")) &&
+          jobs(state).some((job) => calculatedFrom(job, "total cost", ["energy cost"])) &&
+          !state.dirty,
       },
     ],
   },
@@ -419,6 +472,6 @@ export const CALC_TUTORIAL: TutorialDefinition = {
     "Date attributes, and text attributes that hold a number",
     "Adding up across elements, such as the cost of all jobs of a customer: a formula sees only its own element",
     "Tags: rules that label elements instead of reporting issues (see Classify and review)",
-    "Units are labels: nothing converts or checks them, the formula has to",
+    "Deleting an attribute a formula uses: the formula is left without an input, and the editor is not applied until it is fixed",
   ],
 };

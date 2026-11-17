@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { REUSE_TUTORIAL as T } from "../shared/tutorial-reuse";
 import {
   addElementOfType,
+  cancelEditor,
   card,
   confirmSuggestion,
   connect,
@@ -72,6 +73,9 @@ test("Reuse and variants: styles, a copy, a pattern library, a second metamodel,
   // The element follows its type's new colour.
   await expectDone(page, "see-style");
   // Opening the Controller and closing it again does not give it a style of its own.
+  await openEditor(page, "Controller");
+  await page.getByRole("tab", { name: "Styling" }).click();
+  await cancelEditor(page);
   await expect.poll(() => stepState(page, "own-style")).toBe("current");
   await pickColour(page, "Controller", "Rose");
   await finishLesson(page, T, 0, { wrongFirst: true });
@@ -117,6 +121,8 @@ test("Reuse and variants: styles, a copy, a pattern library, a second metamodel,
   await confirmSuggestion(page, "powers");
   await expectDone(page, "connect-supply");
   await deleteElement(page, "Battery pack");
+  // Deleted but not saved: not done yet.
+  await expectNotDone(page, "remove-old");
   await saveDiagram(page);
   await finishLesson(page, T, 2);
 
@@ -126,6 +132,9 @@ test("Reuse and variants: styles, a copy, a pattern library, a second metamodel,
   await page.keyboard.press("Escape");
   await expectDone(page, "add-metamodel");
   await addElementOfType(page, "LoRa module");
+  // Validating before the radio is connected does not count.
+  await page.getByTestId("button-toolbar-validate").click();
+  await expectNotDone(page, "validate");
   await page.getByTestId("button-toolbar-auto-layout").click();
   // The relationship is defined in the second metamodel, from a type of the first.
   await connect(page, "S2", "right", "New LoRa module", "top");
@@ -145,9 +154,15 @@ test("Reuse and variants: styles, a copy, a pattern library, a second metamodel,
   await expect(page.getByTestId("button-tutorial-open-project")).toHaveText("Open your copy of Sensor node S1");
   await page.getByTestId("button-tutorial-open-project").click();
   await expect(card(page, "S2")).toBeVisible();
-  // Without the metamodels the file could not be imported: tick them.
+  // A file of the model alone does not count: it could not be imported elsewhere.
   await page.getByTestId("button-export-project").click();
   const exportDialog = page.getByRole("dialog");
+  const modelOnly = page.waitForEvent("download");
+  await exportDialog.getByRole("button", { name: "Download" }).click();
+  await modelOnly;
+  await expectNotDone(page, "export");
+  // Without the metamodels the file could not be imported: tick them.
+  await page.getByTestId("button-export-project").click();
   await exportDialog.getByText("Referenced metamodel definitions").click();
   const download = page.waitForEvent("download");
   await exportDialog.getByRole("button", { name: "Download" }).click();
@@ -162,14 +177,18 @@ test("Reuse and variants: styles, a copy, a pattern library, a second metamodel,
   await page.goto("/projects");
   await expect(page.getByTestId("tutorial-coach")).toBeVisible();
   await expectDone(page, "import");
-  // Remove the three imported projects; deleting a metamodel names the model that uses it.
+  // Remove the three imported projects, marked because their names are taken;
+  // deleting a metamodel names the model that uses it.
   const all = await projects(page);
-  const own = new Set(all.filter((project) => project.templateId?.startsWith(T.templateId)).map((project) => project.id));
-  const importedModel = all.filter((project) => project.name === "Sensor node S2").sort((a, b) => b.id - a.id)[0];
-  const importedMetamodels = all.filter(
-    (project) => project.projectType === "metamodel" && !own.has(project.id) && project.name.startsWith("Tutorial ·"),
-  );
-  expect(importedMetamodels).toHaveLength(2);
+  const marked = all.filter((project) => project.name.endsWith(" (imported)"));
+  expect(marked.map((project) => project.name).sort()).toEqual([
+    "Sensor node S2 (imported)",
+    "Tutorial · Radio modules (imported)",
+    "Tutorial · Sensor node types (imported)",
+  ]);
+  const importedModel = marked.find((project) => project.projectType === "instance")!;
+  const importedMetamodels = marked.filter((project) => project.projectType === "metamodel");
+  await expect(page.getByRole("link", { name: "Open project Sensor node S2 (imported)" })).toBeVisible();
   await page.getByTestId(`button-delete-project-${importedMetamodels[0].id}`).click();
   await expect(page.getByTestId("delete-project-dependents")).toBeVisible();
   await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click();
@@ -195,9 +214,17 @@ test("Reuse and variants: styles, a copy, a pattern library, a second metamodel,
   await page.getByTestId("button-toolbar-validate").click();
   await expectFinished(page, T);
 
-  // Removing the tutorial also removes the copies made from its model.
+  // Removing the tutorial also removes the copies made from its model, and says so first.
   await saveDiagram(page);
-  await page.request.delete(`/api/tutorial/${T.id}`);
+  await page.getByTestId("button-tutorial-remove").click();
+  const removed = page.getByTestId("tutorial-removed-projects").locator("li");
+  await expect(removed).toHaveCount(5);
+  expect((await removed.filter({ hasText: "(made by you)" }).allTextContents()).sort()).toEqual([
+    "Copy of Sensor node S2 (made by you)",
+    "Sensor node S2 (made by you)",
+  ]);
+  await page.getByTestId("button-confirm-tutorial-remove").click();
+  await expect(page).toHaveURL(/\/projects$/);
   const left = await projects(page);
   expect(left.filter((project) => project.name.includes("Sensor node"))).toEqual([]);
 });

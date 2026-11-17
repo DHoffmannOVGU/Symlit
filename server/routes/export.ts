@@ -4,13 +4,25 @@ import { api } from "@shared/routes";
 import { projectRole } from "../auth";
 import { buildProjectExport } from "../services/project-export";
 import { importProjectFile, ProjectFileError } from "../services/project-import";
+import { storage } from "../storage";
 
 export function registerExportRoutes(app: Express) {
   app.post(api.projects.import.path, async (req, res) => {
     try {
-      const result = await importProjectFile(req.body, { userId: req.workspaceUser!.id });
+      const userId = req.workspaceUser!.id;
+      const existingNames = new Set((await storage.getProjectsByUser(userId)).map((project) => project.name));
+      const result = await importProjectFile(req.body, { userId });
+      // A project imported next to one of the same name (a file exported from
+      // this workspace, or imported twice) would be impossible to tell apart
+      // on the project list: it is marked as imported.
+      let project = result.project;
+      for (const created of Array.from(result.projects.values())) {
+        if (!existingNames.has(created.name)) continue;
+        const renamed = await storage.updateProject(created.id, { name: `${created.name} (imported)` });
+        if (created.id === project.id) project = renamed;
+      }
       res.status(201).json({
-        project: result.project,
+        project,
         firstViewId: result.firstViewId,
         createdProjects: result.projects.size,
       });

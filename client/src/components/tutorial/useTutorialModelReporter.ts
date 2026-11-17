@@ -8,6 +8,7 @@ import type {
   TutorialRuleCondition,
 } from "@shared/tutorial";
 import { dispatchDiagramEvent, subscribeDiagramEvent } from "@/lib/diagram-events";
+import { matchesTypeStyle } from "@/lib/element-style";
 import { useView, useViews } from "@/hooks/use-views";
 import { useDiagramModel } from "@/components/flow/state/DiagramModelProvider";
 import { useDiagramStore } from "@/components/flow/state/DiagramStoreProvider";
@@ -173,6 +174,7 @@ export function useTutorialModelReporter(enabled: boolean, isDirty: boolean) {
           attributes: describeAttributes(data?.attributes ?? []),
           tags: tagsByElement.get(node.id) ?? [],
           color: typeof data?.color === "string" ? data.color : "",
+          ownStyle: projectType === "instance" && !!data?.typeId && !matchesTypeStyle(data as Record<string, unknown>),
         };
       }),
       relationships: edges.map(describeRelationship),

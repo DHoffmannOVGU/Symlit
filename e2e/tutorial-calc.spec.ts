@@ -41,6 +41,12 @@ test("Calculate with attributes: formulas on a type, results on every job, a rul
   await page.getByRole("option", { name: "PETG", exact: true }).click();
   await setValues(page, { mass: 20, "print time": 1, price: 6 });
   await saveEditor(page);
+  await saveDiagram(page);
+  // Saved, but rush order is still No: the step asks for all values given.
+  await expectNotDone(page, "fill-job");
+  await openEditor(page, "Cable clip");
+  await panel.getByTestId(`input-attr-value-${await attributeIndex(page, "rush order")}`).click();
+  await saveEditor(page);
   // Applied but not saved: the step asks for both.
   await expectNotDone(page, "fill-job");
   await saveDiagram(page);
@@ -71,16 +77,45 @@ test("Calculate with attributes: formulas on a type, results on every job, a rul
   await finishLesson(page, T, 1);
 
   // --- Lesson 3: formulas build on formulas ---
+  // Renaming an input: the formula follows the new name.
   await openEditor(page, "Print job");
+  const rate = await attributeIndex(page, "machine rate");
+  await page.getByTestId(`button-attr-open-${rate}`).click();
+  await page.getByTestId(`input-attr-name-${rate}`).fill("hourly rate");
+  await page.getByTestId("button-attribute-done").click();
+  await page.getByTestId(`button-attr-open-${await attributeIndex(page, "machine cost")}`).click();
+  await expect(page.getByTestId(`input-attr-formula-${await attributeIndex(page, "machine cost")}`)).toHaveValue(
+    "[print time] * [hourly rate]",
+  );
+  await page.getByTestId("button-attribute-done").click();
+  await saveEditor(page);
+  await expectDone(page, "rename-rate");
+  await openEditor(page, "Print job");
+  // Without the conversion from grams the material cost is a thousand times too high.
   await addAttribute(page, { name: "material price" });
-  await addAttribute(page, { name: "material cost", type: "Derived Formula", formula: "[mass] / 1000 * [material price]" });
+  await addAttribute(page, { name: "material cost", type: "Derived Formula", formula: "[mass] * [material price]" });
+  await saveEditor(page);
+  await expectNotDone(page, "add-material-cost");
+  await openEditor(page, "Print job");
+  const materialCost = await attributeIndex(page, "material cost");
+  await page.getByTestId(`button-attr-open-${materialCost}`).click();
+  await page.getByTestId(`input-attr-formula-${materialCost}`).fill("[mass] / 1000 * [material price]");
+  await page.getByTestId("button-attribute-done").click();
   await saveEditor(page);
   await expectDone(page, "add-material-cost");
   await openEditor(page, "Print job");
   await addAttribute(page, { name: "total cost", type: "Derived Formula", formula: "[machine cost] + [material cost]" });
-  await addAttribute(page, { name: "margin", type: "Derived Formula", formula: "[price] - [total cost]" });
+  // The margin the wrong way round: a job that loses money would look profitable.
+  await addAttribute(page, { name: "margin", type: "Derived Formula", formula: "[total cost] - [price]" });
   await saveEditor(page);
   await expectDone(page, "add-total-cost");
+  await expectNotDone(page, "add-margin");
+  await openEditor(page, "Print job");
+  const margin = await attributeIndex(page, "margin");
+  await page.getByTestId(`button-attr-open-${margin}`).click();
+  await page.getByTestId(`input-attr-formula-${margin}`).fill("[price] - [total cost]");
+  await page.getByTestId("button-attribute-done").click();
+  await saveEditor(page);
   await expectDone(page, "add-margin");
   await saveDiagram(page);
   await finishLesson(page, T, 2);
@@ -146,13 +181,15 @@ test("Calculate with attributes: formulas on a type, results on every job, a rul
   await page.getByTestId("button-toolbar-table").click();
   await tableCell(page, "Gear housing", "price").locator("input").fill("70");
   await expect(tableCell(page, "Gear housing", "margin")).toContainText("6.8");
+  // Corrected but not saved: not done yet.
+  await expectNotDone(page, "fix-price");
+  await saveDiagram(page);
   await expectDone(page, "fix-price");
   await page.getByTestId("button-toolbar-graph").click();
   await page.getByTestId("button-toolbar-validate").click();
   await finishLesson(page, T, 4);
 
   // --- Lesson 6: on your own ---
-  await saveDiagram(page);
   await openOtherProject(page, "Print job");
   await openEditor(page, "Print job");
   await addAttribute(page, { name: "energy price", value: 0.05 });
@@ -178,6 +215,10 @@ test("Calculate with attributes: formulas on a type, results on every job, a rul
   await expect(panel.getByTestId(`attribute-summary-${await attributeIndex(page, "total cost")}`)).toContainText("72.3");
   await saveEditor(page);
   await expectDone(page, "own-job");
+  // Validated before saving: not done yet.
+  await page.getByTestId("button-toolbar-validate").click();
+  await expectNotDone(page, "own-validate");
+  await saveDiagram(page);
   await page.getByTestId("button-toolbar-validate").click();
 
   await expectFinished(page, T);

@@ -10,6 +10,8 @@ import {
   type TutorialProjects,
 } from "@/lib/tutorial-projects";
 import {
+  isTutorialTemplate,
+  projectsRemovedWithTutorial,
   same,
   TUTORIALS,
   type TutorialModelState,
@@ -20,6 +22,7 @@ import {
 import { apiCall } from "@/lib/api-client";
 import { dispatchDiagramEvent, subscribeDiagramEvent } from "@/lib/diagram-events";
 import { spotlight } from "@/lib/spotlight";
+import type { RemovedProject } from "./ConfirmTutorialRemoval";
 import {
   answerQuestion,
   applyModelState,
@@ -95,8 +98,14 @@ function useTutorialRun(
   const openStep = useCallback(
     async (step: TutorialStep, here: { projectId?: number; viewId?: number }) => {
       if (!run) return;
-      if (step.scope === "projects" || (step.scope === "variant" && run.variants.length === 0)) {
+      if (step.scope === "projects") {
         navigate("/projects");
+        return;
+      }
+      // A step in the learner's copy, before there is one: the copy is made on the project list.
+      if (step.scope === "variant" && run.variants.length === 0) {
+        navigate("/projects");
+        if (run.instance) await spotlight([`[data-testid="button-duplicate-project-${run.instance.id}"]`]);
         return;
       }
       const target =
@@ -114,6 +123,18 @@ function useTutorialRun(
       navigate(view ? `/project/${target.id}/view/${view.id}` : buildUrl("/project/:id", { id: target.id }));
     },
     [navigate, queryClient, run],
+  );
+
+  /** What removing (or restarting) the tutorial deletes. */
+  const removedProjects = useMemo<RemovedProject[]>(
+    () =>
+      definition
+        ? projectsRemovedWithTutorial(allProjects ?? [], definition).map((project) => ({
+            name: project.name,
+            yours: !isTutorialTemplate(project.templateId),
+          }))
+        : [],
+    [allProjects, definition],
   );
 
   /** Throws the tutorial projects away and starts again with fresh ones. */
@@ -140,6 +161,9 @@ function useTutorialRun(
   return {
     definition,
     progress,
+    /** The tutorial has steps in a copy of its model, and there is no copy (any more). */
+    noCopy: !!run && run.variants.length === 0,
+    removedProjects,
     update,
     openStep,
     restart,
@@ -282,7 +306,8 @@ export function useTutorialCoachOnProjectList(allProjects: Project[] | undefined
       const stored = loadTutorialProgress(run.tutorial, run.metamodel.id);
       const recap = pendingRecap(run.tutorial, stored);
       const where = currentStep(run.tutorial, stored)?.scope ?? recap?.steps[recap.steps.length - 1].scope;
-      return where === "projects";
+      // A step in a copy of the model waits here while there is no copy: it is made here.
+      return where === "projects" || (where === "variant" && run.variants.length === 0);
     });
     setChosenId(waiting?.tutorial.id ?? null);
   }, [chosenId, runs]);

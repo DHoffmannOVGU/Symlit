@@ -428,6 +428,12 @@ test("skipping is not doing, the coach stays out of the way, and the tutorial ca
   await expect(page.getByTestId("tutorial-card-ppr")).toBeVisible();
   await expect(page.getByTestId("tutorial-card-calc")).toBeVisible();
   await page.getByTestId("button-tutorial-remove-basics").click();
+  // It asks first, and names what goes.
+  await expect(page.getByTestId("tutorial-removed-projects").locator("li")).toHaveText([
+    "Tutorial · Delivery drone",
+    "Tutorial · Drone types",
+  ]);
+  await page.getByTestId("button-confirm-tutorial-remove").click();
   await expect(page.getByTestId("button-tutorial-start-basics")).toBeVisible();
   // Only this tutorial's projects: other tutorials may be running in the same workspace.
   const remaining = (await (await request.get("/api/projects")).json()) as Array<{ templateId: string | null }>;

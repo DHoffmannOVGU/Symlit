@@ -39,6 +39,7 @@ export function useProjectExport(projectId: number): UseProjectExportResult {
       link.remove();
       window.URL.revokeObjectURL(blobUrl);
       emitTutorialSignal(options.format === "json" ? "exported" : "exported-csv");
+      if (options.format === "json" && options.includeReferencedMetamodels) emitTutorialSignal("exported-with-metamodels");
       toast({
         title: "Export created",
         description: "Your download should start shortly.",

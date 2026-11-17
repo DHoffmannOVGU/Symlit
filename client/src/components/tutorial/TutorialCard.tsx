@@ -4,7 +4,13 @@ import { useLocation } from "wouter";
 import { ArrowRight, CheckCircle2, ChevronDown, ChevronUp, GraduationCap, Loader2, Trash2 } from "lucide-react";
 import { api } from "@shared/routes";
 import type { Project, View } from "@shared/schema";
-import { TUTORIALS, tutorialSteps, type TutorialDefinition } from "@shared/tutorial";
+import {
+  isTutorialTemplate,
+  projectsRemovedWithTutorial,
+  TUTORIALS,
+  tutorialSteps,
+  type TutorialDefinition,
+} from "@shared/tutorial";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { apiCall } from "@/lib/api-client";
@@ -20,6 +26,7 @@ import {
   wasTutorialFinished,
 } from "@/lib/tutorial-progress";
 import { latestTutorialRun } from "@/lib/tutorial-projects";
+import { ConfirmTutorialRemoval } from "./ConfirmTutorialRemoval";
 
 const HIDDEN_KEY = "symlit_tutorials_hidden";
 
@@ -122,6 +129,14 @@ function TutorialCard({
   const { toast } = useToast();
   const [busy, setBusy] = useState(false);
   const run = useMemo(() => latestTutorialRun(tutorial, projects), [tutorial, projects]);
+  const removedProjects = useMemo(
+    () =>
+      projectsRemovedWithTutorial(projects ?? [], tutorial).map((project) => ({
+        name: project.name,
+        yours: !isTutorialTemplate(project.templateId),
+      })),
+    [tutorial, projects],
+  );
   const progress = run ? loadTutorialProgress(tutorial, run.metamodel.id) : null;
   const total = tutorialSteps(tutorial).length;
   const done = progress ? countDone(tutorial, progress) : 0;
@@ -170,16 +185,17 @@ function TutorialCard({
     }
   };
 
+  const resumeScope = next?.scope ?? recap?.steps[recap.steps.length - 1].scope;
+  // A step on the project list is continued right here, and so is a step in
+  // a copy of the model while there is none: the copy is made here.
+  const continuesHere = resumeScope === "projects" || (resumeScope === "variant" && !run?.variants.length);
   const resume = () => {
-    if (!run) return;
-    const scope = next?.scope ?? recap?.steps[recap.steps.length - 1].scope;
-    // A step on the project list is continued right here; the coach shows it.
-    if (scope === "projects") return;
-    if (scope === "variant") {
-      if (run.variants[0]) void open(run.variants[0]);
+    if (!run || continuesHere) return;
+    if (resumeScope === "variant") {
+      void open(run.variants[0]);
       return;
     }
-    void open(scope === "instance" && run.instance ? run.instance : run.metamodel);
+    void open(resumeScope === "instance" && run.instance ? run.instance : run.metamodel);
   };
 
   return (
@@ -262,7 +278,7 @@ function TutorialCard({
 
       <div className="mt-auto flex flex-wrap items-center gap-2 pt-3">
         {state === "running" ? (
-          next?.scope === "projects" ? (
+          continuesHere ? (
             <p className="text-xs font-medium text-primary" data-testid={`tutorial-continues-here-${tutorial.id}`}>
               Continues on this page
             </p>
@@ -287,17 +303,18 @@ function TutorialCard({
           </Button>
         )}
         {run && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-muted-foreground"
-            onClick={remove}
-            disabled={busy}
-            data-testid={`button-tutorial-remove-${tutorial.id}`}
-          >
-            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-            {state === "finished" ? "Remove its projects" : "Remove"}
-          </Button>
+          <ConfirmTutorialRemoval title={tutorial.title} projects={removedProjects} onConfirm={() => void remove()}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-muted-foreground"
+              disabled={busy}
+              data-testid={`button-tutorial-remove-${tutorial.id}`}
+            >
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              {state === "finished" ? "Remove its projects" : "Remove"}
+            </Button>
+          </ConfirmTutorialRemoval>
         )}
       </div>
     </article>

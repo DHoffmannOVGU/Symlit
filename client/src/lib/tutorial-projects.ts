@@ -2,6 +2,7 @@ import type { Project } from "@shared/schema";
 import {
   isTutorialExtra,
   tutorialForTemplate,
+  worksInCopies,
   type TutorialDefinition,
   type TutorialWorkspaceState,
 } from "@shared/tutorial";
@@ -25,9 +26,6 @@ export interface TutorialProjects {
   /** Models the learner made that use the tutorial's metamodels, newest first. */
   variants: Project[];
 }
-
-const hasVariantSteps = (tutorial: TutorialDefinition) =>
-  tutorial.lessons.some((lesson) => lesson.steps.some((step) => step.scope === "variant"));
 
 /** Models that use one of the given metamodels and are not the run's own. */
 const variantsOf = (metamodelIds: number[], own: number[], allProjects: Project[]) =>
@@ -60,7 +58,7 @@ export function findTutorialProjects(
         used.includes(candidate.id) &&
         candidate.projectType === "metamodel" &&
         !!tutorialForTemplate(candidate.templateId) &&
-        hasVariantSteps(tutorialForTemplate(candidate.templateId)!),
+        worksInCopies(tutorialForTemplate(candidate.templateId)!),
     );
     return metamodelOfTutorial && project.projectType === "instance"
       ? findTutorialProjects(metamodelOfTutorial, allProjects)
@@ -82,7 +80,7 @@ export function findTutorialProjects(
     metamodel,
     instance,
     extras,
-    variants: hasVariantSteps(tutorial) ? variantsOf(metamodelIds, own, allProjects) : [],
+    variants: worksInCopies(tutorial) ? variantsOf(metamodelIds, own, allProjects) : [],
   };
 }
 

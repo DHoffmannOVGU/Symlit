@@ -42,3 +42,41 @@ export const isTutorialExtra = (templateId: string | null | undefined) =>
 
 export const tutorialSteps = (tutorial: TutorialDefinition) =>
   tutorial.lessons.flatMap((lesson) => lesson.steps);
+
+/** The tutorial has steps in a copy of its model that the learner makes. */
+export const worksInCopies = (tutorial: TutorialDefinition) =>
+  tutorial.lessons.some((lesson) => lesson.steps.some((step) => step.scope === "variant"));
+
+interface ProjectLike {
+  id: number;
+  projectType: string;
+  templateId: string | null;
+  referencedMetamodels?: number[] | null;
+}
+
+/**
+ * The projects removing a tutorial deletes (all tutorials when none is
+ * given): every project it created and, for a tutorial that works in copies
+ * of its model, the models that use its metamodels, which would be left
+ * without their types. Models come first: deleted in this order, no model
+ * ever uses a deleted metamodel.
+ */
+export function projectsRemovedWithTutorial<P extends ProjectLike>(projects: P[], tutorial?: TutorialDefinition): P[] {
+  const created = projects.filter((project) => {
+    const of = tutorialForTemplate(project.templateId);
+    return of !== undefined && (!tutorial || of === tutorial);
+  });
+  const copiedFrom = new Set(
+    created
+      .filter((project) => project.projectType === "metamodel" && worksInCopies(tutorialForTemplate(project.templateId)!))
+      .map((project) => project.id),
+  );
+  const copies = projects.filter(
+    (project) =>
+      !created.includes(project) &&
+      project.projectType === "instance" &&
+      (project.referencedMetamodels ?? []).some((id) => copiedFrom.has(id)),
+  );
+  const order = (project: P) => (project.projectType === "instance" ? 0 : 1);
+  return [...created, ...copies].sort((a, b) => order(a) - order(b));
+}

@@ -470,6 +470,8 @@ export default function ProjectView() {
             tutorial={tutorialCoach.definition}
             progress={tutorialCoach.progress}
             place={tutorialCoach.place}
+            noCopy={tutorialCoach.noCopy}
+            removedProjects={tutorialCoach.removedProjects}
             placeName={tutorialCoach.placeName}
             diagram={tutorialCoach.diagram}
             diagrams={tutorialCoach.diagrams}

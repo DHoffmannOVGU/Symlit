@@ -76,6 +76,7 @@ const element = (
     : Object.entries(attributes).map(([attributeName, value]) => attribute(attributeName, value)),
   tags: [],
   color: "",
+  ownStyle: false,
   ...extra,
 });
 
@@ -579,4 +580,114 @@ test("a step marked afterPrevious waits for the steps before it, even when its c
   for (const id of ["duplicate", "rename-node", "change-sensor"]) progress = progressOf.skipStep(R, progress, id);
   progress = progressOf.applyModelState(R, progress, original);
   assert.equal(progressOf.stepState(R, progress, tutorialSteps(R).find((s) => s.id === "check-original")!), "done");
+});
+
+test("reuse: the imported projects are told apart from the learner's own, also when Symlit marks them", async () => {
+  const { REUSE_TUTORIAL: R } = await import("@shared/tutorial-reuse");
+  const project = (id: number, name: string, kind: "metamodel" | "instance", metamodels: number[], ofTutorial = false) => ({
+    id,
+    name,
+    kind,
+    templateId: null,
+    metamodels,
+    ofTutorial,
+  });
+  const own = [
+    project(1, "Tutorial · Sensor node types", "metamodel", [], true),
+    project(2, "Tutorial · Radio modules", "metamodel", [1], true),
+    project(3, "Tutorial · Sensor node S1", "instance", [1], true),
+    project(4, "Sensor node S2", "instance", [1, 2]),
+  ];
+  const imported = [
+    project(5, "Tutorial · Sensor node types (imported)", "metamodel", []),
+    project(6, "Tutorial · Radio modules (imported)", "metamodel", [5]),
+    project(7, "Sensor node S2 (imported)", "instance", [5, 6]),
+  ];
+  const workspace = (projects: typeof own) => ({ projects, tutorialMetamodels: [1, 2] });
+  const checkOf = (id: string) => tutorialSteps(R).find((candidate) => candidate.id === id)!.checkProjects!;
+  assert.equal(checkOf("import")(workspace(own)), false, "nothing imported yet");
+  assert.equal(checkOf("import")(workspace([...own, ...imported])), true);
+  // Without the mark (on a computer where the names were free) they are found by their names, too.
+  const unmarked = imported.map((candidate) => ({ ...candidate, name: candidate.name.replace(" (imported)", "") }));
+  assert.equal(checkOf("import")(workspace([...own, ...unmarked])), true);
+  assert.equal(checkOf("remove-imported")(workspace([...own, imported[2]])), false, "the model is still there");
+  assert.equal(checkOf("remove-imported")(workspace([...own, imported[0], imported[1]])), false, "the metamodels are still there");
+  assert.equal(
+    checkOf("remove-imported")(workspace([...own.slice(0, 3), ...imported.slice(0, 2)])),
+    false,
+    "deleting your own copy instead is not it",
+  );
+  assert.equal(checkOf("remove-imported")(workspace(own)), true);
+
+  // Removing what was imported only counts after an import: skipping it is not enough.
+  const index = R.lessons.findIndex((lesson) => lesson.id === "hand-on");
+  const before = R.lessons.slice(0, index);
+  let progress: TutorialProgress = {
+    ...EMPTY_TUTORIAL_PROGRESS,
+    completed: [...before.flatMap((lesson) => lesson.steps.map((candidate) => candidate.id)), "rename-variant", "export"],
+    recapped: before.map((lesson) => lesson.id),
+  };
+  const removeStep = tutorialSteps(R).find((candidate) => candidate.id === "remove-imported")!;
+  progress = progressOf.skipStep(R, progress, "import");
+  progress = progressOf.applyWorkspaceState(R, progress, workspace(own));
+  assert.notEqual(progressOf.stepState(R, progress, removeStep), "done");
+  progress = progressOf.returnToSkipped(progress);
+  progress = progressOf.applyWorkspaceState(R, progress, workspace([...own, ...imported]));
+  progress = progressOf.applyWorkspaceState(R, progress, workspace(own));
+  assert.equal(progressOf.stepState(R, progress, removeStep), "done");
+});
+
+test("reuse: an element's own style and a relationship's direction are checked", async () => {
+  const { REUSE_TUTORIAL: R } = await import("@shared/tutorial-reuse");
+  const checkOf = (id: string) => tutorialSteps(R).find((candidate) => candidate.id === id)!.check!;
+  const controller = (extra: Partial<TutorialElement>) =>
+    model("instance", [element("c", "Controller", "Microcontroller", {}, { color: "#2563eb", ...extra })]);
+  assert.equal(checkOf("own-style")(controller({})), false);
+  // The type got another colour and the controller follows it: not a style of its own.
+  assert.equal(checkOf("own-style")(controller({ color: "#e11d48" })), false);
+  assert.equal(checkOf("own-style")(controller({ color: "#e11d48", ownStyle: true })), true);
+
+  const radio = (from: string, to: string) =>
+    model("variant", [element("s2", "S2", "Sensor node"), element("lora", "New LoRa module", "LoRa module")], {
+      relationships: [link(from, to, "association", "sends via")],
+    });
+  assert.equal(checkOf("add-radio")(radio("s2", "lora")), true);
+  assert.equal(checkOf("add-radio")(radio("lora", "s2")), false, "the radio does not send via the node");
+});
+
+test("calc: a formula counts for what it calculates, not for the names it uses", async () => {
+  const { CALC_TUTORIAL: C } = await import("@shared/tutorial-calc");
+  const checkOf = (id: string) => tutorialSteps(C).find((candidate) => candidate.id === id)!.check!;
+  const derived = (name: string, formula: string, references: string[]) =>
+    attribute(name, "", { type: "derived", formula, references });
+  const type = (...attributes: TutorialAttribute[]) => model("metamodel", [element("t", "Print job", "Object", attributes)]);
+
+  const materialCost = (formula: string) => type(derived("material cost", formula, ["mass", "material price"]));
+  assert.equal(checkOf("add-material-cost")(materialCost("[mass] * [material price]")), false, "grams are not kilograms");
+  assert.equal(checkOf("add-material-cost")(materialCost("[mass] / 1000 * [material price]")), true);
+  assert.equal(checkOf("add-material-cost")(materialCost("[material price] * ([mass] * 0.001)")), true, "written another way");
+
+  const margin = (formula: string) => type(derived("margin", formula, ["price", "total cost"]));
+  assert.equal(checkOf("add-margin")(margin("[total cost] - [price]")), false, "the wrong way round");
+  assert.equal(checkOf("add-margin")(margin("[price] - [total cost]")), true);
+  assert.equal(checkOf("add-margin")(margin("-[total cost] + [price]")), true);
+
+  // Renaming the rate: machine cost has to refer to the renamed attribute, and the old name is gone.
+  const renamed = (rateName: string) =>
+    type(attribute(rateName, "4"), derived("machine cost", `[print time] * [${rateName}]`, ["print time", rateName]));
+  assert.equal(checkOf("rename-rate")(renamed("machine rate")), false);
+  assert.equal(checkOf("rename-rate")(renamed("hourly rate")), true);
+
+  // Validating counts only when the rule has something to find.
+  const job = (name: string, value: string) => element(name, name, "Print job", { margin: value });
+  const marginRule = rule("Print job", [condition({ attribute: "margin", operator: "less-than", value: "0" })]);
+  const orders = (gearMargin: string) =>
+    model("instance", [job("Phone stand", "1.5"), job("Gear housing", gearMargin), job("Cable clip", "1.4")], {
+      rules: [marginRule],
+    });
+  assert.equal(checkOf("validate")(orders("-3.2")), true);
+  assert.equal(checkOf("validate")(orders("6.8")), false, "nothing is below cost: the rule finds nothing");
+  // The corrected quote has to be saved.
+  assert.equal(checkOf("fix-price")(orders("6.8")), true);
+  assert.equal(checkOf("fix-price")({ ...orders("6.8"), dirty: true }), false);
 });

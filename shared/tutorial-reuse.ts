@@ -44,10 +44,14 @@ const sendsVia = (state: TutorialModelState, radioType: string) =>
 const solarPowersController = (state: TutorialModelState) =>
   related(state, named(state, "Battery 3000"), ofType(state, "Microcontroller"), { name: "powers" });
 
+/** Symlit marks an imported project whose name is taken already. */
+const IMPORTED_MARK = /\s*\(imported\)\s*$/i;
+const withoutMark = (name: string) => name.replace(IMPORTED_MARK, "");
+
 /**
  * What importing a variant's file created: a model with the variant's name
  * that uses its own copies of the metamodels, and those copies, which have
- * the names of the tutorial's metamodels.
+ * the names of the tutorial's metamodels (each marked as imported).
  */
 const imported = (workspace: TutorialWorkspaceState) => {
   const variants = variantsIn(workspace);
@@ -60,8 +64,8 @@ const imported = (workspace: TutorialWorkspaceState) => {
       !project.ofTutorial &&
       !variants.includes(project) &&
       (project.kind === "instance"
-        ? project.metamodels.length > 0 && variantNames.some((name) => same(name, project.name))
-        : metamodelNames.some((name) => same(name, project.name))),
+        ? project.metamodels.length > 0 && variantNames.some((name) => same(name, withoutMark(project.name)))
+        : metamodelNames.some((name) => same(name, withoutMark(project.name)))),
   );
 };
 const importedModel = (workspace: TutorialWorkspaceState) =>
@@ -99,7 +103,8 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "see-style",
         title: "See it in the model",
-        instruction: "Open the model Sensor node S1 and look at Battery pack.",
+        instruction:
+          "First guess: will Battery pack in Sensor node S1 have the new colour, although nobody touched the model? Then open Sensor node S1 and look at Battery pack.",
         done: "Battery pack has the new colour, without anyone touching it: it follows its type's style.",
         scope: "instance",
         check: (state) => ofType(state, "Battery").some((battery) => colorChanged(battery.color, BATTERY_COLOR)),
@@ -110,11 +115,13 @@ const LESSONS: TutorialLesson[] = [
         title: "Give one element a style of its own",
         instruction:
           "Open the Controller, pick another colour for it on the Styling tab, for example Rose, and press Apply.",
-        hint: "Changing a setting turns off Match the type for this element. Switching it on again brings back the type's style.",
+        hint: "Changing a setting turns off Match type styling for this element. Switching it on again brings back the type's style.",
         done: "The Controller now keeps its own colour; a later change to the Microcontroller type does not reach it. Every other element still follows its type.",
         scope: "instance",
         check: (state) =>
-          ofType(state, "Microcontroller").some((controller) => colorChanged(controller.color, CONTROLLER_COLOR)),
+          ofType(state, "Microcontroller").some(
+            (controller) => controller.ownStyle && colorChanged(controller.color, CONTROLLER_COLOR),
+          ),
         highlight: ['[data-testid="button-pick-color"]', card("Controller")],
       },
     ],
@@ -147,7 +154,7 @@ const LESSONS: TutorialLesson[] = [
         done: "A complete copy: its diagram, elements, values and relationships. It uses the same metamodel; the metamodel was not copied.",
         scope: "projects",
         checkProjects: (workspace) => variantsIn(workspace).length > 0,
-        highlight: ['[data-testid^="button-duplicate-project-"]'],
+        highlight: ['[aria-label="Duplicate Tutorial · Sensor node S1"]', '[data-testid^="button-duplicate-project-"]'],
       },
       {
         id: "rename-node",
@@ -228,9 +235,10 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "remove-old",
         title: "Remove the old battery",
-        instruction: "Delete Battery pack, which the solar supply replaces, and save the diagram.",
-        hint: "Select it and press Delete. Its relationships go with it.",
-        done: "S2 runs on solar power. Its supply is the one the metamodel's authors put together, not a new drawing.",
+        instruction:
+          "First guess: what happens to the relationships of Battery pack when it goes? Then delete Battery pack, which the solar supply replaces, and save the diagram.",
+        hint: "Select it and press Delete.",
+        done: "S2 runs on solar power; Battery pack's relationships went with it. Its supply is the one the metamodel's authors put together, not a new drawing.",
         scope: "variant",
         check: (state) => named(state, "Battery pack").length === 0 && solarPowersController(state) && !state.dirty,
         highlight: [card("Battery pack")],
@@ -281,7 +289,8 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "validate",
         title: "Validate S2",
-        instruction: "Press Validate and check that nothing is reported.",
+        instruction:
+          "First guess: will validation accept a relationship from S2, a type of one metamodel, to a LoRa module, a type of another? Then press Validate and check that nothing is reported.",
         hint: "If a relationship is reported, check its direction: from S2 to the module, and from the battery to the controller.",
         done: "S2 follows both of its metamodels.",
         signal: "validation-passed",
@@ -319,16 +328,16 @@ const LESSONS: TutorialLesson[] = [
         done: "The copy has a name that says what it is, and so will the file made from it.",
         scope: "projects",
         checkProjects: (workspace) => variantsIn(workspace).some((variant) => same(variant.name, "Sensor node S2")),
-        highlight: ['[data-testid^="button-edit-project-"]'],
+        highlight: ['[aria-label="Edit project Copy of Tutorial · Sensor node S1"]', '[data-testid^="button-edit-project-"]'],
       },
       {
         id: "export",
         title: "Export S2 with its metamodels",
         instruction:
           "Open Sensor node S2. Use Export Project at the bottom of the sidebar, keep the format Structured model package (JSON), tick Referenced metamodel definitions under Package contents, and download.",
-        hint: "Without the metamodel definitions the file holds the model alone. Importing it would fail, because its types would be missing.",
+        hint: "Without the metamodel definitions the file holds the model alone. Importing it would fail, because its types would be missing. Ticking Reusable patterns as well would carry the metamodels' libraries along, with Solar supply.",
         done: "The file holds S2 and both metamodels it uses.",
-        signal: "exported",
+        signal: "exported-with-metamodels",
         scope: "variant",
         highlight: ['[data-testid="button-export-project"]'],
       },
@@ -336,9 +345,9 @@ const LESSONS: TutorialLesson[] = [
         id: "import",
         title: "Open the file as the integrator would",
         instruction:
-          "Go to All projects, press Import and choose the file you just downloaded. The imported model opens; come back to All projects afterwards.",
+          "First guess: will the import change your own Tutorial · Sensor node types, or add projects? Then go to All projects, press Import and choose the file you just downloaded. The imported model opens; come back to All projects afterwards.",
         hint: "If the import reports a metamodel that is not in the file, export again with Referenced metamodel definitions ticked.",
-        done: "The file arrived complete: a model called Sensor node S2 and, as new projects, the two metamodels it needs, under the same names as yours. That is exactly what the integrator would see.",
+        done: "The file arrived complete: the model and, as new projects, the two metamodels it needs. Their names are taken by yours, so Symlit marks all three (imported). On the integrator's computer they would keep their names.",
         scope: "projects",
         checkProjects: importedModel,
         highlight: ['[data-testid="button-import-project"]'],
@@ -347,11 +356,12 @@ const LESSONS: TutorialLesson[] = [
         id: "remove-imported",
         title: "Remove what was imported",
         instruction:
-          "Here the imported projects only duplicate yours. Delete the imported Sensor node S2 (the one opened last) and the two metamodels that came with it, which are listed after your own.",
-        hint: "Delete the metamodels first and read what the delete dialog says: it names the model that uses them. Your own S2 uses Tutorial · Sensor node types too; the imported one uses its copy.",
+          "Here the imported projects only duplicate yours. Delete the three projects marked (imported): the model Sensor node S2 (imported) and the two metamodels that came with it.",
+        hint: "Delete a metamodel first and read what the delete dialog says: it names the model that uses it, Sensor node S2 (imported). Your own projects are the ones without the mark.",
         done: "Only your projects are left. Deleting a metamodel that a model uses is allowed, but Symlit names that model first, because its elements would lose their types.",
         scope: "projects",
-        afterPrevious: true,
+        // Nothing is left to remove when nothing was imported: only after the import.
+        afterPrevious: "done",
         checkProjects: (workspace) => imported(workspace).length === 0 && variantsIn(workspace).length > 0,
         highlight: ['[data-testid^="button-delete-project-"]'],
       },
@@ -359,7 +369,10 @@ const LESSONS: TutorialLesson[] = [
     question: {
       prompt: "Why does the file have to contain the metamodels?",
       options: [
-        { text: "So that the file is larger", feedback: "Size is not the point." },
+        {
+          text: "They need not be in it: the integrator only needs the model",
+          feedback: "Their Symlit has none of your metamodels. Without them the import fails, because the model's types are missing.",
+        },
         {
           text: "The model's elements are typed by them; without them nobody could open it",
           correct: true,
@@ -427,7 +440,7 @@ export const REUSE_TUTORIAL: TutorialDefinition = {
   finishedTitle: "You built variants from what was there",
   lessons: LESSONS,
   notCovered: [
-    "Templates: New project → From a template starts from a model someone prepared",
+    "Templates: New project → Project templates starts from a model someone prepared",
     "Making a pattern library for a metamodel: the library in this tutorial came with it",
     "Letting a metamodel build on another one: Radio modules came with that, too",
     "Icons, borders and shapes of a type's style",

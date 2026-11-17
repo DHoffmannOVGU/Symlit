@@ -766,6 +766,8 @@ export default function ProjectList() {
           tutorial={tutorialCoach.definition}
           progress={tutorialCoach.progress}
           place={tutorialCoach.place}
+          noCopy={tutorialCoach.noCopy}
+          removedProjects={tutorialCoach.removedProjects}
           onShowMe={(step) => void tutorialCoach.showMe(step)}
           onOpenStepDiagram={(step) => void tutorialCoach.openStepDiagram(step)}
           onHintShown={tutorialCoach.noteHint}

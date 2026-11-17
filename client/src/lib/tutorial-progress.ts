@@ -136,7 +136,9 @@ function completable(tutorial: TutorialDefinition, progress: TutorialProgress): 
     lesson.steps.filter(
       (step, index) =>
         !isCompleted(progress, step.id) &&
-        (!step.afterPrevious || lesson.steps.slice(0, index).every((earlier) => isPassed(progress, earlier.id))),
+        (!step.afterPrevious ||
+          (lesson.steps.slice(0, index).every((earlier) => isPassed(progress, earlier.id)) &&
+            (step.afterPrevious !== "done" || (index > 0 && isCompleted(progress, lesson.steps[index - 1].id))))),
     ),
   );
 }

@@ -21,6 +21,8 @@ export const tutorialSignals = [
   "pattern-saved",
   "pattern-inserted",
   "exported",
+  /** A project file of a model that carries the metamodels it uses. */
+  "exported-with-metamodels",
   "exported-csv",
 ] as const;
 
@@ -68,6 +70,8 @@ export interface TutorialElement {
   tags: string[];
   /** The colour of its card. */
   color: string;
+  /** In a model: it has a style of its own instead of its type's. */
+  ownStyle: boolean;
 }
 
 export interface TutorialRelationship {
@@ -202,6 +206,77 @@ export const calculatedFrom = (element: TutorialElement, name: string, reference
     references.every((reference) => attribute.references.some((used) => same(used, reference)))
   );
 };
+
+/**
+ * What a formula gives for the given values of the attributes it names, or
+ * null when it names another attribute or cannot be read. It reads what the
+ * app's formulas can contain (numbers, [names], + - * /, parentheses and a
+ * leading minus), so that a step can check what a formula calculates, not
+ * only what it refers to.
+ */
+export function formulaResult(formula: string, values: Record<string, number>): number | null {
+  const tokens = formula.match(/\[[^\]]*\]|\d+(?:\.\d+)?|\.\d+|\S/g) ?? [];
+  const known = new Map(Object.entries(values).map(([name, value]) => [name.trim().toLowerCase(), value]));
+  let position = 0;
+  const fail = (): never => {
+    throw new Error("unreadable");
+  };
+  const operand = (): number => {
+    const token = tokens[position++] ?? fail();
+    if (token === "(") {
+      const value = sum();
+      if (tokens[position++] !== ")") fail();
+      return value;
+    }
+    if (token === "-") return -operand();
+    if (token === "+") return operand();
+    if (token.startsWith("[")) return known.get(token.slice(1, -1).trim().toLowerCase()) ?? fail();
+    const number = Number(token);
+    return Number.isNaN(number) ? fail() : number;
+  };
+  const product = (): number => {
+    let value = operand();
+    while (tokens[position] === "*" || tokens[position] === "/") {
+      const operator = tokens[position++];
+      const right = operand();
+      value = operator === "*" ? value * right : value / right;
+    }
+    return value;
+  };
+  const sum = (): number => {
+    let value = product();
+    while (tokens[position] === "+" || tokens[position] === "-") {
+      const operator = tokens[position++];
+      const right = product();
+      value = operator === "+" ? value + right : value - right;
+    }
+    return value;
+  };
+  try {
+    const value = sum();
+    return position === tokens.length && Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The attribute is calculated by a formula that gives each expected result
+ * from its inputs: [inputs, result] pairs. Any formula that calculates the
+ * same counts, however it is written.
+ */
+export const calculates = (
+  element: TutorialElement,
+  name: string,
+  cases: Array<[Record<string, number>, number]>,
+) => {
+  const attribute = attributeOf(element, name);
+  if (!attribute || attribute.type !== "derived") return false;
+  return cases.every(([inputs, expected]) => {
+    const result = formulaResult(attribute.formula, inputs);
+    return result !== null && Math.abs(result - expected) < 1e-9;
+  });
+};
 export const tagged = (element: TutorialElement, tag: string) => element.tags.some((label) => same(label, tag));
 /** A relationship leads from one of `from` to one of `to`, optionally of a kind and with a name. */
 export const related = (
@@ -264,8 +339,11 @@ export interface TutorialStep {
    * The step only completes once the steps before it in its lesson are done
    * or skipped: for a check that is true from the start and only means
    * something after them (looking at the original after changing a copy).
+   * "done": only once the step right before it is done, not skipped, for a
+   * check that is also true when that step never happened (nothing left to
+   * remove when nothing was imported).
    */
-  afterPrevious?: boolean;
+  afterPrevious?: boolean | "done";
   /** What "Show me" highlights, tried in order. Without one there is no "Show me". */
   highlight?: TutorialHighlight[];
 }
