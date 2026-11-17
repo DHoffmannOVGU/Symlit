@@ -30,6 +30,9 @@ DATABASE_URL. No account, no external requests.
   types their type specializes. Formulas have functions: min, max, sum, avg,
   round (to decimals), floor, ceil, abs, sqrt. The help lists how formulas
   work.
+- Multiselect attributes: any number of choices from a type's options, picked
+  in the editor or in the table; the table filter finds them, and a rule's
+  condition looks at each chosen option.
 - Rules that tag: tags have a column in the table, and the table filter
   finds them.
 - Versioned database migrations applied on start; strict server-side

@@ -1,3 +1,4 @@
+import { keepExistingOptions } from "@shared/attribute-values";
 import { sanitizeAttributeOptions } from "./style-presets";
 import { getDisplayFormula } from "@/components/flow/utils/attribute-formula";
 import type { NodeAttribute } from "../../types";
@@ -11,10 +12,8 @@ import type { NodeAttribute } from "../../types";
 export const normalizeAttribute = (
   attribute: NodeAttribute,
 ): NodeAttribute => {
-  const options =
-    attribute.type === "list"
-      ? sanitizeAttributeOptions(attribute.options)
-      : undefined;
+  const hasOptions = attribute.type === "list" || attribute.type === "multiselect";
+  const options = hasOptions ? sanitizeAttributeOptions(attribute.options) : undefined;
   const nextValue = String(attribute.value ?? "");
   const formula =
     attribute.type === "derived" ? String(attribute.formula ?? "") : undefined;
@@ -22,11 +21,13 @@ export const normalizeAttribute = (
   return {
     ...attribute,
     value:
-      attribute.type === "list" && options?.length
-        ? options.includes(nextValue)
-          ? nextValue
-          : options[0]
-        : nextValue,
+      attribute.type === "multiselect"
+        ? keepExistingOptions(nextValue, options ?? [])
+        : attribute.type === "list" && options?.length
+          ? options.includes(nextValue)
+            ? nextValue
+            : options[0]
+          : nextValue,
     unit:
       attribute.type === "number" || attribute.type === "derived"
         ? String(attribute.unit ?? "")

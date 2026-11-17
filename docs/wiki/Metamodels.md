@@ -14,9 +14,10 @@ relationships offered in the palette.
 
 Double-click a type to edit it:
 
-- **Attributes:** named values of six kinds: Text, Number (with a unit from the unit catalog),
-  Yes/No, Date, List (a choice from options) and Derived Formula (calculated, see below). The
-  value given on a type is the default each new element starts with.
+- **Attributes:** named values of seven kinds: Text, Number (with a unit from the unit catalog),
+  Yes/No, Date, List (one choice from options), Multiselect (any number of choices from options)
+  and Derived Formula (calculated, see below). The value given on a type is the default each new
+  element starts with; a Multiselect starts with nothing chosen unless the type ticks some.
 - **Style:** icon, colour, shape and border.
 
 A new element of the type gets copies of its attributes and follows its style. Later changes to

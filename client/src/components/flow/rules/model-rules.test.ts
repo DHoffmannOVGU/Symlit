@@ -157,3 +157,38 @@ test("combines inherited meta rules and instance-local rules against instance ob
     label: "mm:42:crate-type",
   });
 });
+
+test("a condition on a multiselect attribute looks at its chosen options", () => {
+  const job = (id: string, materials: string) =>
+    ({
+      id,
+      type: "part",
+      position: { x: 0, y: 0 },
+      data: {
+        label: id,
+        typeId: "job-type",
+        attributes: [{ id: "materials", name: "Materials", type: "multiselect", value: materials, unit: "", options: ["PLA", "PETG", "Carbon PETG"] }],
+      },
+    }) as Node;
+  const jobs = [job("both", '["PLA","PETG"]'), job("carbon", '["Carbon PETG"]'), job("none", "")];
+  const tagged = (operator: string, value = "") =>
+    evaluateModelRuleResults(
+      [
+        {
+          id: "r", name: "r", enabled: true, targetType: "node:job-type",
+          condition: { kind: "comparison", source: "self", field: "attribute", attribute: "Materials", operator, value },
+          outcome: { kind: "tag", label: "t" },
+        } as ModelRule,
+      ],
+      jobs,
+      [],
+    ).map((match) => match.nodeId);
+  // equals: one of the chosen options is it (not a substring of another).
+  assert.deepEqual(tagged("equals", "petg"), ["both"]);
+  assert.deepEqual(tagged("not-equals", "PETG"), ["carbon", "none"]);
+  // contains: one of the chosen options contains the text.
+  assert.deepEqual(tagged("contains", "petg"), ["both", "carbon"]);
+  assert.deepEqual(tagged("exists"), ["both", "carbon"]);
+  assert.deepEqual(tagged("missing"), ["none"]);
+  assert.deepEqual(tagged("greater-than", "1"), []);
+});

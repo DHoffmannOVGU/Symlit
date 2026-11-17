@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import { MultiselectValue } from "./MultiselectValue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -177,7 +178,7 @@ export function AttributeRowEditor({
             />
           </div>
 
-          {attr.type === "list" ? (
+          {attr.type === "list" || attr.type === "multiselect" ? (
             <div className="space-y-2">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[220px_minmax(0,1fr)] sm:items-start">
                 <div className="space-y-1">
@@ -239,7 +240,16 @@ export function AttributeRowEditor({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">{attributeValueLabel}</Label>
-                {sanitizeAttributeOptions(attr.options).length > 0 ? (
+                {attr.type === "multiselect" ? (
+                  <MultiselectValue
+                    options={sanitizeAttributeOptions(attr.options)}
+                    value={attr.value}
+                    onChange={(value) => onAttributeChange(attr.id, "value", value)}
+                    ariaLabel={`${attr.name || "Attribute"} ${attributeValueLabel.toLowerCase()}`}
+                    className="w-full max-w-none"
+                    testId={`input-attr-value-${index}`}
+                  />
+                ) : sanitizeAttributeOptions(attr.options).length > 0 ? (
                   <Select
                     value={
                       sanitizeAttributeOptions(attr.options).includes(

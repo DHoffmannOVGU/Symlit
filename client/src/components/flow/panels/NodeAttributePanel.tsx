@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { formatMultiselectValue, parseMultiselectValue } from "@shared/attribute-values";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -349,7 +350,8 @@ export function NodeAttributePanel({
         return normalizeAttribute({
           ...attr,
           options,
-          value: attr.value || options[0] || "",
+          // A list starts on its first option; a multiselect starts with nothing chosen.
+          value: attr.type === "multiselect" ? attr.value : attr.value || options[0] || "",
         });
       });
       setFormulaDrafts((drafts) => syncFormulaDrafts(drafts, nextAttributes));
@@ -368,7 +370,12 @@ export function NodeAttributePanel({
         return normalizeAttribute({
           ...attr,
           options,
-          value: attr.value === optionToRemove ? (options[0] ?? "") : attr.value,
+          value:
+            attr.type === "multiselect"
+              ? attr.value
+              : attr.value === optionToRemove
+                ? (options[0] ?? "")
+                : attr.value,
         });
       });
       setFormulaDrafts((drafts) => syncFormulaDrafts(drafts, nextAttributes));
@@ -387,15 +394,23 @@ export function NodeAttributePanel({
     setAttributes((prev) => {
       const nextAttributes = prev.map((attr) => {
         if (attr.id !== id) return attr;
-        const options = type === "list" ? sanitizeAttributeOptions(attr.options) : undefined;
+        const hasOptions = type === "list" || type === "multiselect";
+        const options = hasOptions ? sanitizeAttributeOptions(attr.options) : undefined;
+        // Between a list and a multiselect, the chosen options carry over.
+        const chosen =
+          attr.type === "multiselect" ? parseMultiselectValue(attr.value) : attr.value ? [attr.value] : [];
         const nextValue =
-          type === "list"
-            ? options?.includes(attr.value)
-              ? attr.value
-              : getDefaultValueForType(type, options)
-            : type === "derived"
-              ? ""
-              : attr.value || getDefaultValueForType(type);
+          type === "multiselect"
+            ? formatMultiselectValue(chosen, options)
+            : type === "list"
+              ? options?.includes(chosen[0] ?? "")
+                ? chosen[0]
+                : getDefaultValueForType(type, options)
+              : type === "derived"
+                ? ""
+                : attr.type === "multiselect"
+                  ? chosen.join(", ") || getDefaultValueForType(type)
+                  : attr.value || getDefaultValueForType(type);
         return normalizeAttribute({
           ...attr,
           type,

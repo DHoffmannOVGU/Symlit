@@ -1,4 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
+import { parseMultiselectValue } from "@shared/attribute-values";
 import type {
   ModelRule,
   ModelRuleCondition,
@@ -123,6 +124,35 @@ const getFieldValue = (node: Node, condition: Extract<ModelRuleCondition, { kind
   return getAttribute(data, condition.attribute)?.value;
 };
 
+/**
+ * A comparison with a multiselect attribute looks at its chosen options:
+ * equals means "one of them is", contains "one of them contains", is set
+ * "at least one is chosen". Numbers compare with no option.
+ */
+const compareChosen = (chosen: string[], condition: Extract<ModelRuleCondition, { kind: "comparison" }>) => {
+  const expected = condition.value?.trim().toLocaleLowerCase() ?? "";
+  const options = chosen.map((option) => option.toLocaleLowerCase());
+  switch (condition.operator) {
+    case "exists": return options.length > 0;
+    case "missing": return options.length === 0;
+    case "equals": return !!expected && options.includes(expected);
+    case "not-equals": return !!expected && !options.includes(expected);
+    case "contains": return !!expected && options.some((option) => option.includes(expected));
+    default: return false;
+  }
+};
+
+const compareField = (node: Node, condition: Extract<ModelRuleCondition, { kind: "comparison" }>) => {
+  if (condition.field === "attribute") {
+    const attribute = getAttribute(node.data as NodeData | undefined, condition.attribute);
+    if (attribute?.type === "multiselect") {
+      if (!condition.attribute?.trim()) return false;
+      return compareChosen(parseMultiselectValue(attribute.value), condition);
+    }
+  }
+  return compare(getFieldValue(node, condition), condition);
+};
+
 const compare = (rawValue: unknown, condition: Extract<ModelRuleCondition, { kind: "comparison" }>) => {
   const value = rawValue == null ? "" : String(rawValue).trim();
   const expected = condition.value?.trim() ?? "";
@@ -172,9 +202,9 @@ const evaluateCondition = (condition: ModelRuleCondition, node: Node, context: E
       ? condition.conditions.every((child) => evaluateCondition(child, node, context))
       : condition.conditions.some((child) => evaluateCondition(child, node, context));
   }
-  if (condition.source === "self") return compare(getFieldValue(node, condition), condition);
+  if (condition.source === "self") return compareField(node, condition);
   const candidates = connectedNodes(node, condition, context);
-  const matches = candidates.filter((candidate) => compare(getFieldValue(candidate, condition), condition));
+  const matches = candidates.filter((candidate) => compareField(candidate, condition));
   if ((condition.quantifier ?? "any") === "none") return matches.length === 0;
   if (condition.quantifier === "all") return candidates.length > 0 && matches.length === candidates.length;
   return matches.length > 0;

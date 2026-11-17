@@ -16,6 +16,7 @@ export const attributeTypes = [
   { value: "boolean", label: "Yes/No" },
   { value: "date", label: "Date" },
   { value: "list", label: "List" },
+  { value: "multiselect", label: "Multiselect" },
 ];
 
 export const sanitizeAttributeOptions = (options?: string[]) =>

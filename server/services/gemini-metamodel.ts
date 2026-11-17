@@ -39,7 +39,7 @@ const responseSchema = {
               type: "OBJECT",
               properties: {
                 name: { type: "STRING" }, description: { type: "STRING" },
-                type: { type: "STRING", enum: ["string", "number", "boolean", "date", "list"] },
+                type: { type: "STRING", enum: ["string", "number", "boolean", "date", "list", "multiselect"] },
                 unit: { type: "STRING" }, options: { type: "ARRAY", items: { type: "STRING" } },
               },
               required: ["name", "description", "type", "unit", "options"],

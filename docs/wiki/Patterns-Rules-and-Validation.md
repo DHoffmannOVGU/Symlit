@@ -18,6 +18,9 @@ A condition compares a field of the element (its name, description, type or an a
 the elements a relationship leads to. Several conditions can be combined: **all** of them must
 hold, or **any** of them.
 
+On a Multiselect attribute a condition looks at the chosen options: *equals* holds when one of
+them is the value, *contains* when one of them contains it, *is set* when at least one is chosen.
+
 A rule in a **metamodel** applies to every model built from it; in the model it is listed under
 *Rules from metamodels* and cannot be changed there. A rule in a model's diagram applies to that
 diagram.

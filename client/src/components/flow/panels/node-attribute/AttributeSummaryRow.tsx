@@ -1,4 +1,6 @@
 import { Pencil, Trash2 } from "lucide-react";
+import { displayAttributeValue } from "@shared/attribute-values";
+import { MultiselectValue } from "./MultiselectValue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,7 +30,7 @@ const typeLabel = (type: NodeAttribute["type"]) =>
 function formatValue(attr: NodeAttribute, derived?: { value?: string; error?: string }) {
   if (attr.type === "derived") return derived?.error ? "Invalid formula" : derived?.value || "–";
   if (attr.type === "boolean") return attr.value === "true" ? "Yes" : "No";
-  return attr.value?.trim() || "–";
+  return displayAttributeValue(attr).trim() || "–";
 }
 
 /**
@@ -58,6 +60,17 @@ export function AttributeSummaryRow({
           aria-label={`${attr.name} ${valueLabel.toLowerCase()}`}
           data-testid={`input-attr-value-${index}`}
           data-attribute-name={attr.name}
+        />
+      );
+    }
+    if (attr.type === "multiselect") {
+      return (
+        <MultiselectValue
+          options={options}
+          value={attr.value}
+          onChange={onValueChange}
+          ariaLabel={`${attr.name} ${valueLabel.toLowerCase()}`}
+          testId={`input-attr-value-${index}`}
         />
       );
     }

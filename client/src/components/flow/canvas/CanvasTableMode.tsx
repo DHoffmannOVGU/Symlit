@@ -1,4 +1,5 @@
 import type { NodeAttribute } from "../types";
+import { MultiselectValue } from "../panels/node-attribute/MultiselectValue";
 import { recalculateDerivedAttributes } from "../utils/attribute-formula";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
@@ -120,6 +121,18 @@ function AttributeCell({
   if (attribute.type === "derived") {
     // Calculated from other attributes: shown, not edited.
     field = <span className="px-2 text-sm" title="Calculated by a formula">{attribute.value || "–"}</span>;
+  } else if (attribute.type === "multiselect") {
+    field = (
+      <MultiselectValue
+        options={attribute.options ?? []}
+        value={attribute.value}
+        disabled={disabled}
+        onOpen={onBegin}
+        onChange={(value) => onChange(attribute.id, value)}
+        ariaLabel={attribute.name}
+        className="border-transparent bg-transparent shadow-none"
+      />
+    );
   } else if (attribute.type === "boolean" || attribute.type === "list") {
     const options = attribute.type === "boolean" ? ["true", "false"] : (attribute.options ?? []);
     field = (
