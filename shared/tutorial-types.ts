@@ -23,6 +23,7 @@ export const tutorialSignals = [
   "exported",
   /** A project file of a model that carries the metamodels it uses. */
   "exported-with-metamodels",
+  /** The elements of a model as a CSV file. */
   "exported-csv",
 ] as const;
 

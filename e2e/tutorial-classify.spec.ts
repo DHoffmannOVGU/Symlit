@@ -76,9 +76,12 @@ test("Classify and review: rules that tag, combined, for every model, reviewed i
   await cancelEditor(page);
   await openOtherProject(page, "Safety relay");
   await expectDone(page, "open-model");
-  // A rule that reports an issue is not a tag.
+  // A rule with another threshold tags other parts: not the rule asked for.
   await openRules(page);
-  await addTagRule(page, { name: "Long lead time", conditions: [["lead time", "is greater than", "60"]], tag: "Long lead" });
+  await addTagRule(page, { name: "Long lead time", conditions: [["lead time", "is greater than", "6"]], tag: "Long lead" });
+  await expectNotDone(page, "tag-long-lead");
+  await rulesPanel(page).getByPlaceholder("value").last().fill("60");
+  await page.getByTestId("button-save-rules").click();
   await expectDone(page, "tag-long-lead");
   await closeRules(page);
   // The tag is on the cards, and validation has nothing to report.
@@ -139,6 +142,10 @@ test("Classify and review: rules that tag, combined, for every model, reviewed i
   // --- Lesson 4: a rule for every cabinet ---
   await page.getByTestId("button-toolbar-graph").click();
   await saveDiagram(page);
+  // Looking at K1's rules before the metamodel has one does not find anything inherited.
+  await openRules(page);
+  await expectNotDone(page, "see-inherited");
+  await closeRules(page);
   await openOtherProject(page, "Cabinet");
   await addTagRule(page, {
     name: "Needs a second supplier",
@@ -173,8 +180,15 @@ test("Classify and review: rules that tag, combined, for every model, reviewed i
   await expect.poll(() => visibleRows(page)).toEqual(["PLC"]);
   await page.getByTestId("input-node-table-filter").fill("");
   await saveDiagram(page);
+  // The relationships are not the parts list the step asks for.
   await page.getByTestId("button-export-project").click();
-  // The project file is not the CSV the step asks for.
+  await page.getByTestId("select-export-format").click();
+  await page.getByRole("option", { name: "Instance relationships (CSV)" }).click();
+  const relationships = page.waitForEvent("download");
+  await page.getByRole("dialog").getByRole("button", { name: "Download" }).click();
+  await relationships;
+  await expectNotDone(page, "export-csv");
+  await page.getByTestId("button-export-project").click();
   await page.getByTestId("select-export-format").click();
   await page.getByRole("option", { name: "Model elements (CSV)" }).click();
   const download = page.waitForEvent("download");
@@ -184,11 +198,16 @@ test("Classify and review: rules that tag, combined, for every model, reviewed i
 
   // --- Lesson 6: on your own ---
   await openOtherProject(page, "Cabinet");
+  // Another threshold than the one asked for does not count.
   await addTagRule(page, {
     name: "Order early",
-    conditions: [["lead time", "is greater than", "30"], ["criticality", "equals", "high"]],
+    conditions: [["lead time", "is greater than", "60"], ["criticality", "equals", "high"]],
     tag: "Order early",
   });
+  await expectNotDone(page, "own-rule");
+  const values = rulesPanel(page).getByPlaceholder("value");
+  await values.nth((await values.count()) - 2).fill("30");
+  await page.getByTestId("button-save-rules").click();
   await expectDone(page, "own-rule");
   await closeRules(page);
   await openOtherProject(page, "Safety relay");

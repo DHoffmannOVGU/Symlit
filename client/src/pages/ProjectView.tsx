@@ -106,10 +106,11 @@ export default function ProjectView() {
   }, [project?.id, userId]);
 
 
+  // Another diagram opens as a diagram, not as the table the last one was left in.
   useEffect(() => {
     if (!project?.projectType) return;
     setDiagramDisplayMode("graph");
-  }, [projectId, project?.projectType]);
+  }, [projectId, viewId, project?.projectType]);
 
   useEffect(() => {
     if (!viewId) {

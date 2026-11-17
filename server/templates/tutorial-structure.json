@@ -483,7 +483,7 @@
               "target": "node_7410fb0a-fd54-5557-ae6a-95b5d101738d",
               "edgeType": "generalization",
               "sourceHandle": "top",
-              "targetHandle": "left",
+              "targetHandle": "bottom",
               "data": {
                 "edgeType": "generalization"
               }

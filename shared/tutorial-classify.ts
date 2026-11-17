@@ -70,7 +70,7 @@ const secondSource = (rule: TutorialRule) =>
 const orderEarly = (rule: TutorialRule) =>
   tags(rule, "Order early") &&
   rule.combinator === "all" &&
-  compares(rule, "lead time", ["greater-than", "greater-than-or-equal"]) &&
+  compares(rule, "lead time", ["greater-than", "greater-than-or-equal"], "30") &&
   compares(rule, "criticality", ["equals"], "high");
 
 const part = (state: TutorialModelState, name: string) => named(state, name)[0];
@@ -120,13 +120,13 @@ const LESSONS: TutorialLesson[] = [
         id: "tag-follows",
         title: "Change a value and watch the tag",
         instruction:
-          "The HMI panel is now available from stock: double-click it, set its lead time to 30 and press Apply.",
+          "The HMI panel is now available from stock. First guess: will it keep the tag Long lead at 30 days? Then double-click it, set its lead time to 30 and press Apply.",
         hint: "Close the rules panel first if it is still open.",
         done: "The tag is gone from the HMI panel. A tag is not something you put on an element: the rule gives it, for as long as its condition holds.",
         scope: "instance",
         check: (state) => {
           const panel = part(state, "HMI panel");
-          return !!panel && numberOf(panel, "lead time") === 30 && !tagged(panel, "Long lead");
+          return hasRule(state, longLead) && !!panel && numberOf(panel, "lead time") === 30 && !tagged(panel, "Long lead");
         },
         highlight: [{ selector: ELEMENT_CARD, text: "HMI panel" }],
       },
@@ -177,7 +177,7 @@ const LESSONS: TutorialLesson[] = [
         id: "reclassify",
         title: "Correct a classification",
         instruction:
-          "The Fan was rated low, but without it the cabinet overheats. Close the rules panel, open the Fan and set its criticality to high. Apply.",
+          "The Fan was rated low, but without it the cabinet overheats. First guess: will it be tagged Critical without a new rule? Then close the rules panel, open the Fan and set its criticality to high. Apply.",
         done: "The Fan is tagged Critical as soon as its value says so. Nobody had to remember to re-tag it.",
         scope: "instance",
         check: (state) => {
@@ -194,7 +194,7 @@ const LESSONS: TutorialLesson[] = [
         {
           text: "So that the rule criticality equals high finds every critical part",
           correct: true,
-          feedback: "Right. In a text, High, hi and very high would all slip past the rule. A list has exactly the spellings its rules expect.",
+          feedback: "Right. In a text, hi, very high or crit would all slip past the rule (capitals do not matter, spellings do). A list has exactly the spellings its rules expect.",
         },
         { text: "Rules cannot read text attributes", feedback: "They can (equals, contains). The problem with text is that it can be spelled in many ways." },
       ],
@@ -211,7 +211,7 @@ const LESSONS: TutorialLesson[] = [
         id: "tag-second-source",
         title: "Tag the parts where both hold",
         instruction:
-          "Add a rule named Needs a second supplier. Elements: Component. First condition: single source · is true. Press + Condition and add: criticality · equals · high. Leave Match on all. Tag: Second source. Save the rules.",
+          "First guess: which parts carry both Single source and Critical right now? Then add a rule named Needs a second supplier. Elements: Component. First condition: single source · is true. Press + Condition and add: criticality · equals · high. Leave Match on all. Tag: Second source. Save the rules.",
         hint: "+ Condition is in the line that says Match all of these conditions. With all, every condition has to hold; with any, one is enough.",
         done: "Only PLC and Safety relay get the tag Second source: one supplier each, and the cabinet does not run without them.",
         scope: "instance",
@@ -224,7 +224,7 @@ const LESSONS: TutorialLesson[] = [
         instruction:
           "The cards are getting crowded. Switch off the rules One supplier and Critical part with the toggle at the left of each, and save the rules.",
         hint: "A rule that is switched off stays in the list and can be switched on again. Deleting it would work too.",
-        done: "The two helper tags are gone, the rules are kept. What is left on the diagram is the answer, and the long lead times.",
+        done: "The two helper tags are gone. A rule that is switched off stays in the list for later; one that is deleted is gone. What is left on the diagram is the answer, and the long lead times.",
         scope: "instance",
         check: (state) => hasRule(state, secondSource) && !hasRule(state, singleSource) && !hasRule(state, critical),
         highlight: [RULES_BUTTON],
@@ -279,13 +279,15 @@ const LESSONS: TutorialLesson[] = [
         done: "It is listed as a Meta rule and cannot be edited here: a model follows the rules of its metamodel, it does not rewrite them.",
         signal: "rules-opened",
         scope: "instance",
+        // Opening K1's rules to copy them before writing the metamodel's rule is not it.
+        afterPrevious: true,
         highlight: [RULES_BUTTON],
       },
       {
         id: "remove-local",
         title: "Remove the copy in the diagram",
         instruction:
-          "The diagram's own rule Needs a second supplier is now a duplicate. Delete it with the bin at its right and save the rules.",
+          "The diagram's own rule Needs a second supplier is now a duplicate. First guess: will PLC and Safety relay lose the tag Second source without it? Then delete it with the bin at its right and save the rules.",
         done: "PLC and Safety relay are still tagged Second source: the tag now comes from the metamodel, and so it will in K2.",
         scope: "instance",
         check: (state) =>
@@ -311,9 +313,9 @@ const LESSONS: TutorialLesson[] = [
   {
     id: "review",
     title: "Review in the table",
-    goal: "filter the table by a tag, correct values in place and hand the list on as a file",
+    goal: "filter the table by a tag, correct values in place and export the model's elements as a file",
     why:
-      "A classification is made to be acted on: the two parts go to purchasing, and what purchasing finds out comes back into the model. For lists like this the table is the better view. It can be filtered by a tag, its values can be edited where they stand, and it can be exported for people who do not use Symlit.",
+      "A classification is made to be acted on: the two parts go to purchasing, and what purchasing finds out comes back into the model. For lists like this the table is the better view: it can be filtered by a tag and its values can be edited where they stand. For people who do not use Symlit, the model's elements can be exported as a CSV file.",
     steps: [
       {
         id: "filter-table",
@@ -329,7 +331,7 @@ const LESSONS: TutorialLesson[] = [
         id: "edit-in-table",
         title: "Enter what purchasing found out",
         instruction:
-          "Purchasing found a second supplier for the Safety relay. Set its single source to No, directly in the table.",
+          "Purchasing found a second supplier for the Safety relay. First guess: will it stay in the filtered list? Then set its single source to No, directly in the table.",
         hint: "Yes/No values are chosen from a small list in the cell.",
         done: "The Safety relay dropped out of the filtered list: its tag is gone, because its value changed. The table always shows the classification as it is now.",
         scope: "instance",
@@ -344,8 +346,8 @@ const LESSONS: TutorialLesson[] = [
         title: "Export the parts list",
         instruction:
           "Clear the filter and save the diagram. Then use Export Project at the bottom of the sidebar, choose the format Model elements (CSV) and download it.",
-        hint: "A CSV file opens in any spreadsheet program. It contains the elements with their attribute values; tags are worked out by rules and are not part of the file.",
-        done: "The parts list is a file that a spreadsheet can open.",
+        hint: "The file has one row per element of the diagram, the cabinet included, with all attribute values together in one column. The table's filter does not apply, and tags are not in the file: rules work them out.",
+        done: "The parts list is a file a spreadsheet can open. It carries the values, not the tags: the classification stays with the rules in Symlit.",
         signal: "exported-csv",
         scope: "instance",
         highlight: ['[data-testid="button-export-project"]'],
@@ -419,7 +421,7 @@ export const CLASSIFY_TUTORIAL: TutorialDefinition = {
   title: "Classify and review",
   question: QUESTION,
   answer:
-    "The PLC and the Safety relay: one supplier each, and the cabinet does not run without them. Your rule found them by combining two conditions, and it now belongs to the metamodel, so the next cabinet is checked the same way.",
+    "At first the PLC and the Safety relay: one supplier each, and the cabinet does not run without them. Once purchasing found a second supplier for the Safety relay, the model left only the PLC. Your rule found them by combining two conditions, and it now belongs to the metamodel, so the next cabinet is checked the same way.",
   answerStep: "read-answer",
   summary:
     "A control cabinet has eight purchased parts, and nothing is wrong with any of them. You write rules that tag instead of report: by a number, a Yes/No fact and a choice from a list, then two combined. You move the rule into the metamodel for every cabinet, and review and correct the result in the table.",

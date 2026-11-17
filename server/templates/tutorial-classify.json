@@ -625,8 +625,8 @@
     {
       "project": {
         "id": 9,
-        "name": "Tutorial \u00b7 Part types",
-        "description": "Metamodel for the tutorial on tags: what is known about the parts of a control cabinet.",
+        "name": "Tutorial \u00b7 Component types",
+        "description": "Metamodel for the tutorial on tags: what is known about the components of a control cabinet.",
         "projectType": "metamodel",
         "referencedMetamodels": [],
         "metamodelSetup": null

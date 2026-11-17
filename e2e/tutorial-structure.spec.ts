@@ -17,6 +17,7 @@ import {
   openRelationship,
   saveDiagram,
   saveEditor,
+  setValues,
   saveRelationship,
   showExistingElement,
   startTutorial,
@@ -48,7 +49,16 @@ test("Structure and views: what a relationship says, Generalization, one element
   await openOtherProject(page, "Brew group");
   await connect(page, "Boiler", "bottom", "Brew group", "bottom");
   await expectDone(page, "draw-feeds");
-  // Named the other way round it is not the relationship asked for.
+  // Naming heats instead of the new relationship does not count: heats has to stay.
+  const edgeCount = await page.locator(".react-flow__edge .react-flow__edge-path").count();
+  await openRelationship(page, edgeCount - 2);
+  await expect(page.getByTestId("input-edge-label")).toHaveValue("heats");
+  await page.getByTestId("input-edge-label").fill("feeds");
+  await saveRelationship(page);
+  await expectNotDone(page, "name-feeds");
+  await openRelationship(page, edgeCount - 2);
+  await page.getByTestId("input-edge-label").fill("heats");
+  await saveRelationship(page);
   await openRelationship(page);
   await page.getByTestId("input-edge-label").fill("feeds");
   await saveRelationship(page);
@@ -77,6 +87,15 @@ test("Structure and views: what a relationship says, Generalization, one element
   await attributeIndex(page, "mass");
   await cancelEditor(page);
   await expectDone(page, "add-grinder");
+  // Drawn from the grinder to E1, it is no part of E1.
+  const edgesBefore = await page.locator(".react-flow__edge").count();
+  await connect(page, "New Grinder", "left", "E1", "bottom");
+  await expect(page.locator(".react-flow__edge")).toHaveCount(edgesBefore + 1);
+  await expectNotDone(page, "compose-grinder");
+  await waitForStillCanvas(page);
+  await page.locator(".react-flow__pane").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(page.locator(".react-flow__edge")).toHaveCount(edgesBefore);
   await connect(page, "E1", "right", "New Grinder", "top");
   await confirmSuggestion(page);
   await expectDone(page, "compose-grinder");
@@ -134,7 +153,7 @@ test("Structure and views: what a relationship says, Generalization, one element
   // Table view in Structure does not count: the step is about Water path.
   await page.getByTestId("button-toolbar-table").click();
   await expectNotDone(page, "read-answer");
-  await page.getByTestId("button-toolbar-graph").click();
+  // The other diagram opens as a diagram, not in the table the last one was left in.
   await page.getByTestId("button-tutorial-open-project").click();
   await expect(card(page, "Water tank")).toBeVisible();
   await page.getByTestId("button-toolbar-table").click();
@@ -167,12 +186,20 @@ test("Structure and views: what a relationship says, Generalization, one element
   await connect(page, "E1", "left", "New Steam wand", "top");
   await confirmSuggestion(page);
   await saveDiagram(page);
+  // Without the part number it was asked for, it is not the steam wand asked for.
+  await expectNotDone(page, "own-part");
+  await openEditor(page, "New Steam wand");
+  await setValues(page, { "part number": "E1-060" });
+  await saveEditor(page);
+  await saveDiagram(page);
   await expectDone(page, "own-part");
   await page.getByTestId("button-tutorial-open-project").click();
   await expect(card(page, "Water tank")).toBeVisible();
   await showExistingElement(page, "Structure", "New Steam wand");
   await connect(page, "Boiler", "top", "New Steam wand", "top");
   await confirmSuggestion(page, "feeds");
+  await expectNotDone(page, "own-path");
+  await saveDiagram(page);
   await expectDone(page, "own-path");
   await page.getByTestId("button-toolbar-validate").click();
 

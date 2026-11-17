@@ -51,6 +51,23 @@ const pathIsConnected = (state: TutorialModelState) =>
   related(state, ofType(state, "Boiler"), ofType(state, "Brew group"), feeds);
 const hasGrinderType = (state: TutorialModelState) =>
   related(state, type(state, "Grinder"), type(state, "Component"), { kind: "generalization" });
+/** The new relationship is named feeds, and heats is still there beside it. */
+const feedsBesideHeats = (state: TutorialModelState) => {
+  const names = boilerToBrewGroup(state).map((relationship) => relationship.name.trim().toLowerCase());
+  return names.includes("feeds") && names.includes("heats");
+};
+/** The components of Structure, told apart from new look-alikes by their part number. */
+const COMPONENTS: Record<string, string> = {
+  "Water tank": "E1-010",
+  "Vibration pump": "E1-020",
+  Boiler: "E1-030",
+  "Brew group": "E1-040",
+};
+const shownHere = (state: TutorialModelState, name: string) =>
+  named(state, name).some((element) => attributeOf(element, "part number")?.value === COMPONENTS[name]);
+/** The steam wand of the last lesson, recognised by the part number it is given. */
+const steamWand = (state: TutorialModelState) =>
+  ofType(state, "Steam wand").filter((element) => attributeOf(element, "part number")?.value === "E1-060");
 
 const LESSONS: TutorialLesson[] = [
   {
@@ -69,7 +86,7 @@ const LESSONS: TutorialLesson[] = [
         done: "Its type is Composition: the components are parts of the machine. An Association would only say that the two have something to do with each other. Press Cancel to close the editor.",
         scope: "metamodel",
         check: (state) => !!state.editingRelationship && same(state.editingRelationship.name, "consists of"),
-        highlight: ['.react-flow__edge-textwrapper, .react-flow__edgelabel-renderer [class*="label"]', card("Machine")],
+        highlight: [{ selector: ".react-flow__edgelabel-renderer div", text: "consists of" }, card("Machine")],
       },
       {
         id: "open-model",
@@ -84,7 +101,7 @@ const LESSONS: TutorialLesson[] = [
         id: "open-pump",
         title: "Look at a component",
         instruction:
-          "Double-click Vibration pump. Its type is Pump, and it has a pressure. Find the two attributes that Pump does not define itself.",
+          "Pump defines only pressure. First guess: which attributes will Vibration pump have? Then double-click it and find the two that Pump does not define itself.",
         hint: "part number and mass are defined on Component. In the metamodel, a hollow arrow leads from Pump to Component: a Pump is a Component.",
         done: "The pump has the attributes of a Pump and those of a Component, and the machine may consist of it although the metamodel only says that a Machine consists of Components. Both follow from the Generalization. Press Cancel to close the editor.",
         scope: "instance",
@@ -117,7 +134,7 @@ const LESSONS: TutorialLesson[] = [
         title: "Draw a second relationship",
         instruction:
           "Go back to Machine types. The Boiler heats the Brew group, and it also sends the water there. Draw a second relationship from Boiler to Brew group.",
-        hint: "Drag from a handle on the Boiler card to the Brew group card. Use other handles than the relationship heats, for example the lower ones, so that the two lines do not lie on top of each other.",
+        hint: "Drag from a handle on the Boiler card to the Brew group card. Use other handles than the relationship heats, for example the lower ones, so that the two lines do not lie on top of each other. If the arrow points at the Boiler, click the line once and use Reverse edge direction on the bar that appears.",
         done: "Two relationships now lead from Boiler to Brew group. The new one has no name yet, so nobody can tell what it means.",
         scope: "metamodel",
         check: (state) => boilerToBrewGroup(state).length >= 2,
@@ -128,10 +145,10 @@ const LESSONS: TutorialLesson[] = [
         title: "Name it",
         instruction:
           "Double-click the new relationship, enter feeds as its Label and press Apply.",
-        hint: "The tutorial looks for a relationship from Boiler to Brew group named feeds. If you drew it the wrong way round, click it once and use the Reverse button that appears on it.",
+        hint: "Name the new relationship, not heats: heats stays as it is. The tutorial looks for heats and feeds from Boiler to Brew group.",
         done: "The name is part of the definition. A model has to use it: between a boiler and a brew group it will offer heats and feeds, and nothing else.",
         scope: "metamodel",
-        check: (state) => boilerToBrewGroup(state).some((relationship) => same(relationship.name, "feeds")),
+        check: feedsBesideHeats,
         highlight: ['[data-testid="input-edge-label"]', card("Boiler")],
       },
       {
@@ -148,8 +165,8 @@ const LESSONS: TutorialLesson[] = [
         id: "generalize",
         title: "Make the Grinder a Component",
         instruction:
-          "Draw a relationship from Grinder to Component. Then double-click it, choose Generalization as its Relationship Type and press Apply.",
-        hint: "The direction is from the special to the general: start at Grinder. The hollow triangle then points at Component.",
+          "First guess: once the Grinder is a Component, will a machine be allowed to consist of a grinder? Draw a relationship from Grinder to Component. Then double-click it, choose Generalization as its Relationship Type and press Apply.",
+        hint: "The direction is from the special to the general: start at Grinder. The hollow triangle then points at Component. If it points at the Grinder, click the line once and use Reverse edge direction.",
         done: "A Grinder is a Component now. Without another line, a machine may consist of a grinder, and every grinder will have a part number and a mass.",
         scope: "metamodel",
         check: hasGrinderType,
@@ -162,8 +179,7 @@ const LESSONS: TutorialLesson[] = [
         done: "Saved. The model can use the new relationship and the new type.",
         signal: "saved",
         scope: "metamodel",
-        check: (state) =>
-          hasGrinderType(state) && boilerToBrewGroup(state).some((relationship) => same(relationship.name, "feeds")),
+        check: (state) => hasGrinderType(state) && feedsBesideHeats(state),
         highlight: [SAVE_DIAGRAM],
       },
     ],
@@ -191,7 +207,7 @@ const LESSONS: TutorialLesson[] = [
         id: "add-grinder",
         title: "Add a grinder to the machine",
         instruction:
-          "Open Espresso machine E1 and add an element of the type Grinder. Open it and look at its attributes.",
+          "Open Espresso machine E1. First guess: which attributes will a new grinder have, now that Grinder defines none itself? Then add an element of the type Grinder and open it.",
         hint: "Drag Grinder from the Add elements tab and double-click the new card.",
         done: "The grinder starts with part number and mass. Grinder defines no attributes itself: both come from Component.",
         scope: "instance",
@@ -203,7 +219,7 @@ const LESSONS: TutorialLesson[] = [
         id: "compose-grinder",
         title: "Make it a part of E1",
         instruction: "Draw a relationship from E1 to the grinder and confirm what Symlit suggests.",
-        hint: "Start at E1: the machine consists of the grinder. The suggestion is consists of, as a Composition.",
+        hint: "Start at E1: the machine consists of the grinder. The suggestion is consists of, as a Composition. If no suggestion appears, the line runs against the metamodel: select it, press Delete and draw it again from E1.",
         done: "Symlit suggested consists of, because a Grinder is a Component and a Machine consists of Components.",
         scope: "instance",
         view: "Structure",
@@ -258,20 +274,19 @@ const LESSONS: TutorialLesson[] = [
         title: "Show the existing components",
         instruction:
           "On the Diagrams tab, press the small arrow next to Structure (Show elements) to list its elements. Point at Water tank, Vibration pump, Boiler and Brew group in turn and press the arrow that appears, to insert each into this diagram.",
-        hint: "The arrow next to an element says Insert into this diagram. It turns into a check mark once the element is here. Drag the cards into a row afterwards.",
-        done: "The same four elements, shown a second time. Nothing was copied: open one and it has the values it has in Structure.",
+        hint: "The arrow next to an element says Insert into this diagram. It turns into a check mark once the element is here. New elements of the same types and names are not the same elements: they would have no part numbers.",
+        done: "The same four elements, shown a second time. Each was placed in the middle of the canvas, so they lie on top of each other: press Auto layout in the toolbar, or drag them apart. Nothing was copied: open one and it has the values it has in Structure.",
         scope: "instance",
         view: "Water path",
-        check: (state) =>
-          ["Water tank", "Vibration pump", "Boiler", "Brew group"].every((name) => named(state, name).length > 0),
+        check: (state) => Object.keys(COMPONENTS).every((name) => shownHere(state, name)),
         highlight: ['[data-testid^="button-insert-node-"]', '[data-testid^="button-toggle-view-elements-"][data-view-name="Structure"]', DIAGRAMS_TAB],
       },
       {
         id: "connect-path",
         title: "Connect the water path",
         instruction:
-          "Draw the path of the water: from Water tank to Vibration pump, from there to Boiler, and from Boiler to Brew group. Confirm feeds each time; between Boiler and Brew group, choose it from the two that are offered.",
-        hint: "Between a boiler and a brew group the metamodel allows heats and feeds, so Symlit shows a small list instead of one suggestion. Pick feeds and confirm with the check mark.",
+          "Spread the four cards first (Auto layout). First guess: how many relationships will Symlit offer between Boiler and Brew group? Then draw the path of the water: from Water tank to Vibration pump, from there to Boiler, and from Boiler to Brew group. Confirm feeds each time; between Boiler and Brew group, choose it from the ones that are offered.",
+        hint: "Between a boiler and a brew group the metamodel allows heats and feeds, so Symlit shows a small list instead of one suggestion. Pick feeds and confirm with the check mark. If no suggestion appears, the line runs against the metamodel: select it, press Delete and draw it again from the other end.",
         done: "Three relationships that exist only in this diagram. In Structure the same elements are connected by consists of, and by nothing else.",
         scope: "instance",
         view: "Water path",
@@ -325,7 +340,7 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "see-in-structure",
         title: "Find the change in Structure",
-        instruction: "Open the diagram Structure and look at the pump.",
+        instruction: "First guess: what is the pump called in Structure now? Then open the diagram Structure and look.",
         hint: "The Diagrams tab lists the project's diagrams. The coach's button opens it too.",
         done: "It is called Rotary pump here as well. You did not change two drawings: you changed one element, and both diagrams show it.",
         scope: "instance",
@@ -381,34 +396,34 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "own-part",
         title: "Make it a part of E1",
-        instruction: "In the diagram Structure of Espresso machine E1: add a steam wand and make it a part of E1. Save.",
-        hint: "An element of the type Steam wand, and a relationship from E1 to it. See lesson 3.",
+        instruction:
+          "In the diagram Structure of Espresso machine E1: add a steam wand with the part number E1-060 and make it a part of E1. Save.",
+        hint: "An element of the type Steam wand, its part number filled in, and a relationship from E1 to it. See lesson 3.",
         done: "E1 consists of six components.",
         scope: "instance",
         view: "Structure",
-        check: (state) =>
-          related(state, named(state, "E1"), ofType(state, "Steam wand"), { kind: "composition" }) && !state.dirty,
+        check: (state) => related(state, named(state, "E1"), steamWand(state), { kind: "composition" }) && !state.dirty,
       },
       {
         id: "own-path",
         title: "Show where its steam comes from",
-        instruction: "In the diagram Water path: show the same steam wand and let the Boiler feed it.",
+        instruction: "In the diagram Water path: show the same steam wand and let the Boiler feed it. Save.",
         hint: "Insert the existing element from the element list of Structure, do not create a second one. See lesson 4.",
         done: "The steam wand is one element in two diagrams: a part of the machine, and fed by the boiler.",
         scope: "instance",
         view: "Water path",
-        check: (state) => related(state, ofType(state, "Boiler"), ofType(state, "Steam wand"), feeds),
+        check: (state) => related(state, ofType(state, "Boiler"), steamWand(state), feeds) && !state.dirty,
       },
       {
         id: "own-validate",
         title: "Check the diagram",
-        instruction: "Validate Water path. Fix whatever is reported until there are no issues, then save.",
-        hint: "A relationship drawn against the metamodel's direction is reported: select it and use Reverse.",
-        done: "Everything in the diagram is something the metamodel allows.",
+        instruction: "Validate Water path. If issues are reported, fix them, save and validate again, until there are none.",
+        hint: "A relationship drawn against the metamodel's direction is reported: select it, press Delete and draw it again from the other end.",
+        done: "Everything in the diagram is something the metamodel allows, and it is saved.",
         signal: "validation-passed",
         scope: "instance",
         view: "Water path",
-        check: (state) => related(state, ofType(state, "Boiler"), ofType(state, "Steam wand"), feeds),
+        check: (state) => related(state, ofType(state, "Boiler"), steamWand(state), feeds) && !state.dirty,
         highlight: [VALIDATE],
       },
     ],

@@ -691,3 +691,83 @@ test("calc: a formula counts for what it calculates, not for the names it uses",
   assert.equal(checkOf("fix-price")(orders("6.8")), true);
   assert.equal(checkOf("fix-price")({ ...orders("6.8"), dirty: true }), false);
 });
+
+test("classify: rules count with the values asked for, and tags only follow from rules", async () => {
+  const { CLASSIFY_TUTORIAL: K } = await import("@shared/tutorial-classify");
+  const checkOf = (id: string) => tutorialSteps(K).find((candidate) => candidate.id === id)!.check!;
+  const tagRule = (tag: string, conditions: TutorialRuleCondition[], extra: Partial<TutorialRule> = {}) =>
+    rule("Component", conditions, { reportsIssue: false, tag, ...extra });
+  const leadTime = (operator: string, value: string) => condition({ attribute: "lead time", operator, value });
+  const high = condition({ attribute: "criticality", operator: "equals", value: "high" });
+  const single = condition({ attribute: "single source", operator: "is-true" });
+  const metamodelWith = (...rules: TutorialRule[]) => model("metamodel", [element("c", "Component", "Object")], { rules });
+
+  assert.equal(checkOf("own-rule")(metamodelWith(tagRule("Order early", [leadTime("greater-than", "60"), high]))), false);
+  assert.equal(checkOf("own-rule")(metamodelWith(tagRule("Order early", [leadTime("greater-than", "30"), high]))), true);
+  assert.equal(
+    checkOf("own-rule")(metamodelWith(tagRule("Order early", [leadTime("greater-than", "30"), high], { combinator: "any" }))),
+    false,
+  );
+
+  // Without a Long lead rule there was never a tag to lose.
+  const hmi = (rules: TutorialRule[]) =>
+    model("instance", [element("hmi", "HMI panel", "Component", { "lead time": "30" })], { rules });
+  assert.equal(checkOf("tag-follows")(hmi([])), false);
+  assert.equal(checkOf("tag-follows")(hmi([tagRule("Long lead", [leadTime("greater-than", "60")])])), true);
+
+  const parts = (rules: TutorialRule[]) => model("instance", [element("plc", "PLC", "Component")], { rules });
+  const secondSource = tagRule("Second source", [single, high]);
+  assert.equal(checkOf("tag-second-source")(parts([tagRule("Second source", [single, high], { combinator: "any" })])), false);
+  assert.equal(checkOf("tag-second-source")(parts([secondSource])), true);
+  // Switched off or deleted, the helper rules are no longer active.
+  assert.equal(checkOf("switch-off")(parts([secondSource, tagRule("Critical", [high])])), false);
+  assert.equal(checkOf("switch-off")(parts([secondSource])), true);
+});
+
+test("classify: the inherited rule is only found after the metamodel has it", async () => {
+  const { CLASSIFY_TUTORIAL: K } = await import("@shared/tutorial-classify");
+  const index = K.lessons.findIndex((lesson) => lesson.id === "rule-for-all");
+  const before = K.lessons.slice(0, index);
+  let progress: TutorialProgress = {
+    ...EMPTY_TUTORIAL_PROGRESS,
+    completed: before.flatMap((lesson) => lesson.steps.map((candidate) => candidate.id)),
+    recapped: before.map((lesson) => lesson.id),
+  };
+  const seeInherited = tutorialSteps(K).find((candidate) => candidate.id === "see-inherited")!;
+  progress = progressOf.applySignal(K, progress, "rules-opened", "instance", model("instance", []));
+  assert.notEqual(progressOf.stepState(K, progress, seeInherited), "done");
+  progress = progressOf.skipStep(K, progress, "meta-rule");
+  progress = progressOf.applySignal(K, progress, "rules-opened", "instance", model("instance", []));
+  assert.equal(progressOf.stepState(K, progress, seeInherited), "done");
+});
+
+test("structure: the new relationship, the shown elements and the Generalization are told apart from look-alikes", async () => {
+  const { STRUCTURE_TUTORIAL: S } = await import("@shared/tutorial-structure");
+  const checkOf = (id: string) => tutorialSteps(S).find((candidate) => candidate.id === id)!.check!;
+  const types = [element("boiler", "Boiler", "Object"), element("group", "Brew group", "Object")];
+  const boilerToGroup = (...names: string[]) =>
+    model("metamodel", types, { relationships: names.map((name) => link("boiler", "group", "association", name)) });
+  assert.equal(checkOf("name-feeds")(boilerToGroup("feeds", "")), false, "heats was renamed instead");
+  assert.equal(checkOf("name-feeds")(boilerToGroup("heats", "feeds")), true);
+
+  const shown = (partNumbers: boolean) =>
+    model(
+      "instance",
+      [
+        ["Water tank", "E1-010"],
+        ["Vibration pump", "E1-020"],
+        ["Boiler", "E1-030"],
+        ["Brew group", "E1-040"],
+      ].map(([name, number]) => element(name, name, "Component", { "part number": partNumbers ? number : "" })),
+      { diagram: "Water path", diagrams: ["Structure", "Water path"] },
+    );
+  assert.equal(checkOf("place-elements")(shown(false)), false, "new elements with the same names");
+  assert.equal(checkOf("place-elements")(shown(true)), true);
+
+  const generalization = (from: string, to: string) =>
+    model("metamodel", [element("grinder", "Grinder", "Object"), element("component", "Component", "Object")], {
+      relationships: [link(from, to, "generalization")],
+    });
+  assert.equal(checkOf("generalize")(generalization("component", "grinder")), false, "a Component is not a Grinder");
+  assert.equal(checkOf("generalize")(generalization("grinder", "component")), true);
+});
