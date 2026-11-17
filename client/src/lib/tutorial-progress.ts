@@ -1,4 +1,5 @@
 import {
+  same,
   tutorialSteps,
   type TutorialDefinition,
   type TutorialLesson,
@@ -6,6 +7,7 @@ import {
   type TutorialScope,
   type TutorialSignal,
   type TutorialStep,
+  type TutorialWorkspaceState,
 } from "@shared/tutorial";
 
 /** How a learner got through one step; kept to see where the tutorial is hard. */
@@ -123,11 +125,22 @@ function stamp(tutorial: TutorialDefinition, progress: TutorialProgress, now: nu
  * Steps that can complete now: those not yet done in the current lesson and
  * in earlier ones (where they were skipped). Steps of later lessons wait
  * until their lesson is reached, so nobody passes a lesson before seeing it.
+ * The current lesson comes first: what the learner does now belongs to the
+ * step in front of them, not to one they skipped earlier.
  */
 function completable(tutorial: TutorialDefinition, progress: TutorialProgress): TutorialStep[] {
   const active = activeLessonIndex(tutorial, progress);
-  const lessons = active === -1 ? tutorial.lessons : tutorial.lessons.slice(0, active + 1);
-  return lessons.flatMap((lesson) => lesson.steps).filter((step) => !isCompleted(progress, step.id));
+  const lessons =
+    active === -1 ? tutorial.lessons : [tutorial.lessons[active], ...tutorial.lessons.slice(0, active)];
+  return lessons.flatMap((lesson) =>
+    lesson.steps.filter(
+      (step, index) =>
+        !isCompleted(progress, step.id) &&
+        (!step.afterPrevious ||
+          (lesson.steps.slice(0, index).every((earlier) => isPassed(progress, earlier.id)) &&
+            (step.afterPrevious !== "done" || (index > 0 && isCompleted(progress, lesson.steps[index - 1].id))))),
+    ),
+  );
 }
 
 function complete(
@@ -152,8 +165,18 @@ function complete(
   );
 }
 
-const checkPasses = (step: TutorialStep, state: TutorialModelState | null) =>
-  !step.check || (!!state && state.scope === step.scope && step.check(state));
+/**
+ * The step happens where the learner is and, when it names one, in the open
+ * diagram. Where the learner is is the tutorial's metamodel or model (the
+ * state's own scope) or, given as `place`, a variant of the model.
+ */
+const inPlace = (step: TutorialStep, state: TutorialModelState, place: TutorialScope) =>
+  step.scope === place && (!step.view || same(step.view, state.diagram));
+
+const checkPasses = (step: TutorialStep, state: TutorialModelState | null, place: TutorialScope) => {
+  if (!step.check && !step.view) return true;
+  return !!state && inPlace(step, state, place) && (!step.check || step.check(state));
+};
 
 /**
  * Applies a feature the learner used. The first waiting step for this signal
@@ -168,7 +191,30 @@ export function applySignal(
   now = Date.now(),
 ): TutorialProgress {
   const step = completable(tutorial, progress).find(
-    (candidate) => candidate.signal === signal && candidate.scope === scope && checkPasses(candidate, state),
+    (candidate) => candidate.signal === signal && candidate.scope === scope && checkPasses(candidate, state, scope),
+  );
+  return step ? complete(tutorial, progress, [step], now) : progress;
+}
+
+/**
+ * Applies the first state of a diagram that was just opened, for a step that
+ * opens a diagram and asks for something in it: the signal "view-opened" is
+ * sent before the new diagram is known, and only steps that need nothing of
+ * it complete then.
+ */
+export function applyOpenedView(
+  tutorial: TutorialDefinition,
+  progress: TutorialProgress,
+  scope: TutorialScope,
+  state: TutorialModelState,
+  now = Date.now(),
+): TutorialProgress {
+  const step = completable(tutorial, progress).find(
+    (candidate) =>
+      candidate.signal === "view-opened" &&
+      candidate.scope === scope &&
+      (!!candidate.check || !!candidate.view) &&
+      checkPasses(candidate, state, scope),
   );
   return step ? complete(tutorial, progress, [step], now) : progress;
 }
@@ -182,9 +228,26 @@ export function applyModelState(
   progress: TutorialProgress,
   state: TutorialModelState,
   now = Date.now(),
+  place: TutorialScope = state.scope,
 ): TutorialProgress {
   const steps = completable(tutorial, progress).filter(
-    (candidate) => !candidate.signal && !!candidate.check && checkPasses(candidate, state),
+    (candidate) => !candidate.signal && !!candidate.check && checkPasses(candidate, state, place),
+  );
+  return complete(tutorial, progress, steps, now);
+}
+
+/**
+ * Applies the project list: steps that ask for something there (a copy, an
+ * imported project) complete when the list shows it.
+ */
+export function applyWorkspaceState(
+  tutorial: TutorialDefinition,
+  progress: TutorialProgress,
+  workspace: TutorialWorkspaceState,
+  now = Date.now(),
+): TutorialProgress {
+  const steps = completable(tutorial, progress).filter(
+    (candidate) => candidate.scope === "projects" && !!candidate.checkProjects && candidate.checkProjects(workspace),
   );
   return complete(tutorial, progress, steps, now);
 }
@@ -302,5 +365,28 @@ export function clearTutorialProgress(metamodelProjectId: number) {
     window.localStorage.removeItem(tutorialStorageKey(metamodelProjectId));
   } catch {
     // Nothing stored, nothing to clear.
+  }
+}
+
+// --- finished tutorials ------------------------------------------------------
+
+const doneKey = (tutorialId: string) => `symlit_tutorial_done:${tutorialId}`;
+
+/** Remembers that a tutorial was finished, also after its projects are removed. */
+export function rememberTutorialFinished(tutorialId: string, finishedAt: number) {
+  try {
+    if (!window.localStorage.getItem(doneKey(tutorialId))) {
+      window.localStorage.setItem(doneKey(tutorialId), String(finishedAt));
+    }
+  } catch {
+    // Without storage it is simply not remembered.
+  }
+}
+
+export function wasTutorialFinished(tutorialId: string): boolean {
+  try {
+    return window.localStorage.getItem(doneKey(tutorialId)) !== null;
+  } catch {
+    return false;
   }
 }

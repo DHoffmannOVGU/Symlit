@@ -576,7 +576,14 @@ export const api = {
         position: flowPositionSchema,
       }),
       responses: {
-        200: z.object({ success: z.boolean() }),
+        // The placement is stored at once, which changes the diagram's
+        // revision. The editor adopts the new one when its own was still
+        // current, so that its next save is not taken for a conflict.
+        200: z.object({
+          success: z.boolean(),
+          revisionBefore: z.string().nullable().optional(),
+          revision: z.string().nullable().optional(),
+        }),
         400: errorSchemas.validation,
         404: errorSchemas.notFound,
       },

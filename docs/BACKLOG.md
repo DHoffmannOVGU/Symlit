@@ -39,7 +39,21 @@ commit that fixed them.
   `POST /api/views/:viewId/nodes/:nodeId/insert` do not mark the project as edited.
 
 ### Client
-- **Guided tutorial, still open** (`docs/ux/TUTORIAL_DIDACTICS.md`): it has not been tried with learners yet (step 4 of the plan); a single lesson cannot be reset on its own (only the whole tutorial); what the coach records per step (time, hints, Show me) stays in the browser's local storage and has no export.
+- **Guided tutorials, still open** (`docs/ux/TUTORIAL_ROADMAP.md`): none of the six has been tried with
+  learners; a single lesson cannot be reset on its own; per-step records (time, hints, Show me) stay in the
+  browser and have no export; "Show me" for a field points at the first attribute of a list.
+- **Formulas see only their own element.** No sum or count over parts, connected or child elements, so a mass or
+  cost budget across elements cannot be calculated. Decide whether to add aggregation (a syntax for "the parts'
+  mass") before a tutorial relies on it.
+- **Flow mode is not reachable.** The canvas has a flow mode (start and end elements, ticks, playback), but
+  `ProjectView` always mounts it in build mode and nothing switches it. The README and wiki no longer claim it.
+  Make it reachable (and test it), or remove the code.
+- **A metamodel cannot be made to build on another in the UI.** The reference exists (`referencedMetamodels` on a
+  metamodel) and works, and the palette offers the other metamodel's types, but only a template or an imported file
+  can set it. The metamodel selector is shown for models only.
+- **A metamodel's kinds and relationship kinds cannot be changed after creating it**, although the create dialog
+  says it can be changed any time. The API supports it; there is no screen.
+- **Multiplicity and "mandatory part" are not checked.** Both are shown and stored, and validation ignores them.
 - **Dark mode is half there.** `dark:` variants exist in about 17 places while about 52 backgrounds are
   light-only (`bg-white`, `bg-slate-50`), and nothing ever sets the `dark` class. A toggle needs a pass over
   those first; turning it on as is gives a half-dark UI.
@@ -57,6 +71,13 @@ commit that fixed them.
   project or copying the data directory.
 
 ## Done
+- Four more guided tutorials, each with its own example (`docs/ux/TUTORIAL_ROADMAP.md`): Calculate with attributes (print jobs: attribute types, formulas, a rule on a calculated value), Classify and review (a control cabinet: tags, combined conditions, rules in a metamodel, the table), Structure and views (an espresso machine: relationship kinds, Generalization, one element in two diagrams) and Reuse and variants (sensor nodes: type styles, copies, pattern libraries, a second metamodel, project files). The tutorial system grew with them: steps can check attribute types and formulas, relationship kinds and names, tags, rules' conditions, the table filter, the open diagram and the project list; steps can happen in a named diagram, on the project list or in a copy of the tutorial's model; a tutorial can bring more than two projects; a save step completes however the save was started; finished tutorials are remembered. The project list offers the tutorials as compact cards.
+- Formulas: a minus sign after `*` or `/` was applied wrongly; an empty input made a formula count it as zero or blocked the editor, and now means "not calculated yet"; calculated values follow their inputs in the table and for new elements (they were refreshed only by the editor); the syntax is in the help. Elements inherit the attributes of the types their type specializes (`client/src/lib/type-attributes.ts`), as the wiki said they did.
+- Showing an existing element in a diagram stored its placement at once, so the editor's revision was outdated and the next save was refused as a conflict. The insert returns the new revision (`server/routes/flow.ts`, `useCanvasInsertion.ts`; `e2e/local-workspace.spec.ts`).
+- Saving a diagram with an element created since it was opened reset the undo history: the signature compared after the save depended on key order, which the database does not keep (`diagram-serialization.ts`). Found by a browser test that failed on CI only.
+- The canvas reported its state to the tutorial coach on every render, and the page rendered again on each report; it reports changes only now.
+- The importer rewires rules that target one type of a metamodel (`node:<id>`), and an element shown in several diagrams of a template keeps its data.
+- The table shows the tags rules give and can be filtered by them.
 - A second guided tutorial, Production with PPR (`shared/tutorial-ppr.ts`, `server/templates/tutorial-ppr.json`): product, process and resource with requirements traced to what satisfies them. Tutorials are now a list (`shared/tutorial.ts`): each has its own template, lessons, question and project names; the coach, the progress logic, the start cards and the API (`/api/tutorial/:tutorial`) take the tutorial as a parameter. The coach stays on the right and gets shorter while validation results are open, so the sidebar stays usable; on the left it stays above the sidebar's bottom buttons.
 - The guided tutorial was redesigned as a lesson rather than a feature tour (`docs/ux/TUTORIAL_DIDACTICS.md`): six lessons around one question, steps that complete when the model shows their result (the canvas reports the open diagram to the coach), a model that starts with one gap and the rule that finds it, an explanation after every step, one question per lesson, skipped steps counted apart, a last lesson without step-by-step instructions, and "start over" with fresh projects. The coach moves aside while an editor, the rules panel, the validation results or the table is open, and stays usable next to an open dialog. Rule issues now name their element.
 - Project creation: two steps (start from an empty metamodel, an empty model or a template; then only the choices that apply), an empty model can be based on a metamodel (also from the metamodel's card), empty projects get a first diagram and open on it, the confirmation names metamodels a template brings, and projects can be duplicated (the copy keeps using the same metamodels).

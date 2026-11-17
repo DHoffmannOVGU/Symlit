@@ -57,13 +57,18 @@ export function AttributeSummaryRow({
           onCheckedChange={(checked) => onValueChange(checked ? "true" : "false")}
           aria-label={`${attr.name} ${valueLabel.toLowerCase()}`}
           data-testid={`input-attr-value-${index}`}
+          data-attribute-name={attr.name}
         />
       );
     }
     if (attr.type === "list") {
       return (
         <Select value={options.includes(attr.value) ? attr.value : undefined} onValueChange={onValueChange}>
-          <SelectTrigger className="h-8 w-[150px] text-sm" data-testid={`input-attr-value-${index}`}>
+          <SelectTrigger
+            className="h-8 w-[150px] text-sm"
+            data-testid={`input-attr-value-${index}`}
+            data-attribute-name={attr.name}
+          >
             <SelectValue placeholder="Choose" />
           </SelectTrigger>
           <SelectContent>
@@ -85,6 +90,7 @@ export function AttributeSummaryRow({
           className={cn("h-8 text-sm", attr.type === "string" ? "w-[180px]" : "w-[110px]")}
           aria-label={`${attr.name} ${valueLabel.toLowerCase()}`}
           data-testid={`input-attr-value-${index}`}
+          data-attribute-name={attr.name}
         />
         {unit ? <span className="w-10 text-xs text-muted-foreground">{unit}</span> : null}
       </div>

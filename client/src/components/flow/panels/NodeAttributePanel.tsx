@@ -12,6 +12,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import {
   evaluateDerivedAttribute,
   formatDerivedValue,
+  isFormulaPending,
   getDisplayFormula,
   getStoredFormulaFromDisplay,
   remapStoredFormulaReferences,
@@ -61,7 +62,11 @@ interface NodeAttributePanelProps {
   allNodes?: Node[];
   allEdges?: DiagramEdge[];
   parentNodes?: Node[];
+  /** Which types each type specializes (Generalization), for attributes that come from further up. */
+  typeParentMap?: Map<string, Set<string>>;
 }
+
+const NO_TYPE_PARENTS = new Map<string, Set<string>>();
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -74,6 +79,7 @@ export function NodeAttributePanel({
   availablePartDefs = [],
   availablePartDefNodes = [],
   parentNodes = [],
+  typeParentMap = NO_TYPE_PARENTS,
 }: NodeAttributePanelProps) {
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
@@ -252,7 +258,7 @@ export function NodeAttributePanel({
   const derivedAttributeState = useMemo(() => {
     const next: globalThis.Map<
       string,
-      { value?: string; references: string[]; error?: string }
+      { value?: string; references: string[]; error?: string; pending?: string }
     > = new globalThis.Map();
 
     attributes.forEach((attr) => {
@@ -276,10 +282,13 @@ export function NodeAttributePanel({
           references: result.references,
         });
       } catch (error) {
-        next.set(attr.id, {
-          references: [],
-          error: error instanceof Error ? error.message : "Invalid formula.",
-        });
+        // Not calculable yet (an input is empty) is a normal state, not a mistake.
+        next.set(
+          attr.id,
+          isFormulaPending(error)
+            ? { references: [], pending: error.message }
+            : { references: [], error: error instanceof Error ? error.message : "Invalid formula." },
+        );
       }
     });
 
@@ -592,9 +601,8 @@ export function NodeAttributePanel({
   /** Attributes of the element's type it does not have (created earlier, or the type gained them since). */
   const missingFromType = useMemo(() => {
     if (node?.type !== "part" || !nodeTypeId) return [];
-    const typeNode = availablePartDefNodes.find((candidate) => candidate.id === nodeTypeId);
-    return missingTypeAttributes(attributes, nodeTypeId, typeNode?.data?.attributes);
-  }, [attributes, availablePartDefNodes, node?.type, nodeTypeId]);
+    return missingTypeAttributes(attributes, nodeTypeId, availablePartDefNodes, typeParentMap);
+  }, [attributes, availablePartDefNodes, node?.type, nodeTypeId, typeParentMap]);
 
   const addMissingFromType = () => {
     const nextAttributes = [...attributes, ...missingFromType];

@@ -14,10 +14,31 @@ relationships offered in the palette.
 
 Double-click a type to edit it:
 
-- **Attributes:** named values, with a unit from the unit catalog or a derived formula.
+- **Attributes:** named values of six kinds: Text, Number (with a unit from the unit catalog),
+  Yes/No, Date, List (a choice from options) and Derived Formula (calculated, see below). The
+  value given on a type is the default each new element starts with.
 - **Style:** icon, colour, shape and border.
 
-Elements of the type start from both.
+A new element of the type gets copies of its attributes and follows its style. Later changes to
+the type's attributes do not reach existing elements; their editor offers to add attributes the
+type gained. Later changes to the style reach every element that still matches its type.
+
+## Calculated attributes
+
+An attribute of the kind **Derived Formula** is calculated from other attributes of the same
+element:
+
+- numbers (written with a point, `0.5`), `+ - * /`, parentheses and minus signs (`2 * -3`);
+- other attributes in square brackets, by name: `[print time] * [machine rate]`. Typing `[`
+  offers them. A formula can use another calculated attribute, but not itself.
+- When an attribute it uses has no value yet, or it would divide by zero, the result is *not
+  calculated yet*: it stays empty and nothing is blocked.
+- Results follow their inputs wherever those are edited: in the editor, in the table, and for a
+  new element of a type.
+- Units are labels; nothing converts them. Grams to kilograms is `/ 1000` in the formula.
+- A formula sees only its own element. There is no sum over other elements.
+
+Model rules can test a calculated value like any other. The editor's **Help** lists the same.
 
 ## Relationships between types
 
@@ -28,8 +49,11 @@ Association · Aggregation · Composition · Generalization · Dependency · Rea
 A relationship between two types defines which relationships are **allowed between their
 elements** in a model.
 
-**Generalization** is inheritance: a specialised type inherits the attributes, style and
-allowed relationships of the general one.
+**Generalization** is inheritance, drawn from the specialised type to the general one. A
+specialised type inherits the general type's **allowed relationships** (an element of it may be
+used wherever the general type is allowed) and its **attributes** (a new element gets them as
+well as the specialised type's own; an attribute the specialised type defines itself wins). The
+style is not inherited: each type has its own.
 
 ## Model rules and pattern libraries
 

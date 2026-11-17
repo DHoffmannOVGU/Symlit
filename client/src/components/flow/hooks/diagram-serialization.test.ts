@@ -435,3 +435,34 @@ test("style changes on types in a metamodel are always unsaved changes", () => {
   const after = [node({ type: "partdef", data: { label: "Sensor", icon: "Cpu", fill: "tint" } })];
   assert.notEqual(normalizeFlow(before, [], "metamodel"), normalizeFlow(after, [], "metamodel"));
 });
+
+test("the signature ignores key order (the database returns keys reordered)", () => {
+  // What was sent on save and what is fetched afterwards differ only in key
+  // order. Seen as different, the fetched copy would replace the canvas after
+  // every save of a new element and take the undo history with it.
+  const sent = normalizeFlow(
+    [
+      node({
+        id: "n1",
+        type: "partdef",
+        position: { x: 1, y: 2 },
+        data: { label: "A", attributes: [{ name: "mass", id: "a1" }], type: "Object", icon: "Box" },
+      }),
+    ],
+    [],
+    "metamodel",
+  );
+  const stored = normalizeFlow(
+    [
+      node({
+        id: "n1",
+        type: "partdef",
+        position: { y: 2, x: 1 },
+        data: { icon: "Box", type: "Object", label: "A", attributes: [{ id: "a1", name: "mass" }] },
+      }),
+    ],
+    [],
+    "metamodel",
+  );
+  assert.equal(sent, stored);
+});

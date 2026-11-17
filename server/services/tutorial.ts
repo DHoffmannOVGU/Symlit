@@ -1,5 +1,5 @@
 import type { Project } from "@shared/schema";
-import { isTutorialTemplate, type TutorialDefinition } from "@shared/tutorial";
+import { projectsRemovedWithTutorial, TUTORIAL_EXTRA_SUFFIX, type TutorialDefinition } from "@shared/tutorial";
 import { storage } from "../storage";
 import { createProjectFromTemplate } from "./project-templates";
 
@@ -11,15 +11,21 @@ export interface CreatedTutorial {
 }
 
 /**
- * Creates the two projects of a tutorial from its project template: a
- * metamodel and an instance model that references it and whose elements are
- * typed by the metamodel's types.
+ * Creates the projects of a tutorial from its project template: a metamodel
+ * and an instance model that references it and whose elements are typed by
+ * the metamodel's types. The first metamodel in the template is the
+ * tutorial's metamodel; further ones (a second metamodel the learner adds to
+ * the model later) are marked as extras, so the run can be told apart.
  */
 export async function createTutorial(userId: number, tutorial: TutorialDefinition): Promise<CreatedTutorial> {
   const result = await createProjectFromTemplate(tutorial.templateId, userId);
   const created = Array.from(result.projects.entries());
   const [metamodelFileId, metamodel] = created.find(([, p]) => p.projectType === "metamodel")!;
   const [instanceFileId, instance] = created.find(([, p]) => p.projectType === "instance")!;
+  for (const [, project] of created) {
+    if (project.id === metamodel.id || project.id === instance.id) continue;
+    await storage.updateProject(project.id, { templateId: `${tutorial.templateId}${TUTORIAL_EXTRA_SUFFIX}` });
+  }
   return {
     metamodel,
     instance,
@@ -33,12 +39,7 @@ export async function createTutorial(userId: number, tutorial: TutorialDefinitio
  * is given. Returns how many were removed.
  */
 export async function deleteTutorial(userId: number, tutorial?: TutorialDefinition): Promise<number> {
-  const projects = await storage.getProjectsByUser(userId);
-  const tutorialProjects = projects.filter((project) =>
-    tutorial ? project.templateId === tutorial.templateId : isTutorialTemplate(project.templateId),
-  );
-  // Instance first, so it never references a deleted metamodel.
-  tutorialProjects.sort((a) => (a.projectType === "instance" ? -1 : 1));
-  for (const project of tutorialProjects) await storage.deleteProject(project.id);
-  return tutorialProjects.length;
+  const removed = projectsRemovedWithTutorial(await storage.getProjectsByUser(userId), tutorial);
+  for (const project of removed) await storage.deleteProject(project.id);
+  return removed.length;
 }

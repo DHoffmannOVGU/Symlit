@@ -174,29 +174,55 @@ SQL migration to `migrations/`. Commit both. CI fails if the schema and migratio
 ## Guided tutorials
 
 - `shared/tutorial.ts` lists the tutorials. Each is a `TutorialDefinition` (`shared/tutorial-types.ts`):
-  its lessons and steps, its question, and the project template its two projects come from.
-  *Symlit basics* (`shared/tutorial-basics.ts`, `server/templates/tutorial.json`) uses a *Drone types*
-  metamodel and a *Delivery drone* model; *Production with PPR* (`shared/tutorial-ppr.ts`,
-  `server/templates/tutorial-ppr.json`) a *PPR types* metamodel and a *Bracket production* model.
-- `POST /api/tutorial/:tutorial` (`server/services/tutorial.ts`) creates both projects from the
-  tutorial's template, marked with `projects.template_id`; `DELETE /api/tutorial/:tutorial` removes
-  them. Without an id, `POST /api/tutorial` creates the first tutorial and `DELETE` removes all.
-- A step completes when the model shows its result (`check`), when a feature was used (`signal`), or
-  both. The canvas reports the open diagram to the coach as a `TutorialModelState`
-  (`useTutorialModelReporter`, only in tutorial projects): elements with their type and attribute
-  values, relationships, the open editor, the saved rules, unsaved changes. Signals are reported
-  with `emitTutorialSignal()` (`client/src/lib/tutorial-signals.ts`) where the action happens
-  (validation, model rules, table view, auto layout, patterns, export); saving comes from the
-  existing diagram event.
+  its lessons and steps, its question and answer, and the project template its projects come from
+  (`server/templates/tutorial*.json`, one per tutorial: basics, ppr, calc, classify, structure,
+  reuse, each defined in `shared/tutorial-<id>.ts`). The templates are written by hand or with a
+  small generator kept outside the repository; they are ordinary project files.
+- `POST /api/tutorial/:tutorial` (`server/services/tutorial.ts`) creates the projects from the
+  tutorial's template. The first metamodel and the model are marked with the template's id in
+  `projects.template_id`; further projects of the template (a second metamodel) with that id plus
+  `+extra`. A run's projects are those created together, between one of its metamodels and the
+  next. `DELETE /api/tutorial/:tutorial` removes them and, for a tutorial with steps in a copy of
+  its model, any model that uses their metamodels (the copies the learner made).
+  `projectsRemovedWithTutorial()` in `shared/tutorial.ts` decides which, for the server and for the
+  confirmation that lists them first. Without an id, `POST /api/tutorial` creates the first
+  tutorial and `DELETE` removes all.
+- **Where a step happens** (`scope`): the tutorial's metamodel, its model, the project list
+  (`projects`, checked with `checkProjects` on a `TutorialWorkspaceState`), or a `variant`: a model
+  the learner made that uses the tutorial's metamodel, such as a copy. A step can also name the
+  diagram it happens in (`view`).
+- **When a step is done:** when the model shows its result (`check`), when a feature was used
+  (`signal`), or both. `afterPrevious` holds a step back until the steps before it in its lesson
+  are done or skipped, for checks that are true from the start; `afterPrevious: "done"` until the
+  step right before it is done, for a check that also holds when that step never happened. A save
+  step is judged on the saved state (`!state.dirty`) once the work before it is done, not on a save
+  signal: a diagram saved early, or saved automatically, has nothing left to save. A check that has
+  to know what a formula calculates uses `calculates()`, which evaluates the formula on sample
+  inputs, so that any way of writing the same calculation counts and a wrong one does not; checks
+  that only ask which attributes a formula uses (`calculatedFrom()`) leave the calculation to the
+  learner. The canvas reports the open diagram to the
+  coach as a `TutorialModelState` (`useTutorialModelReporter`, only in a run's projects): elements
+  with their type, attributes (type, unit, formula, references, the value calculated now), tags,
+  colour and whether they have a style of their own; relationships with kind and name; the open element or relationship editor; the
+  table filter; the saved rules with their conditions; the diagram's name and the project's
+  diagrams; the model's metamodels; unsaved changes. It is reported when it changes and on request,
+  and not before the diagram, its rules and its types are loaded. Signals come from
+  `emitTutorialSignal()` (`client/src/lib/tutorial-signals.ts`) where the action happens; `saved`
+  is sent when a save went through, however it was started.
 - `client/src/lib/tutorial-progress.ts` holds the pure progress logic (unit-tested): which step is
-  current, that steps of a later lesson wait, skipping, the question that closes a lesson. Progress
-  is stored in the browser per tutorial run. `useTutorialCoach` and `TutorialCoach` render the docked
-  coach on tutorial projects; `TutorialCards` is the entry point on the project list.
-- To add a step: add it to a lesson with a `check` on the model state (extend `TutorialModelState`
-  and the reporter if the state lacks what the check needs), a `done` text, and a `highlight` for
-  "Show me". To add a tutorial: write its definition and template, and add it to `TUTORIALS` and
-  to the built-in templates in `server/services/project-templates.ts`.
-- The didactic reasoning is in `docs/ux/TUTORIAL_DIDACTICS.md`.
+  current, that steps of a later lesson wait, that the current lesson's steps come before skipped
+  ones, skipping, the question that closes a lesson. Progress is stored in the browser per run;
+  that a tutorial was finished is stored apart and survives removing its projects.
+  `useTutorialCoach` renders the coach in a run's projects, `useTutorialCoachOnProjectList` on the
+  project list when a run's next step happens there; `TutorialCards` offers the tutorials.
+- To add a step: add it to a lesson with a `check` (extend `TutorialModelState` and the reporter
+  if the state lacks what the check needs), a `done` text, and a `highlight` for "Show me". To add
+  a tutorial: write its definition and template, add it to `TUTORIALS` and to the built-in
+  templates in `server/services/project-templates.ts`, and walk it in a browser test
+  (`e2e/tutorial-<id>.spec.ts`, helpers in `e2e/support/tutorial.ts`). The unit tests check every
+  definition against the rules a step and a lesson must follow.
+- The didactic reasoning is in `docs/ux/TUTORIAL_DIDACTICS.md`, the plan and its checklists in
+  `docs/ux/TUTORIAL_ROADMAP.md`.
 
 ## Design decisions
 

@@ -173,8 +173,15 @@ test("a saved diagram is still as saved after visiting another diagram", async (
   const cards = page.locator(".react-flow__node");
   await page.getByTestId("button-create-sidebar-partdef").click();
   await expect(cards).toHaveCount(1);
+  // After a save the diagram is fetched again. Wait for that copy to arrive:
+  // it must not replace the canvas, or the undo history would be gone.
+  const fetchedAgain = page.waitForResponse(
+    (response) => response.request().method() === "GET" && response.url().endsWith(`/api/views/${first.id}/flow`),
+  );
   await page.getByTestId("button-save-diagram-header").click();
+  await (await fetchedAgain).finished();
   await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   // Saving keeps the undo history of the open diagram.
   await expect(page.getByRole("button", { name: "Undo", exact: true })).toBeEnabled();
 
@@ -195,4 +202,33 @@ test("a saved diagram is still as saved after visiting another diagram", async (
   await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
   const saved = await (await request.get(`/api/views/${first.id}/flow`)).json();
   expect(saved.nodes).toHaveLength(2);
+});
+
+test("an element shown in a second diagram is saved there without a conflict", async ({ page, request }) => {
+  // Inserting an existing element stores its placement at once. The diagram
+  // used to keep the revision it was opened at, and its next save was
+  // refused as if someone else had changed it.
+  const project = await (
+    await request.post("/api/projects", { data: { name: "Shared element", projectType: "metamodel" } })
+  ).json();
+  const first = await (await request.post(`/api/projects/${project.id}/views`, { data: { name: "First" } })).json();
+  const second = await (await request.post(`/api/projects/${project.id}/views`, { data: { name: "Second" } })).json();
+  const elementId = `shared-${project.id}`;
+  await request.post(`/api/views/${first.id}/sync`, {
+    data: { nodes: [{ id: elementId, type: "partdef", position: { x: 0, y: 0 }, data: { label: "Pump", type: "Object" } }], edges: [] },
+  });
+
+  await page.goto(`/project/${project.id}/view/${second.id}`);
+  await page.getByRole("tab", { name: "Diagrams" }).click();
+  await page.locator(`[data-testid^="button-toggle-view-elements-"][data-view-name="First"]`).click();
+  const row = page.locator('[data-sidebar="sidebar"] li', { hasText: "Pump" }).last();
+  await row.hover();
+  await row.getByTestId(`button-insert-node-${elementId}`).click();
+  await expect(page.locator(".react-flow__node", { hasText: "Pump" })).toBeVisible();
+
+  await page.getByTestId("button-save-diagram-header").click();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+  await expect(page.getByText("This diagram was changed somewhere else")).toHaveCount(0);
+  const saved = await (await request.get(`/api/views/${second.id}/flow`)).json();
+  expect(saved.nodes.map((node: { id: string }) => node.id)).toEqual([elementId]);
 });

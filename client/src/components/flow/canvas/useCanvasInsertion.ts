@@ -1,7 +1,7 @@
 import { emitTutorialSignal } from "@/lib/tutorial-signals";
 import { useReactFlow } from "@xyflow/react";
 import { useDiagramModel } from "../state/DiagramModelProvider";
-import { useDiagramStore } from "../state/DiagramStoreProvider";
+import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { useCallback, useEffect, useRef } from "react";
 import { api, buildUrl } from "@shared/routes";
 import { apiRequest } from "@/lib/queryClient";
@@ -13,6 +13,7 @@ import { toCanvasGraph } from "../hooks/diagram-serialization";
 export function useCanvasInsertion() {
   const nodes = useDiagramStore((state) => state.nodes);
   const setNodes = useDiagramStore((state) => state.setNodes);
+  const diagramStore = useDiagramStoreApi();
   const setEdges = useDiagramStore((state) => state.setEdges);
   const takeSnapshot = useDiagramStore((state) => state.takeSnapshot);
   const setSelectedEdgeId = useDiagramStore((state) => state.setSelectedEdgeId);
@@ -38,9 +39,18 @@ export function useCanvasInsertion() {
             y: window.innerHeight / 2,
           });
         const url = buildUrl(api.flow.insertNode.path, { viewId, nodeId });
-        await apiRequest(api.flow.insertNode.method, url, {
+        const insertRes = await apiRequest(api.flow.insertNode.method, url, {
           position: targetPosition,
         });
+        // The placement is already stored. When nothing else changed the
+        // diagram before it, its new revision is the one the next save is
+        // based on; otherwise the old one stays, and that save reports the
+        // change made elsewhere as it should.
+        const inserted = api.flow.insertNode.responses[200].safeParse(await insertRes.json());
+        if (inserted.success && inserted.data.revision !== undefined) {
+          const store = diagramStore.getState();
+          if (store.revision === (inserted.data.revisionBefore ?? null)) store.setRevision(inserted.data.revision);
+        }
         const nodeUrl = buildUrl(api.nodes.get.path, { nodeId });
         const nodeRes = await apiRequest("GET", nodeUrl);
         const insertedNode = api.nodes.get.responses[200].parse(
@@ -79,7 +89,7 @@ export function useCanvasInsertion() {
         });
       }
     },
-    [nodes, screenToFlowPosition, viewId, setNodes, setSelectedEdgeId, setSelectedNodeId, toast],
+    [diagramStore, nodes, screenToFlowPosition, viewId, setNodes, setSelectedEdgeId, setSelectedNodeId, toast],
   );
 
   /**

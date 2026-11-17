@@ -12,7 +12,8 @@ export interface FormulaReference {
 
 type Token =
   | { type: "number"; value: number }
-  | { type: "operator"; value: "+" | "-" | "*" | "/" }
+  // "neg" is the minus sign in front of a value ("-3", "2 * -3"); it never appears in the text.
+  | { type: "operator"; value: "+" | "-" | "*" | "/" | "neg" }
   | { type: "paren"; value: "(" | ")" }
   | { type: "reference"; value: string };
 
@@ -20,6 +21,19 @@ export interface EvaluatedAttributeResult {
   value: number;
   references: string[];
 }
+
+/**
+ * A formula that is written correctly but cannot give a number yet: one of
+ * its inputs has no value, or it would divide by zero. Unlike a mistake in
+ * the formula, this is a normal state (a type without default values, an
+ * element not filled in yet) and must not stop anyone from saving.
+ */
+export class FormulaPendingError extends Error {
+  readonly pending = true;
+}
+
+export const isFormulaPending = (error: unknown): error is FormulaPendingError =>
+  error instanceof FormulaPendingError;
 
 interface ResolvedReference {
   attribute: NodeAttribute;
@@ -115,7 +129,7 @@ const tokenizeFormula = (formula: string): Token[] => {
 };
 
 const precedence = (operator: OperatorToken["value"]) =>
-  operator === "+" || operator === "-" ? 1 : 2;
+  operator === "neg" ? 3 : operator === "+" || operator === "-" ? 1 : 2;
 
 const toRpn = (tokens: Token[]) => {
   const output: Token[] = [];
@@ -136,7 +150,10 @@ const toRpn = (tokens: Token[]) => {
           (prev.type === "paren" && prev.value === "("));
 
       if (isUnaryMinus) {
-        output.push({ type: "number", value: 0 });
+        // Binds tighter than * and /, and applies to what follows it, so
+        // nothing waiting on the stack is applied first.
+        operators.push({ type: "operator", value: "neg" });
+        return;
       }
 
       while (operators.length > 0) {
@@ -385,7 +402,12 @@ export const evaluateDerivedAttribute = (
           attribute.id,
         ]).value;
       } else {
-        nextValue = Number(referenced.value);
+        const raw = String(referenced.value ?? "").trim();
+        // An empty input is "not known yet", not zero.
+        if (raw === "") {
+          throw new FormulaPendingError(`"${resolved.displayName}" has no value yet.`);
+        }
+        nextValue = Number(raw);
       }
 
       if (!Number.isFinite(nextValue)) {
@@ -394,6 +416,15 @@ export const evaluateDerivedAttribute = (
 
       stackValues.push(nextValue);
       references.add(resolved.displayName);
+      return;
+    }
+
+    if (token.type === "operator" && token.value === "neg") {
+      const operand = stackValues.pop();
+      if (operand === undefined) {
+        throw new Error("Formula is incomplete.");
+      }
+      stackValues.push(-operand);
       return;
     }
 
@@ -409,7 +440,7 @@ export const evaluateDerivedAttribute = (
       if (token.value === "*") stackValues.push(left * right);
       if (token.value === "/") {
         if (right === 0) {
-          throw new Error("Division by zero is not allowed.");
+          throw new FormulaPendingError("Cannot divide by zero.");
         }
         stackValues.push(left / right);
       }
@@ -430,4 +461,30 @@ export const formatDerivedValue = (value: number) => {
   if (!Number.isFinite(value)) return "";
   if (Number.isInteger(value)) return String(value);
   return Number(value.toFixed(6)).toString();
+};
+
+/**
+ * The attributes with every calculated value brought up to date. A formula
+ * that cannot give a number (an input is empty, or the formula is broken)
+ * leaves its value empty. Returns the same array when nothing changed.
+ *
+ * The editor does this while it is open; everything that changes an input
+ * elsewhere (the table, a new element from a type) has to call it, because
+ * the table, model rules and exports read the stored value.
+ */
+export const recalculateDerivedAttributes = (attributes: NodeAttribute[]): NodeAttribute[] => {
+  let changed = false;
+  const next = attributes.map((attribute) => {
+    if (attribute.type !== "derived") return attribute;
+    let value = "";
+    try {
+      value = formatDerivedValue(evaluateDerivedAttribute(attribute, attributes).value);
+    } catch {
+      value = "";
+    }
+    if (value === String(attribute.value ?? "")) return attribute;
+    changed = true;
+    return { ...attribute, value };
+  });
+  return changed ? next : attributes;
 };

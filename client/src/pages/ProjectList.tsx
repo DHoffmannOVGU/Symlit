@@ -1,5 +1,7 @@
 import { DEFAULT_LOCAL_USER_NAME } from "@shared/authorization";
 import { TutorialCards } from "@/components/tutorial/TutorialCard";
+import { TutorialCoach } from "@/components/tutorial/TutorialCoach";
+import { useTutorialCoachOnProjectList } from "@/components/tutorial/useTutorialCoach";
 import { WorkspaceUnavailable } from "@/components/WorkspaceUnavailable";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
@@ -456,6 +458,8 @@ export default function ProjectList() {
   } = useAuth();
   const [, setLocation] = useLocation();
   const { data: projects, isLoading } = useProjects(userId);
+  // A running tutorial can have steps that happen on this page.
+  const tutorialCoach = useTutorialCoachOnProjectList(projects);
   const { create, duplicate } = useProjectCreation();
   const templates = projectStartOptions(useProjectTemplates().data);
   const deleteProject = useDeleteProject();
@@ -757,6 +761,27 @@ export default function ProjectList() {
         isCreating={create.isPending}
         onCreate={(request) => void handleCreate(request)}
       />
+      {tutorialCoach.active && tutorialCoach.progress && tutorialCoach.definition && (
+        <TutorialCoach
+          tutorial={tutorialCoach.definition}
+          progress={tutorialCoach.progress}
+          place={tutorialCoach.place}
+          noCopy={tutorialCoach.noCopy}
+          removedProjects={tutorialCoach.removedProjects}
+          onShowMe={(step) => void tutorialCoach.showMe(step)}
+          onOpenStepDiagram={(step) => void tutorialCoach.openStepDiagram(step)}
+          onHintShown={tutorialCoach.noteHint}
+          onSkip={tutorialCoach.skip}
+          onReturnToSkipped={tutorialCoach.returnToSkipped}
+          onAnswer={tutorialCoach.answer}
+          onCloseRecap={tutorialCoach.closeRecap}
+          onRestart={() => tutorialCoach.restart()}
+          onCollapsedChange={tutorialCoach.setCollapsed}
+          onStartOwnProject={() => openCreateDialog()}
+          onShowTutorials={() => document.getElementById("tutorials-heading")?.scrollIntoView({ block: "center" })}
+          onRemoveTutorial={() => void tutorialCoach.remove()}
+        />
+      )}
       <ProjectEditDialog
         project={editingProject}
         name={editProjectName}

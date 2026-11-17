@@ -30,7 +30,7 @@ export function CanvasInspectorPanels({
   const edgePanelOpen = useDiagramStore((state) => state.edgePanelOpen);
   const closeNodePanel = useDiagramStore((state) => state.closeNodePanel);
   const closeEdgePanel = useDiagramStore((state) => state.closeEdgePanel);
-  const { availablePartDefs, availablePartDefNodes, availablePartDefEdges, configuredRelationTypes } =
+  const { availablePartDefs, availablePartDefNodes, availablePartDefEdges, configuredRelationTypes, parentMap } =
     useDiagramModel();
 
   const node = selectedNodeId ? (nodes.find((n) => n.id === selectedNodeId) ?? null) : null;
@@ -58,6 +58,7 @@ export function CanvasInspectorPanels({
           onDelete={onDeleteNode}
           availablePartDefs={availablePartDefs}
           availablePartDefNodes={availablePartDefNodes}
+          typeParentMap={parentMap}
           availablePartDefEdges={availablePartDefEdges}
           allNodes={nodes}
           allEdges={edges}

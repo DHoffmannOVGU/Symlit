@@ -2,6 +2,7 @@ import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useMemo } from "react";
 import { type CustomEdgeData } from "../edges/CustomEdges";
+import { evaluateModelRuleResults } from "../rules/model-rules";
 
 export interface UseCanvasTableRowsParams {
   nodeTableFilter: string;
@@ -14,12 +15,25 @@ export function useCanvasTableRows({
 }: UseCanvasTableRowsParams) {
   const nodes = useDiagramStore((state) => state.nodes);
   const edges = useDiagramStore((state) => state.edges);
-  const { isExternalNode } = useDiagramModel();
+  const { isExternalNode, activeModelRules } = useDiagramModel();
+  // The tags model rules give each element right now, as the cards show them.
+  const tagsById = useMemo(() => {
+    const tags = new Map<string, Array<{ label: string; color?: string }>>();
+    for (const result of evaluateModelRuleResults(activeModelRules, nodes, edges)) {
+      if (result.outcome.kind !== "tag") continue;
+      const label = result.outcome.label;
+      const list = tags.get(result.nodeId) ?? [];
+      if (!list.some((tag) => tag.label === label)) list.push({ label, color: result.outcome.color });
+      tags.set(result.nodeId, list);
+    }
+    return tags;
+  }, [activeModelRules, edges, nodes]);
   const nodeTableRows = useMemo(
     () =>
       nodes.map((node) => {
         const data = node.data;
         return {
+          tags: tagsById.get(node.id) ?? [],
           id: node.id,
           name: data?.label || "",
           type: data?.type || node.type || "",
@@ -32,7 +46,7 @@ export function useCanvasTableRows({
           attributes: (data?.attributes ?? []).filter((attr) => attr.name?.trim()),
         };
       }),
-    [nodes, isExternalNode],
+    [nodes, isExternalNode, tagsById],
   );
 
   const nameById = useMemo(
@@ -88,7 +102,13 @@ export function useCanvasTableRows({
   const filteredNodeTableRows = useMemo(() => {
     if (!normalizedNodeTableFilter) return nodeTableRows;
     return nodeTableRows.filter((row) =>
-      [row.name, row.type, row.description, ...row.attributes.flatMap((attr) => [attr.name, attr.value, attr.unit])]
+      [
+        row.name,
+        row.type,
+        row.description,
+        ...row.tags.map((tag) => tag.label),
+        ...row.attributes.flatMap((attr) => [attr.name, attr.value, attr.unit]),
+      ]
         .join(" ")
         .toLowerCase()
         .includes(normalizedNodeTableFilter),

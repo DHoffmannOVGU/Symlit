@@ -32,7 +32,7 @@ import { UnitPicker } from "./UnitPicker";
 
 export type DerivedAttributeStateMap = globalThis.Map<
   string,
-  { value?: string; references: string[]; error?: string }
+  { value?: string; references: string[]; error?: string; pending?: string }
 >;
 
 export interface AttributeRowEditorProps {
@@ -457,6 +457,10 @@ export function AttributeRowEditor({
                   Type `[` to open attribute suggestions. Keep typing to
                   filter, then use arrow keys with `Enter` or `Tab` to insert.
                 </p>
+                <p className="text-[11px] text-muted-foreground" data-testid={`formula-syntax-${index}`}>
+                  Use + - * /, parentheses and numbers such as 0.5. Other
+                  attributes of this element go in square brackets, by name.
+                </p>
                 {extractFormulaReferences(
                   formulaDrafts[attr.id] ??
                     getDisplayFormula(attr.formula ?? "", attributes, attr.id),
@@ -508,7 +512,9 @@ export function AttributeRowEditor({
                   >
                     {derivedAttributeState.get(attr.id)?.error ||
                       derivedAttributeState.get(attr.id)?.value ||
-                      "Enter a formula"}
+                      (derivedAttributeState.get(attr.id)?.pending
+                        ? `Not calculated yet: ${derivedAttributeState.get(attr.id)?.pending}`
+                        : "Enter a formula")}
                   </div>
                 </div>
                 <div className="space-y-1">

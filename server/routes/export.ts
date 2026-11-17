@@ -8,7 +8,10 @@ import { importProjectFile, ProjectFileError } from "../services/project-import"
 export function registerExportRoutes(app: Express) {
   app.post(api.projects.import.path, async (req, res) => {
     try {
-      const result = await importProjectFile(req.body, { userId: req.workspaceUser!.id });
+      // A project imported next to one of the same name (a file exported from
+      // this workspace, or imported twice) would be impossible to tell apart
+      // on the project list: it is marked as imported.
+      const result = await importProjectFile(req.body, { userId: req.workspaceUser!.id, markTakenNames: true });
       res.status(201).json({
         project: result.project,
         firstViewId: result.firstViewId,

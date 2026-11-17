@@ -15,8 +15,9 @@ AI assistant.
 
 - **Metamodels:** define types of seven kinds (Object, Behavior, Concern, Performer, Need,
   Event, Capability) and connect them with six relationships (Association, Aggregation,
-  Composition, Generalization, Dependency, Realization). Types have attributes with units
-  and derived formulas, a style (icon, colour, shape, border) and inheritance.
+  Composition, Generalization, Dependency, Realization). Types have attributes of six kinds
+  (text, number with a unit, yes/no, date, list, and calculated by a formula), a style (icon,
+  colour, shape, border), and inherit attributes and allowed relationships through Generalization.
 - **Models** that use one or more metamodels: a searchable palette of all their types, and
   only the relationships the metamodel allows.
 - **Several diagrams per project:** an element is stored once and can appear in several diagrams.
@@ -24,21 +25,22 @@ AI assistant.
   screenshots and optional auto-save. A diagram changed elsewhere is never overwritten
   unnoticed; you choose which version to keep.
 - **Validation and model rules:** Validate lists what does not fit the metamodel or your own
-  rules in a panel beside the canvas. Damaged diagrams open in a guided recovery dialog.
-- **Flow mode:** step through the behavior of a model from a start to an end element.
+  rules in a panel beside the canvas. Rules can also tag elements; tags show on the cards and
+  in the table. Damaged diagrams open in a guided recovery dialog.
 - **Patterns:** save a selection as a reusable pattern and insert it elsewhere; metamodels can
   ship pattern libraries.
 - **Projects:** start empty, from a metamodel, or from a template (templates can bring their
   metamodel along); duplicate a project; see when each was last edited.
 - **Import and export:** JSON project files (export, and import as a new project) and CSV
   tables of elements and relationships.
-- **Two guided tutorials.** *Symlit basics* (about 25 minutes) teaches the tool around one question,
-  can the drone fly the city route: types and elements, attributes, typed models, validation, model
-  rules, table view, auto layout and patterns. *Production with PPR* (about 30 minutes) teaches a
-  method: modelling production as products, processes and resources, starting from the customer's
-  requirements and tracing each of them to what satisfies it. In both, steps tick off when the model
-  shows their result, each lesson ends with one question, and the last lesson is done without
-  step-by-step instructions.
+- **Six guided tutorials,** each built around one question and its own example: *Symlit basics*
+  (a delivery drone: the tool), *Production with PPR* (a shelf bracket: product, process,
+  resource and requirements tracing), *Calculate with attributes* (3D-printing quotes: attribute
+  types and formulas), *Classify and review* (a control cabinet: rules that tag, reviewed in the
+  table), *Structure and views* (an espresso machine: relationship kinds, Generalization, one
+  element in two diagrams) and *Reuse and variants* (sensor nodes: copies, pattern libraries, a
+  second metamodel, project files). Steps tick off when the model shows their result, each lesson
+  ends with one question, and the last lesson of each is done without step-by-step instructions.
 - **Optional AI metamodel assistant** (Google Gemini, bring your own API key).
 
 ## Quick start

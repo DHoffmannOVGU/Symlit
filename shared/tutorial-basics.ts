@@ -4,6 +4,8 @@
  * and follows the real workflow with one question in mind.
  */
 import {
+  attributeOf,
+  comparesWith,
   editing,
   ELEMENT_CARD,
   hasValue,
@@ -15,9 +17,21 @@ import {
   VALIDATE,
   type TutorialDefinition,
   type TutorialLesson,
+  type TutorialModelState,
 } from "./tutorial-types";
 
 const QUESTION = "Can the drone Courier X1 fly the city route?";
+
+/**
+ * The learner's rule: a drone whose range is below the 15 km of the city
+ * route is reported. The texts that follow state that 18 km covers 15 km, so
+ * the rule has to say exactly that.
+ */
+const rangeRule = (state: TutorialModelState) =>
+  state.rules.some(
+    (rule) =>
+      rule.reportsIssue && same(rule.target, "Drone") && comparesWith(rule, "range", ["less-than"]) === 15,
+  );
 
 /** The types the tutorial metamodel starts with. */
 const STARTING_TYPES = ["Drone", "Battery", "Delivery"];
@@ -54,7 +68,7 @@ const LESSONS: TutorialLesson[] = [
         id: "open-element",
         title: "Look inside an element",
         instruction:
-          "Double-click Courier X1 to open it. Compare it with the Drone type you just saw: the same attributes, now with values.",
+          "Before you open Courier X1, guess: which attributes will it have, and will they have values? Then double-click it and compare with the Drone type you just saw.",
         done: "Courier X1 is an element of type Drone. It got mass and range from its type and fills in its own values: 4.2 kg and 18 km. Press Cancel to close the editor.",
         scope: "instance",
         check: (state) => editing(state, "Courier X1"),
@@ -85,16 +99,17 @@ const LESSONS: TutorialLesson[] = [
         hint: "Clicking Object instead of dragging places it in a free spot. A camera is a thing, so Object is the right kind.",
         done: "A new type, still with a placeholder name.",
         scope: "metamodel",
-        check: (state) => state.elements.some((element) => !STARTING_TYPES.some((name) => same(name, element.name))),
+        // One type more than at the start: renaming an existing type is not adding one.
+        check: (state) => state.elements.length > STARTING_TYPES.length,
         highlight: ['[data-testid="button-create-sidebar-partdef"]'],
       },
       {
         id: "name-type",
         title: "Name it Camera",
         instruction:
-          "Double-click the new type, change its Name to Camera and press Save Changes at the bottom of the editor.",
-        hint: "The tutorial looks for a type named exactly Camera. Save Changes keeps what you edited in the editor; it does not store the diagram yet.",
-        done: "Symlit saves in two steps. Save Changes keeps your edits to one type or element. Save at the top right stores the whole diagram; until then the header shows Unsaved changes.",
+          "Double-click the new type, change its Name to Camera and press Apply at the bottom of the editor. Guess first: will the header still say Unsaved changes afterwards?",
+        hint: "The tutorial looks for a type named exactly Camera. Apply puts what you edited into the diagram; it does not store the diagram yet.",
+        done: "Symlit saves in two steps. Apply puts your edits to one type or element into the diagram. Save at the top right stores the whole diagram; until then the header shows Unsaved changes.",
         scope: "metamodel",
         check: (state) => named(state, "Camera").length > 0,
         highlight: ['[data-testid="input-node-label"]', { selector: ELEMENT_CARD, text: "New Object" }],
@@ -103,18 +118,18 @@ const LESSONS: TutorialLesson[] = [
         id: "add-attribute",
         title: "Give it an attribute",
         instruction:
-          "Open Camera again and press Add attribute. Name the attribute resolution, pick a unit if you like, and press Add attribute. Then press Save Changes.",
+          "Open Camera again and press Add attribute. Name the attribute resolution, pick a unit if you like, and press Add attribute. Then press Apply.",
         hint: "An attribute is a property every camera has. Leave Default value empty: each camera gets its own value later. In the unit list you can search, or type your own unit such as MP.",
         done: "Every camera created from now on starts with a resolution attribute.",
         scope: "metamodel",
-        check: (state) => named(state, "Camera").some((element) => element.attributes.length > 0),
+        check: (state) => named(state, "Camera").some((element) => attributeOf(element, "resolution") !== undefined),
         highlight: ['[data-testid="button-add-attribute"]', { selector: ELEMENT_CARD, text: "Camera" }],
       },
       {
         id: "relate-types",
         title: "Relate Drone to Camera",
         instruction:
-          "Move the pointer over the Drone card: round handles appear on its sides. Drag from one of these handles to the Camera card.",
+          "Move the pointer over the Drone card: round handles appear on its sides. Drag from one of these handles and let go on the Camera card.",
         hint: "The direction matters: start at Drone and end on Camera. If the arrow points the wrong way, click the relationship, press Delete and draw it again.",
         done: "You drew an Association: a drone can now be related to a camera. Models may only connect elements the way their types are related. The diamond on powered by marks a Composition, a stronger kind: a battery is part of its drone. Double-click a relationship to name it or change its kind.",
         scope: "metamodel",
@@ -126,9 +141,11 @@ const LESSONS: TutorialLesson[] = [
         title: "Save the metamodel",
         instruction: "Press Save at the top right, so that the model can use the new type.",
         done: "Saved. Camera is now available in every model that uses Drone types.",
-        signal: "saved",
         scope: "metamodel",
-        check: (state) => named(state, "Camera").length > 0,
+        // Judged on the saved diagram once the work before it is done: a save before
+        // the attribute and the relationship were there did not store them.
+        afterPrevious: true,
+        check: (state) => named(state, "Camera").length > 0 && !state.dirty,
         highlight: [SAVE_DIAGRAM],
       },
     ],
@@ -154,7 +171,7 @@ const LESSONS: TutorialLesson[] = [
         instruction:
           "Open Delivery drone. The Add elements tab lists the types from Drone types, now including Camera. Drag Camera onto the canvas.",
         hint: "Clicking Camera instead of dragging places it in the middle of the canvas. If Camera is missing from the list, the metamodel was not saved: go back to Drone types and press Save.",
-        done: "A new element of type Camera, named New Camera.",
+        done: "A new element of type Camera, with a placeholder name such as New Camera 5.",
         scope: "instance",
         check: (state) => ofType(state, "Camera").length > 0,
         highlight: [{ selector: '[data-testid^="button-insert-referenced-class-"]', text: "Camera" }],
@@ -163,17 +180,21 @@ const LESSONS: TutorialLesson[] = [
         id: "set-value",
         title: "Fill in its values",
         instruction:
-          "Double-click the new camera. It already has the resolution attribute from its type. Enter a value such as 12, give the camera a name such as Nose camera, and press Save Changes.",
+          "Guess first: will the new camera have the resolution you defined on the type? Double-click it and see. Enter a value such as 12, give the camera a name such as Nose camera, and press Apply.",
         done: "An element starts with a copy of its type's attributes and then keeps its own values. If a type gains an attribute later, existing elements keep what they have; their editor offers to add the new attribute.",
         scope: "instance",
-        check: (state) => ofType(state, "Camera").some((element) => hasValue(element)),
-        highlight: ['[data-testid="input-attr-value-0"]', { selector: ELEMENT_CARD, text: "Camera" }],
+        // A value it got from a default on the type, and the placeholder name, are not filled in yet.
+        check: (state) =>
+          ofType(state, "Camera").some(
+            (element) => hasValue(element, "resolution") && !/^new camera\b/i.test(element.name.trim()),
+          ),
+        highlight: ['[data-attribute-name="resolution"]', { selector: ELEMENT_CARD, text: "Camera" }],
       },
       {
         id: "connect-instances",
         title: "Connect it to the drone",
         instruction:
-          "Drag from a handle on Courier X1 to the camera. Symlit looks up which relationship the metamodel allows between a Drone and a Camera; confirm its suggestion with the check mark.",
+          "Drag from a handle on Courier X1 and let go on the camera. Symlit looks up which relationship the metamodel allows between a Drone and a Camera; confirm its suggestion with the check mark.",
         hint: "Start at Courier X1, as in the metamodel: the relationship there runs from Drone to Camera.",
         done: "The model now says that Courier X1 has this camera, in the way the metamodel allows.",
         scope: "instance",
@@ -185,9 +206,9 @@ const LESSONS: TutorialLesson[] = [
         title: "Save the model",
         instruction: "Press Save at the top right.",
         done: "Saved. The model now contains a camera that did not exist as a concept ten minutes ago.",
-        signal: "saved",
         scope: "instance",
-        check: (state) => ofType(state, "Camera").length > 0,
+        afterPrevious: true,
+        check: (state) => ofType(state, "Camera").length > 0 && !state.dirty,
         highlight: [SAVE_DIAGRAM],
       },
     ],
@@ -225,12 +246,13 @@ const LESSONS: TutorialLesson[] = [
         id: "fix-issue",
         title: "Fix the issue",
         instruction:
-          "Click the issue to find Pack B on the canvas. Double-click Pack B, enter a capacity such as 160 and press Save Changes.",
+          "Click the issue to find Pack B on the canvas. Double-click Pack B, enter a capacity such as 160 and press Apply.",
         hint: "The results stay open while you work. Every battery in the model needs a capacity value.",
         done: "Pack B now has a capacity.",
         scope: "instance",
+        // Two batteries at the start: deleting Pack B is not fixing it.
         check: (state) =>
-          ofType(state, "Battery").length > 0 &&
+          ofType(state, "Battery").length >= 2 &&
           ofType(state, "Battery").every((element) => hasValue(element, "capacity")),
         highlight: ['[data-testid="validation-issue-0"]', { selector: ELEMENT_CARD, text: "Pack B" }],
       },
@@ -245,37 +267,25 @@ const LESSONS: TutorialLesson[] = [
         highlight: ['[data-testid="button-validate-again"]', VALIDATE],
       },
       {
-        id: "open-rules",
-        title: "Read the rule that fired",
-        instruction:
-          "Open Model rules at the bottom of the sidebar and read the rule Every battery needs a capacity: for Battery, when capacity is not set, report an issue.",
-        done: "A rule has three parts: which elements it looks at, a condition, and what happens when the condition holds: report an issue or add a tag.",
-        signal: "rules-opened",
-        scope: "instance",
-        highlight: ['[data-testid="button-model-rules"]'],
-      },
-      {
         id: "add-rule",
         title: "Write your own rule",
         instruction:
-          "The city route is 15 km long. Press Add rule and set it up: name Range covers the city route; elements Drone; condition range · is less than · 15; then report an issue. Press Save in the rules panel.",
-        hint: "In the condition row, the second list picks the attribute (range) and the third the comparison. In the Then row, switch from add descriptor tag to report an issue. The panel's Save stores the rules; it is separate from the diagram's Save.",
-        done: "Your rule is stored with the diagram and checked on every validation.",
+          "The city route is 15 km long. Open Model rules at the bottom of the sidebar: the rule that fired is there, Every battery needs a capacity. Below it, press Add rule and set it up: name Range covers the city route; in the list next to the name, change All object types to Drone; condition range · is less than · 15; then report an issue. Press Save in the rules panel.",
+        hint: "The tutorial looks for exactly this rule: for Drone, range · is less than · 15, report an issue. In the condition row, the second list picks the attribute (range) and the third the comparison. In the Then row, switch from add descriptor tag to report an issue. The panel's Save stores the rules; it is separate from the diagram's Save.",
+        done: "A rule has three parts: which elements it looks at, a condition, and what happens when the condition holds. Yours is stored with the diagram and checked on every validation.",
         scope: "instance",
-        check: (state) =>
-          state.rules.some((rule) => rule.reportsIssue && rule.attributes.some((name) => same(name, "range"))),
+        check: rangeRule,
         highlight: ['[data-testid="button-add-rule"]', '[data-testid="button-model-rules"]'],
       },
       {
         id: "answer-question",
         title: "Answer the question",
         instruction: "Close the rules panel and press Validate once more.",
-        hint: "If your rule reports Courier X1, compare the condition with: range · is less than · 15.",
+        hint: "If validation still reports something, read the issue: it names the element and what is wrong. Your rule only reports a drone whose range is below 15 km; a relationship the metamodel does not allow is reported too.",
         done: "No issues: 18 km of range covers the 15 km route. Yes, Courier X1 can fly the city route, and the model will say so if that ever changes. Try it: set the range to 10, validate, then undo.",
         signal: "validation-passed",
         scope: "instance",
-        check: (state) =>
-          state.rules.some((rule) => rule.reportsIssue && rule.attributes.some((name) => same(name, "range"))),
+        check: rangeRule,
         highlight: [VALIDATE],
       },
     ],
@@ -314,7 +324,7 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "auto-layout",
         title: "Tidy the diagram",
-        instruction: "Switch back to Diagram and press Auto layout.",
+        instruction: "Guess first: will Auto layout change any value or relationship? Then switch back to Diagram and press Auto layout.",
         hint: "Undo (Ctrl+Z, or Cmd+Z on a Mac) puts everything back if you prefer your own layout.",
         done: "Auto layout arranges elements along their relationships. It changes positions only, never the model.",
         signal: "auto-layout",
@@ -325,8 +335,8 @@ const LESSONS: TutorialLesson[] = [
         id: "save-pattern",
         title: "Save a pattern",
         instruction:
-          "Select Courier X1 and Pack A together: hold Shift and drag a box around them, or Ctrl-click each (Cmd-click on a Mac). Press Save pattern in the toolbar and name it Drone with battery.",
-        done: "The pattern stores both elements, their types and values, and the relationship between them.",
+          "Select only Courier X1 and Pack A: click Courier X1, then Ctrl-click Pack A (Cmd-click on a Mac), or hold Shift and drag a box around just these two. Press Save pattern in the toolbar and name it Drone with battery.",
+        done: "The pattern stores the selected elements, their types and values, and the relationships between them.",
         signal: "pattern-saved",
         scope: "instance",
         highlight: ['[data-testid="button-toolbar-save-pattern"]', { selector: ELEMENT_CARD, text: "Courier X1" }],
@@ -336,9 +346,13 @@ const LESSONS: TutorialLesson[] = [
         title: "Insert the pattern",
         instruction:
           "Open the Diagrams tab in the sidebar. Under Patterns, point at Drone with battery and press the arrow next to it.",
-        done: "A second drone with its battery, typed and connected in one step. The copies are elements of their own: rename them and change their values freely.",
-        signal: "pattern-inserted",
+        hint: "If only a drone was inserted, the pattern was saved without Pack A: select both and save it again.",
+        done: "A copy of the pattern, typed and connected in one step: a second drone with its battery. The copies are elements of their own: rename them and change their values freely.",
         scope: "instance",
+        // Judged by what was inserted: a pattern without the battery is not a drone with its battery.
+        afterPrevious: true,
+        check: (state) =>
+          ofType(state, "Drone").filter((drone) => related(state, [drone], ofType(state, "Battery"))).length >= 2,
         highlight: ['[data-testid^="button-insert-pattern-"]', '[data-sidebar="sidebar"] [role="tablist"]'],
       },
     ],
@@ -367,7 +381,7 @@ const LESSONS: TutorialLesson[] = [
         title: "Define a Charger type",
         instruction:
           "In Drone types: add a type named Charger with an attribute power, relate Charger to Battery, and save the metamodel.",
-        hint: "This is lesson 2 again: drag Object, name it, add the attribute, drag from a handle on Charger to Battery, press Save at the top right.",
+        hint: "This is lesson 2 again: drag Object, name it, add the attribute, drag from a handle on Charger and let go on Battery, press Save at the top right.",
         done: "Charger is part of the vocabulary now.",
         scope: "metamodel",
         check: (state) =>
@@ -401,8 +415,8 @@ const LESSONS: TutorialLesson[] = [
         id: "export",
         title: "Export the model",
         instruction:
-          "Save the diagram, then use Export Project at the bottom of the sidebar to download the model.",
-        hint: "JSON holds the whole project, including the metamodel it uses. CSV lists elements and relationships for spreadsheets and other tools.",
+          "Save the diagram, then press Export Project at the bottom of the sidebar and download the Structured model package (JSON), the format it offers first.",
+        hint: "The JSON package holds the model's diagrams. Tick Referenced metamodel definitions to include Drone types, and Reusable patterns to include Drone with battery. The two CSV formats list either the elements or the relationships, for spreadsheets.",
         done: "The model is a file now: something you can share, archive or load into another tool.",
         signal: "exported",
         scope: "instance",
@@ -414,7 +428,7 @@ const LESSONS: TutorialLesson[] = [
 
 const NOT_COVERED = [
   "Several diagrams per project: an element is stored once and can appear in many",
-  "Generalization: a type inherits attributes and relationships from another",
+  "Generalization: elements of a specialized type also get the attributes of its general type, and it may be used wherever the general type is allowed in a relationship",
   "Derived attributes: values calculated from other attributes with a formula",
   "Tags: rules that label elements instead of reporting issues",
 ];
@@ -427,7 +441,7 @@ export const BASICS_TUTORIAL: TutorialDefinition = {
   answer: "Yes: its 18 km of range covers the 15 km route, and your rule keeps checking that.",
   answerStep: "answer-question",
   summary:
-    "Find out by modeling it. You define what a drone, a battery and a camera are, build a model from these types, let Symlit check it, and write the rule that answers the question. The last lesson is yours: you extend the model without step-by-step instructions.",
+    "Find out by modeling it. You look at what a drone and a battery are, define a camera, build a model from these types, let Symlit check it, and write the rule that answers the question. The last lesson is yours: you extend the model without step-by-step instructions.",
   minutes: 25,
   projects: { metamodel: "Drone types", instance: "Delivery drone" },
   finishedTitle: "You built, checked and extended a model",

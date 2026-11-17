@@ -232,6 +232,30 @@ describe("views and diagrams", () => {
     assert.deepEqual(loaded.json.nodes[0].position, { x: 42, y: 24 });
   });
 
+  test("inserting an element says how the diagram's revision changed, so the next save is not a conflict", async () => {
+    const project = await createProject();
+    const first = await createView(project.id, "First");
+    const second = await createView(project.id, "Second");
+    const flow = sampleFlow(`rev${project.id}`);
+    await request("POST", `/api/views/${first.id}/sync`, flow);
+    const opened = (await request("GET", `/api/views/${second.id}/flow`)).json.revision;
+
+    const insert = await request("POST", `/api/views/${second.id}/nodes/${flow.nodes[0].id}/insert`, {
+      position: { x: 10, y: 10 },
+    });
+    assert.equal(insert.json.revisionBefore, opened);
+    const now = (await request("GET", `/api/views/${second.id}/flow`)).json;
+    assert.equal(insert.json.revision, now.revision);
+    assert.notEqual(insert.json.revision, opened);
+
+    // Based on the old revision the save is refused; on the new one it goes through.
+    const nodes = now.nodes.map((node: any) => ({ id: node.id, type: node.type, position: { x: 20, y: 20 }, data: node.data }));
+    const stale = await request("POST", `/api/views/${second.id}/sync`, { nodes, edges: [], baseRevision: opened });
+    assert.equal(stale.status, 409, stale.text);
+    const current = await request("POST", `/api/views/${second.id}/sync`, { nodes, edges: [], baseRevision: insert.json.revision });
+    assert.equal(current.status, 200, current.text);
+  });
+
   test("rejects edges whose endpoints are missing", async () => {
     const project = await createProject();
     const view = await createView(project.id);
@@ -530,6 +554,46 @@ describe("guided tutorial", () => {
     assert.ok(!model.edges.some((edge: Relationship) => requirements.some((node: Element) => node.id === edge.target)));
   });
 
+  test("every tutorial's template creates a metamodel and a model that follows it", async () => {
+    const { TUTORIALS } = await import("@shared/tutorial");
+    for (const tutorial of TUTORIALS) {
+      const res = await request("POST", `/api/tutorial/${tutorial.id}`);
+      assert.equal(res.status, 201, `${tutorial.id}: ${res.text}`);
+      const { metamodel, instance, metamodelViewId, instanceViewId } = res.json;
+      assert.equal(metamodel.templateId, tutorial.templateId, tutorial.id);
+      assert.equal(instance.templateId, tutorial.templateId, tutorial.id);
+      assert.ok(instance.referencedMetamodels.includes(metamodel.id), tutorial.id);
+      assert.ok(metamodelViewId && instanceViewId, tutorial.id);
+      // Whatever the model is meant to lack, it is typed by its metamodel and
+      // uses only relationships the metamodel allows.
+      const { issues } = (await request("POST", `/api/views/${instanceViewId}/validate`)).json;
+      assert.deepEqual(issues, [], `${tutorial.id}: ${JSON.stringify(issues)}`);
+      const removed = await request("DELETE", `/api/tutorial/${tutorial.id}`);
+      assert.ok(removed.json.deletedProjects >= 2, tutorial.id);
+    }
+  });
+
+  test("a tutorial's extra projects are marked and removed with it", async () => {
+    const { metamodel, instance } = (await request("POST", "/api/tutorial/reuse")).json;
+    const projects = (await request("GET", "/api/projects")).json as Array<{
+      id: number;
+      name: string;
+      templateId: string | null;
+      referencedMetamodels: number[];
+    }>;
+    const extras = projects.filter((project) => project.templateId === "tutorial-reuse+extra");
+    assert.deepEqual(extras.map((project) => project.name), ["Tutorial · Radio modules"]);
+    // The second metamodel builds on the first.
+    assert.deepEqual(extras[0].referencedMetamodels, [metamodel.id]);
+    // A copy of the model made by the learner goes with the tutorial too.
+    const copy = await request("POST", `/api/projects/${instance.id}/duplicate`, {});
+    assert.equal(copy.status, 201, copy.text);
+    const removed = await request("DELETE", "/api/tutorial/reuse");
+    assert.equal(removed.json.deletedProjects, 4);
+    const left = (await request("GET", "/api/projects")).json as Array<{ id: number }>;
+    assert.ok(!left.some((project) => [metamodel.id, instance.id, extras[0].id, copy.json.project.id].includes(project.id)));
+  });
+
   test("tutorials are created and removed one at a time; an unknown one is a 404", async () => {
     await request("DELETE", "/api/tutorial");
     await request("POST", "/api/tutorial/basics");
@@ -741,7 +805,11 @@ describe("project import", () => {
     assert.equal(imported.status, 201, imported.text);
     assert.equal(imported.json.createdProjects, 2);
     assert.notEqual(imported.json.project.id, project.id);
-    assert.equal(imported.json.project.name, "Import me");
+    // Imported next to the projects it came from: both are marked, so the two pairs can be told apart.
+    assert.equal(imported.json.project.name, "Import me (imported)");
+    const names = ((await request("GET", "/api/projects")).json as Array<{ name: string }>).map((p) => p.name);
+    assert.ok(names.includes("Import types (imported)"));
+    assert.ok(names.includes("Import me") && names.includes("Import types"), "the originals keep their names");
     assert.equal(imported.json.project.referencedMetamodels.length, 1);
     assert.notEqual(imported.json.project.referencedMetamodels[0], metamodel.id);
 
@@ -752,6 +820,23 @@ describe("project import", () => {
     const labels = (flow: { nodes: Array<{ data: { label?: string } }> }) =>
       flow.nodes.map((node) => node.data.label).sort();
     assert.deepEqual(labels(copy), labels(original));
+
+    // Imported once more, the copies get a mark of their own.
+    const twice = await request("POST", "/api/projects/import", exported.json);
+    assert.equal(twice.status, 201, twice.text);
+    assert.equal(twice.json.project.name, "Import me (imported 2)");
+
+    // Where the name is free, it is kept.
+    const exportedAgain = await request("POST", `/api/projects/${project.id}/export`, {
+      format: "json",
+      includeReferencedMetamodels: true,
+    });
+    const again = await request("POST", "/api/projects/import", {
+      ...exportedAgain.json,
+      project: { ...exportedAgain.json.project, name: "A free name" },
+    });
+    assert.equal(again.status, 201, again.text);
+    assert.equal(again.json.project.name, "A free name");
   });
 
   test("rejects files that are not project files, saving nothing", async () => {

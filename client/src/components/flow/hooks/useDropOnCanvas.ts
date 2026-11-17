@@ -4,7 +4,7 @@ import { normalizeHandleId } from "@shared/relationships";
 import { dispatchDiagramEvent } from "@/lib/diagram-events";
 import { newEdgeId, newNodeId } from "@/lib/ids";
 import { applyTypeStyle, pickElementStyle } from "@/lib/element-style";
-import { attributesFromType } from "@/lib/type-attributes";
+import { attributesForElementOfType } from "@/lib/type-attributes";
 import type { DiagramNode, NodeData } from "../types";
 import { useDiagramStore, useDiagramStoreApi } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
@@ -185,10 +185,7 @@ export function useDropOnCanvas() {
                     nextData,
                     pickElementStyle(partDefStyleById.get(typeId) ?? { icon: options?.icon, color: options?.color }),
                   ),
-                  attributes: attributesFromType(
-                    typeId,
-                    availablePartDefNodes.find((candidate) => candidate.id === typeId)?.data?.attributes,
-                  ),
+                  attributes: attributesForElementOfType(typeId, availablePartDefNodes, parentMap),
                 }
               : nextData,
           };

@@ -38,7 +38,10 @@ export function useProjectExport(projectId: number): UseProjectExportResult {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(blobUrl);
-      emitTutorialSignal("exported");
+      // The relationships file is not a list of elements: it gives no signal of its own.
+      if (options.format === "json") emitTutorialSignal("exported");
+      if (options.format === "json" && options.includeReferencedMetamodels) emitTutorialSignal("exported-with-metamodels");
+      if (options.format === "elements-csv") emitTutorialSignal("exported-csv");
       toast({
         title: "Export created",
         description: "Your download should start shortly.",

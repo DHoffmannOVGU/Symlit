@@ -34,6 +34,21 @@ export interface ImportOptions {
    * the file's diagrams stay the existing elements.
    */
   existingMetamodels?: number[];
+  /**
+   * Marks a created project whose name the user's projects already have
+   * "(imported)", or "(imported 2)" and so on, so that the two can be told
+   * apart. A name given in `main` is kept as it is.
+   */
+  markTakenNames?: boolean;
+}
+
+/** `name`, or the first of "name (imported)", "name (imported 2)", … that is not taken. */
+export function freeImportedName(name: string, taken: Set<string>): string {
+  if (!taken.has(name)) return name;
+  for (let attempt = 1; ; attempt += 1) {
+    const candidate = `${name} (imported${attempt === 1 ? "" : ` ${attempt}`})`;
+    if (!taken.has(candidate)) return candidate;
+  }
 }
 
 export interface ImportResult {
@@ -84,6 +99,7 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
   const elementIds = new Map<string, string>();
   const elementOwner = new Map<string, number>();
   const elementRecord = new Map<string, { type: string; data: Record<string, unknown> }>();
+  const recordedFromOwner = new Set<string>();
   const diagramsOf = (entry: Bundled) => [...entry.views, ...(entry.patterns ?? [])];
   for (const entry of bundle) {
     for (const view of diagramsOf(entry)) {
@@ -104,9 +120,13 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
         }
         elementOwner.set(node.id, owner);
         if (!elementIds.has(node.id)) elementIds.set(node.id, `node_${randomUUID()}`);
-        // The owner's own diagrams hold the element's data.
-        if (!elementRecord.has(node.id) || owner === entry.project.id) {
+        // The owner's own diagrams hold the element's data. An element shown
+        // in several of them is the same everywhere: its first occurrence
+        // there is taken, so a later, shorter one does not strip it.
+        const fromOwner = owner === entry.project.id;
+        if (!elementRecord.has(node.id) || (fromOwner && !recordedFromOwner.has(node.id))) {
           elementRecord.set(node.id, { type: node.type ?? "default", data: node.data ?? {} });
+          if (fromOwner) recordedFromOwner.add(node.id);
         }
       }
     }
@@ -114,14 +134,25 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
 
   return db.transaction(async (tx) => {
     const created = new Map<number, Project>();
+    // Chosen in the transaction, so that a failure leaves nothing behind, renamed or not.
+    const taken = options.markTakenNames
+      ? new Set(
+          (await tx.select({ name: projects.name }).from(projects).where(eq(projects.userId, options.userId))).map(
+            (row) => row.name,
+          ),
+        )
+      : null;
     for (const entry of bundle) {
       const isMain = entry === file;
       const source = entry.project;
+      const givenName = isMain ? options.main?.name : undefined;
+      const name = givenName || (taken ? freeImportedName(source.name, taken) : source.name);
+      taken?.add(name);
       const [project] = await tx
         .insert(projects)
         .values({
           userId: options.userId,
-          name: (isMain && options.main?.name) || source.name,
+          name,
           description: isMain && options.main?.description !== undefined
             ? options.main.description
             : (source.description ?? ""),
@@ -150,9 +181,13 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
         .where(eq(projects.id, newProjectId(project.id)));
     }
 
-    /** Rewires a type reference: `mm:<project>:<element>` or a plain element id. */
-    const remapType = (value: unknown) => {
+    /**
+     * Rewires a type reference: `mm:<project>:<element>`, a plain element id,
+     * or `node:<element>`, which a rule in a metamodel uses for one of its types.
+     */
+    const remapType = (value: unknown): unknown => {
       if (typeof value !== "string") return value;
+      if (value.startsWith("node:")) return `node:${remapType(value.slice("node:".length))}`;
       const match = /^mm:(\d+):(.+)$/.exec(value);
       if (match && created.has(Number(match[1]))) {
         return `mm:${newProjectId(Number(match[1]))}:${elementIds.get(match[2]) ?? match[2]}`;

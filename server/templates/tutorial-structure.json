@@ -1,0 +1,571 @@
+{
+  "template": {
+    "id": "tutorial-structure",
+    "name": "Guided tutorial: Structure and views",
+    "description": "The Machine types metamodel and the Espresso machine E1 model used by the tutorial on structure and diagrams. The model has one diagram, Structure; the learner adds a second one that shows the same elements along the water path.",
+    "listed": false
+  },
+  "export": {
+    "version": 1,
+    "kind": "instance-model"
+  },
+  "project": {
+    "id": 12,
+    "name": "Tutorial \u00b7 Espresso machine E1",
+    "description": "Model for the tutorial on structure and diagrams: one espresso machine and its components.",
+    "projectType": "instance",
+    "referencedMetamodels": [
+      11
+    ],
+    "metamodelSetup": null
+  },
+  "views": [
+    {
+      "id": 12,
+      "projectId": 12,
+      "name": "Structure",
+      "description": "What the machine consists of.",
+      "viewType": "view",
+      "modelRules": [],
+      "nodes": [
+        {
+          "id": "node_647bfa8a-3856-51b7-a1ce-3225c15669ae",
+          "projectId": 12,
+          "type": "part",
+          "data": {
+            "icon": "Factory",
+            "type": "Machine",
+            "color": "#475569",
+            "label": "E1",
+            "typeId": "mm:11:node_da29d2d7-645e-596b-940f-b3d701d4e0f9",
+            "description": "Single-group espresso machine for small cafes.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 330,
+            "y": 0
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_f25c45af-e778-5924-bb5e-0ee7ee20733d",
+          "projectId": 12,
+          "type": "part",
+          "data": {
+            "icon": "Database",
+            "type": "Tank",
+            "color": "#0891b2",
+            "label": "Water tank",
+            "typeId": "mm:11:node_4660e998-bb9b-5cc5-b2f5-8d894c0c3529",
+            "attributes": [
+              {
+                "id": "attr-volume",
+                "name": "volume",
+                "type": "number",
+                "unit": "l",
+                "value": "2",
+                "description": "How much it holds"
+              },
+              {
+                "id": "attr-part-number",
+                "name": "part number",
+                "type": "string",
+                "unit": "",
+                "value": "E1-010",
+                "description": "Number in the spare parts list"
+              },
+              {
+                "id": "attr-mass",
+                "name": "mass",
+                "type": "number",
+                "unit": "kg",
+                "value": "0.4",
+                "description": "Mass of the component"
+              }
+            ],
+            "description": "Removable tank at the back.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 0,
+            "y": 250
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_cb8014b7-1dd4-527c-8a7b-b7f3d05103c9",
+          "projectId": 12,
+          "type": "part",
+          "data": {
+            "icon": "Activity",
+            "type": "Pump",
+            "color": "#2563eb",
+            "label": "Vibration pump",
+            "typeId": "mm:11:node_2adc04ef-591e-5aa5-a76a-bc07aa7cacff",
+            "attributes": [
+              {
+                "id": "attr-pressure",
+                "name": "pressure",
+                "type": "number",
+                "unit": "bar",
+                "value": "15",
+                "description": "Pressure it delivers"
+              },
+              {
+                "id": "attr-part-number",
+                "name": "part number",
+                "type": "string",
+                "unit": "",
+                "value": "E1-020",
+                "description": "Number in the spare parts list"
+              },
+              {
+                "id": "attr-mass",
+                "name": "mass",
+                "type": "number",
+                "unit": "kg",
+                "value": "0.6",
+                "description": "Mass of the component"
+              }
+            ],
+            "description": "Draws water from the tank and builds up the brewing pressure.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 230,
+            "y": 250
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_1dbc7910-39f6-5346-802b-6a53695ad8c2",
+          "projectId": 12,
+          "type": "part",
+          "data": {
+            "icon": "Flame",
+            "type": "Boiler",
+            "color": "#dc2626",
+            "label": "Boiler",
+            "typeId": "mm:11:node_ac66eb9b-bc93-55cc-8314-55f2f32ab0d6",
+            "attributes": [
+              {
+                "id": "attr-power",
+                "name": "power",
+                "type": "number",
+                "unit": "W",
+                "value": "1200",
+                "description": "Heating power"
+              },
+              {
+                "id": "attr-part-number",
+                "name": "part number",
+                "type": "string",
+                "unit": "",
+                "value": "E1-030",
+                "description": "Number in the spare parts list"
+              },
+              {
+                "id": "attr-mass",
+                "name": "mass",
+                "type": "number",
+                "unit": "kg",
+                "value": "1.8",
+                "description": "Mass of the component"
+              }
+            ],
+            "description": "Brass boiler with a heating element.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 460,
+            "y": 250
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_2a4add34-5599-5dbc-bcb9-fa9fe8a6f732",
+          "projectId": 12,
+          "type": "part",
+          "data": {
+            "icon": "Aperture",
+            "type": "Brew group",
+            "color": "#d97706",
+            "label": "Brew group",
+            "typeId": "mm:11:node_402e6d0d-761c-5244-90ac-dc6cd7715e41",
+            "attributes": [
+              {
+                "id": "attr-part-number",
+                "name": "part number",
+                "type": "string",
+                "unit": "",
+                "value": "E1-040",
+                "description": "Number in the spare parts list"
+              },
+              {
+                "id": "attr-mass",
+                "name": "mass",
+                "type": "number",
+                "unit": "kg",
+                "value": "3.5",
+                "description": "Mass of the component"
+              }
+            ],
+            "description": "Where the portafilter locks in.",
+            "inheritStyle": true
+          },
+          "position": {
+            "x": 690,
+            "y": 250
+          },
+          "parentId": null
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge_62d39609-cdc5-5fc4-bbad-ae7f3f01dd97",
+          "viewId": 12,
+          "source": "node_647bfa8a-3856-51b7-a1ce-3225c15669ae",
+          "target": "node_f25c45af-e778-5924-bb5e-0ee7ee20733d",
+          "edgeType": "composition",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "composition",
+            "label": "consists of"
+          }
+        },
+        {
+          "id": "edge_d611666a-3896-5f4b-b9fc-0731b1784673",
+          "viewId": 12,
+          "source": "node_647bfa8a-3856-51b7-a1ce-3225c15669ae",
+          "target": "node_cb8014b7-1dd4-527c-8a7b-b7f3d05103c9",
+          "edgeType": "composition",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "composition",
+            "label": "consists of"
+          }
+        },
+        {
+          "id": "edge_249ac9f6-1e37-549e-8675-84dbafc5547b",
+          "viewId": 12,
+          "source": "node_647bfa8a-3856-51b7-a1ce-3225c15669ae",
+          "target": "node_1dbc7910-39f6-5346-802b-6a53695ad8c2",
+          "edgeType": "composition",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "composition",
+            "label": "consists of"
+          }
+        },
+        {
+          "id": "edge_a115c792-e7bb-5d85-b3c6-e876cc113e92",
+          "viewId": 12,
+          "source": "node_647bfa8a-3856-51b7-a1ce-3225c15669ae",
+          "target": "node_2a4add34-5599-5dbc-bcb9-fa9fe8a6f732",
+          "edgeType": "composition",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "edgeType": "composition",
+            "label": "consists of"
+          }
+        }
+      ]
+    }
+  ],
+  "patterns": [],
+  "referencedMetamodels": [
+    {
+      "project": {
+        "id": 11,
+        "name": "Tutorial \u00b7 Machine types",
+        "description": "Metamodel for the tutorial on structure and diagrams: a machine, its components and what feeds what.",
+        "projectType": "metamodel",
+        "referencedMetamodels": [],
+        "metamodelSetup": {
+          "version": 1,
+          "purpose": "custom",
+          "description": "Machines, the components they consist of, and how the components are connected.",
+          "nodeTypes": [
+            "partdef",
+            "actiondef",
+            "agentdef",
+            "requirementdef"
+          ],
+          "relationTypes": [
+            "association",
+            "composition",
+            "generalization"
+          ]
+        }
+      },
+      "views": [
+        {
+          "id": 11,
+          "projectId": 11,
+          "name": "Types",
+          "description": "A machine consists of components; some components feed others.",
+          "viewType": "view",
+          "modelRules": [],
+          "nodes": [
+            {
+              "id": "node_da29d2d7-645e-596b-940f-b3d701d4e0f9",
+              "projectId": 11,
+              "type": "partdef",
+              "data": {
+                "icon": "Factory",
+                "type": "Object",
+                "color": "#475569",
+                "label": "Machine",
+                "description": "A machine that is sold as one product."
+              },
+              "position": {
+                "x": 0,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_7410fb0a-fd54-5557-ae6a-95b5d101738d",
+              "projectId": 11,
+              "type": "partdef",
+              "data": {
+                "icon": "Boxes",
+                "type": "Object",
+                "color": "#64748b",
+                "label": "Component",
+                "attributes": [
+                  {
+                    "id": "attr-part-number",
+                    "name": "part number",
+                    "type": "string",
+                    "unit": "",
+                    "value": "",
+                    "description": "Number in the spare parts list"
+                  },
+                  {
+                    "id": "attr-mass",
+                    "name": "mass",
+                    "type": "number",
+                    "unit": "kg",
+                    "value": "",
+                    "description": "Mass of the component"
+                  }
+                ],
+                "description": "Any part a machine consists of."
+              },
+              "position": {
+                "x": 380,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_4660e998-bb9b-5cc5-b2f5-8d894c0c3529",
+              "projectId": 11,
+              "type": "partdef",
+              "data": {
+                "icon": "Database",
+                "type": "Object",
+                "color": "#0891b2",
+                "label": "Tank",
+                "attributes": [
+                  {
+                    "id": "attr-volume",
+                    "name": "volume",
+                    "type": "number",
+                    "unit": "l",
+                    "value": "",
+                    "description": "How much it holds"
+                  }
+                ],
+                "description": "Holds the water."
+              },
+              "position": {
+                "x": 0,
+                "y": 280
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_2adc04ef-591e-5aa5-a76a-bc07aa7cacff",
+              "projectId": 11,
+              "type": "partdef",
+              "data": {
+                "icon": "Activity",
+                "type": "Object",
+                "color": "#2563eb",
+                "label": "Pump",
+                "attributes": [
+                  {
+                    "id": "attr-pressure",
+                    "name": "pressure",
+                    "type": "number",
+                    "unit": "bar",
+                    "value": "",
+                    "description": "Pressure it delivers"
+                  }
+                ],
+                "description": "Moves water and builds up pressure."
+              },
+              "position": {
+                "x": 250,
+                "y": 280
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_ac66eb9b-bc93-55cc-8314-55f2f32ab0d6",
+              "projectId": 11,
+              "type": "partdef",
+              "data": {
+                "icon": "Flame",
+                "type": "Object",
+                "color": "#dc2626",
+                "label": "Boiler",
+                "attributes": [
+                  {
+                    "id": "attr-power",
+                    "name": "power",
+                    "type": "number",
+                    "unit": "W",
+                    "value": "",
+                    "description": "Heating power"
+                  }
+                ],
+                "description": "Heats the water."
+              },
+              "position": {
+                "x": 500,
+                "y": 280
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_402e6d0d-761c-5244-90ac-dc6cd7715e41",
+              "projectId": 11,
+              "type": "partdef",
+              "data": {
+                "icon": "Aperture",
+                "type": "Object",
+                "color": "#d97706",
+                "label": "Brew group",
+                "description": "Presses the water through the coffee."
+              },
+              "position": {
+                "x": 750,
+                "y": 280
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_5c8b8ecb-bcf8-5fa8-8354-dbba90040904",
+              "viewId": 11,
+              "source": "node_da29d2d7-645e-596b-940f-b3d701d4e0f9",
+              "target": "node_7410fb0a-fd54-5557-ae6a-95b5d101738d",
+              "edgeType": "composition",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "composition",
+                "label": "consists of"
+              }
+            },
+            {
+              "id": "edge_d08a1a14-0f5c-5994-aaea-32e63dcd00e7",
+              "viewId": 11,
+              "source": "node_4660e998-bb9b-5cc5-b2f5-8d894c0c3529",
+              "target": "node_7410fb0a-fd54-5557-ae6a-95b5d101738d",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "bottom",
+              "data": {
+                "edgeType": "generalization"
+              }
+            },
+            {
+              "id": "edge_ef014097-120e-588b-b1b8-63290dc7834a",
+              "viewId": 11,
+              "source": "node_2adc04ef-591e-5aa5-a76a-bc07aa7cacff",
+              "target": "node_7410fb0a-fd54-5557-ae6a-95b5d101738d",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "bottom",
+              "data": {
+                "edgeType": "generalization"
+              }
+            },
+            {
+              "id": "edge_d7264c0e-5b1d-5f72-9666-f3c199ea4b63",
+              "viewId": 11,
+              "source": "node_ac66eb9b-bc93-55cc-8314-55f2f32ab0d6",
+              "target": "node_7410fb0a-fd54-5557-ae6a-95b5d101738d",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "bottom",
+              "data": {
+                "edgeType": "generalization"
+              }
+            },
+            {
+              "id": "edge_fa8e2d0b-ee10-55f1-8f49-676910ee3e48",
+              "viewId": 11,
+              "source": "node_402e6d0d-761c-5244-90ac-dc6cd7715e41",
+              "target": "node_7410fb0a-fd54-5557-ae6a-95b5d101738d",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "right",
+              "data": {
+                "edgeType": "generalization"
+              }
+            },
+            {
+              "id": "edge_015293dd-43e2-5ac1-898c-1c0cd70385c1",
+              "viewId": 11,
+              "source": "node_4660e998-bb9b-5cc5-b2f5-8d894c0c3529",
+              "target": "node_2adc04ef-591e-5aa5-a76a-bc07aa7cacff",
+              "edgeType": "association",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "association",
+                "label": "feeds"
+              }
+            },
+            {
+              "id": "edge_42783244-d584-567d-9886-d59f76bf1596",
+              "viewId": 11,
+              "source": "node_2adc04ef-591e-5aa5-a76a-bc07aa7cacff",
+              "target": "node_ac66eb9b-bc93-55cc-8314-55f2f32ab0d6",
+              "edgeType": "association",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "association",
+                "label": "feeds"
+              }
+            },
+            {
+              "id": "edge_d12a249a-20f6-51b0-8c21-e93253fe8d17",
+              "viewId": 11,
+              "source": "node_ac66eb9b-bc93-55cc-8314-55f2f32ab0d6",
+              "target": "node_402e6d0d-761c-5244-90ac-dc6cd7715e41",
+              "edgeType": "association",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "edgeType": "association",
+                "label": "heats"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

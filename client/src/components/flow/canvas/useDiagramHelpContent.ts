@@ -11,7 +11,21 @@ export type DiagramHelpContent = {
   description: string;
   shortcuts: HelpItem[];
   functions: string[];
+  /** How calculated attributes work; shown where elements and types have attributes. */
+  formulas?: string[];
 };
+
+/** Calculated attributes (Derived Formula), the same in metamodels and models. */
+const FORMULAS: string[] = [
+  "An attribute of the type Derived Formula is calculated from other attributes of the same element, for example [print time] * [machine rate].",
+  "A formula uses numbers (with a point: 0.5), + - * /, parentheses and minus signs (2 * -3). Other attributes go in square brackets, by name; typing [ offers them. Functions such as sum or round do not exist.",
+  "A formula can use another calculated attribute, so a calculation can be built up in steps. It cannot use itself, directly or in a circle.",
+  "When an attribute it uses has no value yet, or it would divide by zero, the result is not calculated yet: it stays empty, and nothing is blocked.",
+  "Results follow their inputs wherever those are edited: in the element's editor, in the table, and for a new element of a type.",
+  "Units are labels. Nothing converts them: grams to kilograms is a division by 1000 in the formula.",
+  "A formula defined on a type is copied to each new element, which calculates with its own values. Changing the formula on the type later does not reach existing elements.",
+  "Model rules can test a calculated value like any other, for example margin is less than 0.",
+];
 
 export function useDiagramHelpContent(
   projectType: ProjectType,
@@ -42,6 +56,7 @@ export function useDiagramHelpContent(
           "Relationships between types define which relationships are allowed between their elements.",
           "Model rules tag elements or report issues when a condition holds; Validate runs them.",
         ],
+        formulas: FORMULAS,
       };
     }
 
@@ -67,6 +82,7 @@ export function useDiagramHelpContent(
         "Validate checks elements and relationships against the metamodel and your model rules, and lists what to fix.",
         "Select two or more elements to align them or to save them as a reusable pattern.",
       ],
+      formulas: FORMULAS,
     };
   }, [isFlowMode, projectType]);
 }

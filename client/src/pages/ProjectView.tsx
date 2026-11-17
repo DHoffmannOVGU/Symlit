@@ -106,10 +106,11 @@ export default function ProjectView() {
   }, [project?.id, userId]);
 
 
+  // Another diagram opens as a diagram, not as the table the last one was left in.
   useEffect(() => {
     if (!project?.projectType) return;
     setDiagramDisplayMode("graph");
-  }, [projectId, project?.projectType]);
+  }, [projectId, viewId, project?.projectType]);
 
   useEffect(() => {
     if (!viewId) {
@@ -355,7 +356,7 @@ export default function ProjectView() {
                   setDiagramDisplayMode(mode);
                   if (mode === "table") emitTutorialSignal("table-mode");
                 }}
-                isTutorialProject={tutorialCoach.active}
+                isTutorialProject={tutorialCoach.active && tutorialCoach.place !== "elsewhere"}
               />
             ) : (
               <div className="flex-1 overflow-y-auto bg-slate-50/30 p-4 md:p-8">
@@ -465,11 +466,16 @@ export default function ProjectView() {
           onOpenChange={(open) => !open && setEditingView(null)}
         />
         </MountWhenOpened>
-        {tutorialCoach.active && tutorialCoach.progress && tutorialCoach.scope && tutorialCoach.definition && (
+        {tutorialCoach.active && tutorialCoach.progress && tutorialCoach.place && tutorialCoach.definition && (
           <TutorialCoach
             tutorial={tutorialCoach.definition}
             progress={tutorialCoach.progress}
-            scope={tutorialCoach.scope}
+            place={tutorialCoach.place}
+            noCopy={tutorialCoach.noCopy}
+            removedProjects={tutorialCoach.removedProjects}
+            placeName={tutorialCoach.placeName}
+            diagram={tutorialCoach.diagram}
+            diagrams={tutorialCoach.diagrams}
             onShowMe={(step) => void tutorialCoach.showMe(step)}
             onOpenStepDiagram={(step) => void tutorialCoach.openStepDiagram(step)}
             onHintShown={tutorialCoach.noteHint}

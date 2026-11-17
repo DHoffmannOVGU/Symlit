@@ -184,6 +184,8 @@ export function SidebarViewNodeList({
             expandedViews.has(view.id) && "text-white",
           )}
           title={expandedViews.has(view.id) ? "Hide elements" : "Show elements"}
+          data-testid={`button-toggle-view-elements-${view.id}`}
+          data-view-name={view.name}
         >
           <ChevronRight
             className={cn(

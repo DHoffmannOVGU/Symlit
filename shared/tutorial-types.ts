@@ -1,7 +1,7 @@
 /**
  * Guided tutorials: what a tutorial is made of, what it can see of the open
  * diagram, and helpers for writing the checks of its steps. The tutorials
- * themselves are in tutorial-basics.ts and tutorial-ppr.ts; tutorial.ts lists them.
+ * themselves are in the tutorial-*.ts files beside this one; tutorial.ts lists them.
  *
  * A step is done when the model shows its result (`check`), when the learner
  * used a feature (`signal`), or both. Steps never complete on a click alone
@@ -21,65 +21,293 @@ export const tutorialSignals = [
   "pattern-saved",
   "pattern-inserted",
   "exported",
+  /** A project file of a model that carries the metamodels it uses. */
+  "exported-with-metamodels",
+  /** The elements of a model as a CSV file. */
+  "exported-csv",
 ] as const;
 
 export type TutorialSignal = (typeof tutorialSignals)[number];
 
-/** Which tutorial project a step happens in. */
-export type TutorialScope = "metamodel" | "instance";
+/**
+ * Where a step happens: in the tutorial's metamodel, in its model, on the
+ * project list (duplicating, importing), or in a variant: a model the learner
+ * made during the tutorial (a copy of its model, for example) that uses the
+ * tutorial's metamodel.
+ */
+export type TutorialScope = "metamodel" | "instance" | "projects" | "variant";
+
+/** The two projects every tutorial has. */
+export type TutorialProjectScope = "metamodel" | "instance";
 
 // --- what the tutorial can see of the open diagram ---------------------------
+
+export type TutorialAttributeType = "string" | "number" | "boolean" | "date" | "list" | "derived";
+
+export interface TutorialAttribute {
+  name: string;
+  /**
+   * The value as text. For a calculated attribute it is the result for the
+   * element's current values, empty when it cannot be calculated.
+   */
+  value: string;
+  type: TutorialAttributeType;
+  unit: string;
+  /** A calculated attribute's formula, with the names of what it refers to in [ ]. */
+  formula: string;
+  /** The names of the attributes a calculated attribute's formula refers to. */
+  references: string[];
+  /** The choices of a list attribute. */
+  options: string[];
+}
 
 export interface TutorialElement {
   id: string;
   name: string;
   /** In a model: the name of the element's type. In a metamodel: its kind. */
   type: string;
-  attributes: Array<{ name: string; value: string }>;
+  attributes: TutorialAttribute[];
+  /** The tags model rules currently give this element. */
+  tags: string[];
+  /** The colour of its card. */
+  color: string;
+  /** In a model: it has a style of its own instead of its type's. */
+  ownStyle: boolean;
+}
+
+export interface TutorialRelationship {
+  /** Element ids, in the relationship's direction. */
+  from: string;
+  to: string;
+  /** association, aggregation, composition, generalization, dependency or realization. */
+  kind: string;
+  /** Its label; empty when it has none. */
+  name: string;
+}
+
+/** One comparison in a rule's condition. */
+export interface TutorialRuleCondition {
+  /** About the element itself, or about the elements a relationship leads to. */
+  about: "self" | "connected";
+  /** For connected elements: any, incoming or outgoing. */
+  direction: string;
+  /** For connected elements: any ("at least one"), all or none. */
+  quantifier: string;
+  /** For connected elements: the name of their type; empty for any. */
+  type: string;
+  /** name, description, type or attribute. */
+  field: string;
+  /** The attribute's name when the field is an attribute. */
+  attribute: string;
+  /** exists, missing, equals, less-than, is-true, … */
+  operator: string;
+  value: string;
 }
 
 /** A saved model rule, reduced to what the steps check. */
 export interface TutorialRule {
   reportsIssue: boolean;
+  /** The label of the tag the rule adds; empty when it reports an issue. */
+  tag: string;
   /** The name of the type the rule looks at; empty for all elements. */
   target: string;
   /** Attributes its conditions compare. */
   attributes: string[];
   /** It has a condition about the elements a relationship leads to. */
   connected: boolean;
+  /** Its comparisons, groups flattened. */
+  conditions: TutorialRuleCondition[];
+  /** How the comparisons are combined at the top: all or any. */
+  combinator: "all" | "any";
 }
 
 /** The open tutorial diagram, reduced to what the steps check. */
 export interface TutorialModelState {
-  scope: TutorialScope;
+  scope: TutorialProjectScope;
+  /** The name of the open diagram. */
+  diagram: string;
+  /** The names of all diagrams of the project. */
+  diagrams: string[];
+  /** The names of the metamodels an open model uses. */
+  metamodels: string[];
   elements: TutorialElement[];
-  /** Relationships as element ids, in their direction. */
-  relationships: Array<{ from: string; to: string }>;
+  relationships: TutorialRelationship[];
   /** The element whose editor is open, if any. */
   editingId: string | null;
+  /** The relationship whose editor is open, if any. */
+  editingRelationship: TutorialRelationship | null;
+  /** What the elements table is filtered by; empty when it is not. */
+  tableFilter: string;
   /** The saved model rules of this diagram. */
   rules: TutorialRule[];
   /** The diagram has changes that are not saved yet. */
   dirty: boolean;
 }
 
+/** A project as the project list knows it. */
+export interface TutorialWorkspaceProject {
+  id: number;
+  name: string;
+  kind: "metamodel" | "instance";
+  /** The template it was created from, if any. */
+  templateId: string | null;
+  /** The ids of the metamodels a model uses. */
+  metamodels: number[];
+  /** It is one of the projects the tutorial created. */
+  ofTutorial: boolean;
+}
+
+/** What a step on the project list can check. */
+export interface TutorialWorkspaceState {
+  projects: TutorialWorkspaceProject[];
+  /** The ids of the metamodels the tutorial created. */
+  tutorialMetamodels: number[];
+}
+
+/** Models the learner made that use one of the tutorial's metamodels: copies of its model, for example. */
+export const variantsIn = (workspace: TutorialWorkspaceState) =>
+  workspace.projects.filter(
+    (project) =>
+      !project.ofTutorial &&
+      project.kind === "instance" &&
+      project.metamodels.some((id) => workspace.tutorialMetamodels.includes(id)),
+  );
+
 export const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 export const named = (state: TutorialModelState, name: string) =>
   state.elements.filter((element) => same(element.name, name));
 export const ofType = (state: TutorialModelState, type: string) =>
   state.elements.filter((element) => same(element.type, type));
+/** The attribute of that name, if the element has it. */
+export const attributeOf = (element: TutorialElement, name: string) =>
+  element.attributes.find((candidate) => same(candidate.name, name));
+/**
+ * The element has a value for the attribute (for any attribute when no name
+ * is given). Yes/No and List attributes always have one, so this says
+ * nothing about them.
+ */
 export const hasValue = (element: TutorialElement, attribute?: string) =>
   element.attributes.some(
     (candidate) => (!attribute || same(candidate.name, attribute)) && candidate.value.trim() !== "",
   );
-export const related = (state: TutorialModelState, from: TutorialElement[], to: TutorialElement[]) =>
+/** The attribute's value as a number, or null when it has none. */
+export const numberOf = (element: TutorialElement, name: string) => {
+  const value = attributeOf(element, name)?.value.trim() ?? "";
+  return value === "" || !Number.isFinite(Number(value)) ? null : Number(value);
+};
+/**
+ * The attribute is calculated by a formula that refers to all of the given
+ * attributes (and may refer to more).
+ */
+export const calculatedFrom = (element: TutorialElement, name: string, references: string[]) => {
+  const attribute = attributeOf(element, name);
+  return (
+    !!attribute &&
+    attribute.type === "derived" &&
+    references.every((reference) => attribute.references.some((used) => same(used, reference)))
+  );
+};
+
+/**
+ * What a formula gives for the given values of the attributes it names, or
+ * null when it names another attribute or cannot be read. It reads what the
+ * app's formulas can contain (numbers, [names], + - * /, parentheses and a
+ * leading minus), so that a step can check what a formula calculates, not
+ * only what it refers to.
+ */
+export function formulaResult(formula: string, values: Record<string, number>): number | null {
+  const tokens = formula.match(/\[[^\]]*\]|\d+(?:\.\d+)?|\.\d+|\S/g) ?? [];
+  const known = new Map(Object.entries(values).map(([name, value]) => [name.trim().toLowerCase(), value]));
+  let position = 0;
+  const fail = (): never => {
+    throw new Error("unreadable");
+  };
+  const operand = (): number => {
+    const token = tokens[position++] ?? fail();
+    if (token === "(") {
+      const value = sum();
+      if (tokens[position++] !== ")") fail();
+      return value;
+    }
+    if (token === "-") return -operand();
+    if (token === "+") return operand();
+    if (token.startsWith("[")) return known.get(token.slice(1, -1).trim().toLowerCase()) ?? fail();
+    const number = Number(token);
+    return Number.isNaN(number) ? fail() : number;
+  };
+  const product = (): number => {
+    let value = operand();
+    while (tokens[position] === "*" || tokens[position] === "/") {
+      const operator = tokens[position++];
+      const right = operand();
+      value = operator === "*" ? value * right : value / right;
+    }
+    return value;
+  };
+  const sum = (): number => {
+    let value = product();
+    while (tokens[position] === "+" || tokens[position] === "-") {
+      const operator = tokens[position++];
+      const right = product();
+      value = operator === "+" ? value + right : value - right;
+    }
+    return value;
+  };
+  try {
+    const value = sum();
+    return position === tokens.length && Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The attribute is calculated by a formula that gives each expected result
+ * from its inputs: [inputs, result] pairs. Any formula that calculates the
+ * same counts, however it is written.
+ */
+export const calculates = (
+  element: TutorialElement,
+  name: string,
+  cases: Array<[Record<string, number>, number]>,
+) => {
+  const attribute = attributeOf(element, name);
+  if (!attribute || attribute.type !== "derived") return false;
+  return cases.every(([inputs, expected]) => {
+    const result = formulaResult(attribute.formula, inputs);
+    return result !== null && Math.abs(result - expected) < 1e-9;
+  });
+};
+export const tagged = (element: TutorialElement, tag: string) => element.tags.some((label) => same(label, tag));
+/** A relationship leads from one of `from` to one of `to`, optionally of a kind and with a name. */
+export const related = (
+  state: TutorialModelState,
+  from: TutorialElement[],
+  to: TutorialElement[],
+  how: { kind?: string; name?: string } = {},
+) =>
   state.relationships.some(
     (relationship) =>
       from.some((element) => element.id === relationship.from) &&
-      to.some((element) => element.id === relationship.to),
+      to.some((element) => element.id === relationship.to) &&
+      (how.kind === undefined || same(relationship.kind, how.kind)) &&
+      (how.name === undefined || same(relationship.name, how.name)),
   );
 export const editing = (state: TutorialModelState, name: string) =>
   named(state, name).some((element) => element.id === state.editingId);
+/** The number the rule compares the attribute with, for the given operators. */
+export const comparesWith = (rule: TutorialRule, attribute: string, operators: string[]) => {
+  const condition = rule.conditions.find(
+    (candidate) =>
+      candidate.about === "self" &&
+      candidate.field === "attribute" &&
+      same(candidate.attribute, attribute) &&
+      operators.includes(candidate.operator),
+  );
+  return condition && Number.isFinite(Number(condition.value)) && condition.value.trim() !== ""
+    ? Number(condition.value)
+    : null;
+};
 
 // --- lessons -----------------------------------------------------------------
 
@@ -96,10 +324,27 @@ export interface TutorialStep {
   /** What just happened and why it matters, shown once the step is done. */
   done: string;
   scope: TutorialScope;
+  /**
+   * The diagram the step happens in, by name, when the project has several.
+   * Without it the step counts in any diagram of the project, and the coach
+   * opens the first one.
+   */
+  view?: string;
   /** A feature the learner has to use. */
   signal?: TutorialSignal;
   /** What the model has to show. With a signal, both are needed. */
   check?: (state: TutorialModelState) => boolean;
+  /** For a step on the project list: what the list of projects has to show. */
+  checkProjects?: (workspace: TutorialWorkspaceState) => boolean;
+  /**
+   * The step only completes once the steps before it in its lesson are done
+   * or skipped: for a check that is true from the start and only means
+   * something after them (looking at the original after changing a copy).
+   * "done": only once the step right before it is done, not skipped, for a
+   * check that is also true when that step never happened (nothing left to
+   * remove when nothing was imported).
+   */
+  afterPrevious?: boolean | "done";
   /** What "Show me" highlights, tried in order. Without one there is no "Show me". */
   highlight?: TutorialHighlight[];
 }
@@ -144,7 +389,7 @@ export interface TutorialDefinition {
   /** Rough duration in minutes. */
   minutes: number;
   /** How the two projects are called in the coach. */
-  projects: Record<TutorialScope, string>;
+  projects: Record<TutorialProjectScope, string>;
   /** Heading of the last screen when nothing was skipped. */
   finishedTitle: string;
   lessons: TutorialLesson[];

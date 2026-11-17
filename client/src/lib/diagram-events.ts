@@ -60,6 +60,8 @@ export interface DiagramEventMap {
   "metamodel-ai-assistant-toggle-request": MetamodelAiAssistantToggleRequestDetail;
   "tutorial-signal": TutorialSignalDetail;
   "tutorial-model-state": TutorialModelStateDetail;
+  /** The coach started listening and wants the current state of the open diagram. */
+  "tutorial-model-state-request": Record<string, never>;
 }
 
 export type DiagramEventName = keyof DiagramEventMap;
