@@ -415,8 +415,9 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "own-validate",
         title: "Let the model answer",
-        instruction: "Validate. Fix whatever is reported until there are no issues.",
-        hint: "A relationship the metamodel does not allow is reported as well: products go into processes, processes produce products, resources execute processes, and PPR elements satisfy requirements.",
+        instruction:
+          "Validate. Fix whatever is reported until there are no issues. No rule checks that every process turns one product into another: make sure each one does, Bending included.",
+        hint: "A relationship the metamodel does not allow is reported as well: products go into processes, processes produce products, resources execute processes, and PPR elements satisfy requirements. A process needs a product going in and a different product coming out (see lesson 3).",
         done: "No issues: every requirement is satisfied, every process has its products and a resource.",
         signal: "validation-passed",
         scope: "instance",
@@ -431,10 +432,10 @@ const LESSONS: TutorialLesson[] = [
         title: "Save the model",
         instruction: "Save Bracket production.",
         done: "Saved. The model and its two rules now answer the question for anyone who opens it.",
-        signal: "saved",
         scope: "instance",
+        // Judged on the saved state, not on a save: a model saved before validating is saved.
         afterPrevious: true,
-        check: (state) => everyProcessExecuted(state) && everyRequirementSatisfied(state),
+        check: (state) => everyProcessExecuted(state) && everyRequirementSatisfied(state) && !state.dirty,
         highlight: [SAVE_DIAGRAM],
       },
     ],

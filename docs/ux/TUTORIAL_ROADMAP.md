@@ -10,8 +10,8 @@ Steps 1 to 5 of section 6 are built: the groundwork, the app fixes, and tutorial
 trying the tutorials with learners, is open. All six tutorials are walked by a browser test from
 the first step to the end screen, with at least one wrong way per lesson that must not count
 (the questions count as the wrong way of a lesson whose steps leave little room for one), and
-unit tests cover the checks of each tutorial. Every lesson asks for a guess before the learner
-sees the result.
+unit tests cover the checks of each tutorial. Every guided lesson asks for a guess before the
+learner sees the result; the unguided last lessons give only the result to reach.
 
 A review of all six against the checklists in section 5 found checks that accepted the typical
 mistake, texts that claimed more than the model showed, and a few app faults. They are fixed:

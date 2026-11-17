@@ -55,6 +55,15 @@ const marginIsRight = (state: TutorialModelState) =>
     [{ price: 10, "total cost": 4 }, 6],
     [{ price: 3, "total cost": 5 }, -2],
   ]);
+/** The rate of lesson 2, and its name after lesson 3 renames it. */
+const RATE = "machine rate";
+const RENAMED_RATE = "hourly rate";
+/** print time × rate, under either name of the rate. */
+const machineCostIsRight = (state: TutorialModelState) =>
+  typeGives(state, "machine cost", [
+    [{ "print time": 3, [RATE]: 4, [RENAMED_RATE]: 4 }, 12],
+    [{ "print time": 2, [RATE]: 5, [RENAMED_RATE]: 5 }, 10],
+  ]);
 const NEW_JOB = (job: TutorialElement) => !["Phone stand", "Gear housing", "Cable clip"].some((name) => same(name, job.name));
 
 /** The learner's rule: a print job whose margin is below zero is reported. */
@@ -135,7 +144,9 @@ const LESSONS: TutorialLesson[] = [
         hint: "Pick a unit if you like: search the unit list, or type your own, such as €/h. The default value is what every new print job starts with; a single job can still change it.",
         done: "Every new print job will start with a machine rate of 4. A default saves typing a value that is nearly always the same.",
         scope: "metamodel",
-        check: (state) => !!jobType(state) && numberOf(jobType(state), "machine rate") === 4,
+        // Lesson 3 renames the rate to hourly rate: a step skipped here can still be done after that.
+        check: (state) =>
+          !!jobType(state) && [RATE, RENAMED_RATE].some((name) => numberOf(jobType(state), name) === 4),
         highlight: [ADD_ATTRIBUTE, JOB_TYPE],
       },
       {
@@ -146,11 +157,7 @@ const LESSONS: TutorialLesson[] = [
         hint: "Other attributes are referred to by their name in square brackets; typing [ offers the names. A formula can use + - * / and parentheses, and numbers written with a point (0.5).",
         done: "The Calculated Value says it cannot be calculated yet: the type has no print time. That is as it should be. The type holds the formula; each job will supply its own print time.",
         scope: "metamodel",
-        check: (state) =>
-          typeGives(state, "machine cost", [
-            [{ "print time": 3, "machine rate": 4 }, 12],
-            [{ "print time": 2, "machine rate": 5 }, 10],
-          ]),
+        check: machineCostIsRight,
         highlight: [ADD_ATTRIBUTE, JOB_TYPE],
       },
       {
@@ -160,7 +167,7 @@ const LESSONS: TutorialLesson[] = [
         done: "Saved. The formula is part of what a print job is.",
         signal: "saved",
         scope: "metamodel",
-        check: (state) => typeCalculates(state, "machine cost", ["print time", "machine rate"]),
+        check: machineCostIsRight,
         highlight: [SAVE_DIAGRAM],
       },
     ],
@@ -194,8 +201,8 @@ const LESSONS: TutorialLesson[] = [
         scope: "metamodel",
         check: (state) =>
           !!jobType(state) &&
-          !attributeOf(jobType(state), "machine rate") &&
-          typeCalculates(state, "machine cost", ["print time", "hourly rate"]),
+          !attributeOf(jobType(state), RATE) &&
+          typeCalculates(state, "machine cost", ["print time", RENAMED_RATE]),
         highlight: ['[data-testid^="button-attr-open-"]', JOB_TYPE],
       },
       {

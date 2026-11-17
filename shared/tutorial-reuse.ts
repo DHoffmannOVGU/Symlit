@@ -44,8 +44,8 @@ const sendsVia = (state: TutorialModelState, radioType: string) =>
 const solarPowersController = (state: TutorialModelState) =>
   related(state, named(state, "Battery 3000"), ofType(state, "Microcontroller"), { name: "powers" });
 
-/** Symlit marks an imported project whose name is taken already. */
-const IMPORTED_MARK = /\s*\(imported\)\s*$/i;
+/** Symlit marks an imported project whose name is taken already: "(imported)", "(imported 2)", … */
+const IMPORTED_MARK = /\s*\(imported(?: \d+)?\)\s*$/i;
 const withoutMark = (name: string) => name.replace(IMPORTED_MARK, "");
 
 /**

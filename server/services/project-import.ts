@@ -34,6 +34,21 @@ export interface ImportOptions {
    * the file's diagrams stay the existing elements.
    */
   existingMetamodels?: number[];
+  /**
+   * Marks a created project whose name the user's projects already have
+   * "(imported)", or "(imported 2)" and so on, so that the two can be told
+   * apart. A name given in `main` is kept as it is.
+   */
+  markTakenNames?: boolean;
+}
+
+/** `name`, or the first of "name (imported)", "name (imported 2)", … that is not taken. */
+export function freeImportedName(name: string, taken: Set<string>): string {
+  if (!taken.has(name)) return name;
+  for (let attempt = 1; ; attempt += 1) {
+    const candidate = `${name} (imported${attempt === 1 ? "" : ` ${attempt}`})`;
+    if (!taken.has(candidate)) return candidate;
+  }
 }
 
 export interface ImportResult {
@@ -119,14 +134,25 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
 
   return db.transaction(async (tx) => {
     const created = new Map<number, Project>();
+    // Chosen in the transaction, so that a failure leaves nothing behind, renamed or not.
+    const taken = options.markTakenNames
+      ? new Set(
+          (await tx.select({ name: projects.name }).from(projects).where(eq(projects.userId, options.userId))).map(
+            (row) => row.name,
+          ),
+        )
+      : null;
     for (const entry of bundle) {
       const isMain = entry === file;
       const source = entry.project;
+      const givenName = isMain ? options.main?.name : undefined;
+      const name = givenName || (taken ? freeImportedName(source.name, taken) : source.name);
+      taken?.add(name);
       const [project] = await tx
         .insert(projects)
         .values({
           userId: options.userId,
-          name: (isMain && options.main?.name) || source.name,
+          name,
           description: isMain && options.main?.description !== undefined
             ? options.main.description
             : (source.description ?? ""),

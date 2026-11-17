@@ -194,9 +194,13 @@ SQL migration to `migrations/`. Commit both. CI fails if the schema and migratio
 - **When a step is done:** when the model shows its result (`check`), when a feature was used
   (`signal`), or both. `afterPrevious` holds a step back until the steps before it in its lesson
   are done or skipped, for checks that are true from the start; `afterPrevious: "done"` until the
-  step right before it is done, for a check that also holds when that step never happened. A check
-  on a formula uses `calculates()`, which evaluates the formula on sample inputs, so that any way of
-  writing the same calculation counts and a wrong one does not. The canvas reports the open diagram to the
+  step right before it is done, for a check that also holds when that step never happened. A save
+  step is judged on the saved state (`!state.dirty`) once the work before it is done, not on a save
+  signal: a diagram saved early, or saved automatically, has nothing left to save. A check that has
+  to know what a formula calculates uses `calculates()`, which evaluates the formula on sample
+  inputs, so that any way of writing the same calculation counts and a wrong one does not; checks
+  that only ask which attributes a formula uses (`calculatedFrom()`) leave the calculation to the
+  learner. The canvas reports the open diagram to the
   coach as a `TutorialModelState` (`useTutorialModelReporter`, only in a run's projects): elements
   with their type, attributes (type, unit, formula, references, the value calculated now), tags,
   colour and whether they have a style of their own; relationships with kind and name; the open element or relationship editor; the

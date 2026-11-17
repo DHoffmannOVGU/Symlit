@@ -821,6 +821,11 @@ describe("project import", () => {
       flow.nodes.map((node) => node.data.label).sort();
     assert.deepEqual(labels(copy), labels(original));
 
+    // Imported once more, the copies get a mark of their own.
+    const twice = await request("POST", "/api/projects/import", exported.json);
+    assert.equal(twice.status, 201, twice.text);
+    assert.equal(twice.json.project.name, "Import me (imported 2)");
+
     // Where the name is free, it is kept.
     const exportedAgain = await request("POST", `/api/projects/${project.id}/export`, {
       format: "json",

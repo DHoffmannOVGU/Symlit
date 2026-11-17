@@ -13,8 +13,27 @@ import { tutorialSteps, type TutorialDefinition } from "../../shared/tutorial";
 export const stepState = (page: Page, id: string) => page.getByTestId(`tutorial-step-${id}`).getAttribute("data-state");
 export const expectDone = (page: Page, id: string) =>
   expect.poll(() => stepState(page, id), { message: id }).toBe("done");
-export const expectNotDone = (page: Page, id: string) =>
-  expect.poll(() => stepState(page, id), { message: id }).not.toBe("done");
+/**
+ * A wrong way must not count. The step is watched for a moment, not sampled
+ * once: some actions (saving model rules) reach the coach only after a
+ * refetch, and a single early sample would pass even if the check were loose.
+ */
+export async function expectStays(page: Page, id: string, state: string, forMs = 1_000) {
+  await expect.poll(() => stepState(page, id), { message: id }).toBe(state);
+  const until = Date.now() + forMs;
+  while (Date.now() < until) {
+    await page.waitForTimeout(100);
+    expect(await stepState(page, id), `${id} stays ${state}`).toBe(state);
+  }
+}
+export async function expectNotDone(page: Page, id: string, forMs = 1_000) {
+  await expect.poll(() => stepState(page, id), { message: id }).not.toBe("done");
+  const until = Date.now() + forMs;
+  while (Date.now() < until) {
+    await page.waitForTimeout(100);
+    expect(await stepState(page, id), `${id} stays not done`).not.toBe("done");
+  }
+}
 export const expectProgress = (page: Page, tutorial: TutorialDefinition, done: number) =>
   expect(page.getByTestId("tutorial-progress-count")).toContainText(`${done} of ${tutorialSteps(tutorial).length}`);
 export const card = (page: Page, name: string) => page.locator(".react-flow__node", { hasText: name });

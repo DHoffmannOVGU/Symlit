@@ -9,6 +9,7 @@ import {
   expectDone,
   expectFinished,
   expectNotDone,
+  expectStays,
   expectProgress,
   finishLesson,
   openEditor,
@@ -16,7 +17,6 @@ import {
   saveDiagram,
   saveEditor,
   startTutorial,
-  stepState,
   waitForStillCanvas,
 } from "./support/tutorial";
 
@@ -61,6 +61,13 @@ async function deleteProject(page: Page, project: ProjectRow) {
 
 test("Reuse and variants: styles, a copy, a pattern library, a second metamodel, a file", async ({ page }, testInfo) => {
   test.setTimeout(300_000);
+  // What an earlier, failed attempt imported is not a tutorial project: remove it first, models first.
+  const leftovers = (await projects(page))
+    .filter((project) =>
+      /^(Sensor node S2|Tutorial · Sensor node types|Tutorial · Radio modules) \(imported( \d+)?\)$/.test(project.name),
+    )
+    .sort((a, b) => (a.projectType === "instance" ? 0 : 1) - (b.projectType === "instance" ? 0 : 1));
+  for (const project of leftovers) await page.request.delete(`/api/projects/${project.id}`);
   await startTutorial(page, T);
   await expectProgress(page, T, 0);
 
@@ -76,7 +83,7 @@ test("Reuse and variants: styles, a copy, a pattern library, a second metamodel,
   await openEditor(page, "Controller");
   await page.getByRole("tab", { name: "Styling" }).click();
   await cancelEditor(page);
-  await expect.poll(() => stepState(page, "own-style")).toBe("current");
+  await expectStays(page, "own-style", "current");
   await pickColour(page, "Controller", "Rose");
   await finishLesson(page, T, 0, { wrongFirst: true });
 

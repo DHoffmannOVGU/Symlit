@@ -10,12 +10,12 @@ import {
   dropOnCard,
   waitForStillCanvas,
   expectDone,
+  expectStays,
   finishLesson as finishLessonOf,
   openOtherProject,
   saveDiagram,
   saveEditor,
   startTutorial as startTutorialOf,
-  stepState,
 } from "./support/tutorial";
 
 // The two first tutorials (basics, PPR) and how the coach behaves. The other
@@ -62,7 +62,7 @@ test("a learner works through the whole tutorial, and every step checks the resu
   await card(page, "New Object").dblclick();
   await page.getByTestId("input-node-label").fill("Lens");
   await saveEditor(page);
-  await expect.poll(() => stepState(page, "name-type")).toBe("current");
+  await expectStays(page, "name-type", "current");
   await card(page, "Lens").dblclick();
   await page.getByTestId("input-node-label").fill("Camera");
   await saveEditor(page);
@@ -77,7 +77,7 @@ test("a learner works through the whole tutorial, and every step checks the resu
   const edgesBefore = await page.locator(".react-flow__edge").count();
   await connect(page, "Camera", "top", "Drone", "bottom");
   await expect(page.locator(".react-flow__edge")).toHaveCount(edgesBefore + 1);
-  await expect.poll(() => stepState(page, "relate-types")).toBe("current");
+  await expectStays(page, "relate-types", "current");
   await page.locator(".react-flow__pane").click({ position: { x: 5, y: 5 } });
   await page.keyboard.press("ControlOrMeta+z");
   await expect(page.locator(".react-flow__edge")).toHaveCount(edgesBefore);
@@ -102,7 +102,7 @@ test("a learner works through the whole tutorial, and every step checks the resu
   const modelEdges = await page.locator(".react-flow__edge").count();
   await connect(page, "Nose camera", "top", "Courier X1", "top");
   await expect(page.locator(".react-flow__edge")).toHaveCount(modelEdges + 1);
-  await expect.poll(() => stepState(page, "connect-instances")).toBe("current");
+  await expectStays(page, "connect-instances", "current");
   await page.locator(".react-flow__pane").click({ position: { x: 5, y: 5 } });
   await page.keyboard.press("ControlOrMeta+z");
   await expect(page.locator(".react-flow__edge")).toHaveCount(modelEdges);
@@ -118,8 +118,8 @@ test("a learner works through the whole tutorial, and every step checks the resu
   await expectDone(page, "validate");
   // Validating again without fixing does not pass the next steps.
   await page.getByTestId("button-validate-again").click();
-  await expect.poll(() => stepState(page, "fix-issue")).toBe("current");
-  await expect.poll(() => stepState(page, "validate-again")).toBe("open");
+  await expectStays(page, "fix-issue", "current");
+  await expectStays(page, "validate-again", "open");
   await page.getByTestId("validation-issue-0").click();
   await card(page, "Pack B").dblclick();
   await page.getByTestId("input-attr-value-0").fill("160");
@@ -146,7 +146,7 @@ test("a learner works through the whole tutorial, and every step checks the resu
   // A rule that only adds a tag is not a check yet.
   await page.getByTestId("button-save-rules").click();
   await expect(page.getByText("Model rules saved").first()).toBeVisible();
-  await expect.poll(() => stepState(page, "add-rule")).toBe("current");
+  await expectStays(page, "add-rule", "current");
   await choose(5, "report an issue");
   await page.getByTestId("button-save-rules").click();
   await expectDone(page, "add-rule");
@@ -180,7 +180,7 @@ test("a learner works through the whole tutorial, and every step checks the resu
   await expectDone(page, "save-pattern");
   await insertPattern("Drone alone");
   await expect(card(page, "Courier X1")).toHaveCount(2);
-  await expect.poll(() => stepState(page, "insert-pattern")).toBe("current");
+  await expectStays(page, "insert-pattern", "current");
   await waitForStillCanvas(page);
   await card(page, "Courier X1").last().click({ position: { x: 12, y: 12 } });
   await page.keyboard.press("Delete");
@@ -206,7 +206,7 @@ test("a learner works through the whole tutorial, and every step checks the resu
   await connect(page, "Charger", "top", "Battery", "bottom");
   // Built but not saved: the model could not use it yet.
   await expect(page.getByTestId("button-save-diagram-header")).toBeEnabled();
-  await expect.poll(() => stepState(page, "own-type")).toBe("current");
+  await expectStays(page, "own-type", "current");
   await saveDiagram(page);
   await expectDone(page, "own-type");
   await openOtherProject(page, "Nose camera");
@@ -227,7 +227,7 @@ test("a learner works through the whole tutorial, and every step checks the resu
   const csv = page.waitForEvent("download");
   await page.getByRole("dialog").getByRole("button", { name: "Download" }).click();
   await csv;
-  await expect.poll(() => stepState(page, "export")).toBe("current");
+  await expectStays(page, "export", "current");
   await page.getByTestId("button-export-project").click();
   await page.getByTestId("select-export-format").click();
   await page.getByRole("option", { name: "Structured model package (JSON)" }).click();
@@ -286,7 +286,7 @@ test("the PPR tutorial leads from a requirement to product, process and resource
   await openOtherProject(page, "Bracket");
   // The trace runs from what satisfies to the requirement, not back.
   await connect(page, "Carries 5 kg", "left", "Bracket", "left");
-  await expect.poll(() => stepState(page, "trace-load")).toBe("current");
+  await expectStays(page, "trace-load", "current");
   await connect(page, "Bracket", "top", "Carries 5 kg", "bottom");
   await expectDone(page, "trace-load");
   await add("Requirement", "Mounting angle", "90 degrees, plus or minus 1");
@@ -305,7 +305,7 @@ test("the PPR tutorial leads from a requirement to product, process and resource
     await expect(page.locator(".react-flow__edge")).toHaveCount(edges - 1);
   };
   await connect(page, "Bending", "top", "Blank", "bottom");
-  await expect.poll(() => stepState(page, "process-input")).toBe("current");
+  await expectStays(page, "process-input", "current");
   await undoLastLine();
   await connect(page, "Blank", "bottom", "Bending", "top");
   await expectDone(page, "process-input");
@@ -345,7 +345,7 @@ test("the PPR tutorial leads from a requirement to product, process and resource
   await choose(6, "is not set");
   await page.getByTestId("button-save-rules").click();
   await expect(page.getByText("Model rules saved").first()).toBeVisible();
-  await expect.poll(() => stepState(page, "add-rule")).toBe("current");
+  await expectStays(page, "add-rule", "current");
   await choose(6, "is set");
   await page.getByTestId("button-save-rules").click();
   await expectDone(page, "add-rule");
@@ -361,7 +361,7 @@ test("the PPR tutorial leads from a requirement to product, process and resource
   await expectDone(page, "add-resource");
   // The Laser cutter cannot bend: it is not the resource the step is about.
   await connect(page, "Laser cutter", "bottom", "Bending", "bottom");
-  await expect.poll(() => stepState(page, "assign-resource")).toBe("current");
+  await expectStays(page, "assign-resource", "current");
   await undoLastLine();
   await connect(page, "Press brake", "top", "Bending", "right");
   await expectDone(page, "assign-resource");
@@ -374,7 +374,7 @@ test("the PPR tutorial leads from a requirement to product, process and resource
   await add("Product", "Coated bracket");
   await connect(page, "Bracket", "bottom", "Powder coating", "left");
   // A process with nothing coming out is not finished.
-  await expect.poll(() => stepState(page, "own-process")).toBe("current");
+  await expectStays(page, "own-process", "current");
   await connect(page, "Powder coating", "right", "Coated bracket", "left");
   await expectDone(page, "own-process");
   await add("Resource", "Coating booth");

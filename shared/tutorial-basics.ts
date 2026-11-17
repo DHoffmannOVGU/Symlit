@@ -141,11 +141,11 @@ const LESSONS: TutorialLesson[] = [
         title: "Save the metamodel",
         instruction: "Press Save at the top right, so that the model can use the new type.",
         done: "Saved. Camera is now available in every model that uses Drone types.",
-        signal: "saved",
         scope: "metamodel",
-        // A save before the attribute and the relationship are there does not store them.
+        // Judged on the saved diagram once the work before it is done: a save before
+        // the attribute and the relationship were there did not store them.
         afterPrevious: true,
-        check: (state) => named(state, "Camera").length > 0,
+        check: (state) => named(state, "Camera").length > 0 && !state.dirty,
         highlight: [SAVE_DIAGRAM],
       },
     ],
@@ -206,10 +206,9 @@ const LESSONS: TutorialLesson[] = [
         title: "Save the model",
         instruction: "Press Save at the top right.",
         done: "Saved. The model now contains a camera that did not exist as a concept ten minutes ago.",
-        signal: "saved",
         scope: "instance",
         afterPrevious: true,
-        check: (state) => ofType(state, "Camera").length > 0,
+        check: (state) => ofType(state, "Camera").length > 0 && !state.dirty,
         highlight: [SAVE_DIAGRAM],
       },
     ],

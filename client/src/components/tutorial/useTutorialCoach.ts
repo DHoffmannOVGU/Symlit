@@ -212,21 +212,22 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
   const run = useTutorialRun(tutorial, allProjects, navigate);
   const { definition, progress, update } = run;
 
-  // What the open diagram contains, reported by the canvas.
-  const [modelState, setModelState] = useState<TutorialModelState | null>(null);
+  // What the open diagram contains, reported by the canvas, with the diagram it belongs to.
+  const [reported, setReported] = useState<{ viewId: number; state: TutorialModelState } | null>(null);
+  // Only a state of the diagram open now counts: right after another diagram
+  // is opened, the last one reported still belongs to the one before.
+  const modelState = reported && reported.viewId === viewId ? reported.state : null;
   const modelStateRef = useRef<TutorialModelState | null>(null);
   modelStateRef.current = modelState;
   /** A diagram that was just opened, until its first state is known. */
   const openedViewRef = useRef<number | null>(null);
   useEffect(() => {
-    setModelState(null);
-    // Signals sent from now on must not be judged on the diagram that was open before.
-    modelStateRef.current = null;
+    setReported(null);
     openedViewRef.current = viewId ?? null;
     if (!scope || !viewId) return;
     const unsubscribe = subscribeDiagramEvent("tutorial-model-state", (detail) => {
       // Reported while the canvas renders; defer so we never update state mid-render.
-      if (detail.viewId === viewId) queueMicrotask(() => setModelState(detail.state));
+      if (detail.viewId === viewId) queueMicrotask(() => setReported({ viewId, state: detail.state }));
     });
     // The canvas reports only changes, and may have reported before this was listening.
     dispatchDiagramEvent("tutorial-model-state-request", {});

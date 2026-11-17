@@ -245,19 +245,35 @@ test("a step completes when the model shows its result, whatever was clicked", (
 });
 
 test("a signal only completes its step when the model agrees", () => {
-  let progress = atLesson("define-type");
-  // Saving the untouched metamodel is not "save the metamodel with the new type".
-  progress = applySignal(progress, "saved", "metamodel", model("metamodel", startingTypes));
-  assert.equal(stepState(progress, step("save-metamodel")), "open");
+  // The validation that answers the question counts only with the learner's rule in the model.
+  let progress = atLesson("check-model");
+  for (const id of ["validate", "fix-issue", "validate-again"]) progress = { ...progress, completed: [...progress.completed, id] };
+  const fixed = [...startingModel.filter((candidate) => candidate.id !== "b"), element("b", "Pack B", "Battery", { capacity: "160" })];
+  const seeded = rule("Battery", [condition({ attribute: "capacity", operator: "missing" })]);
+  const learners = rule("Drone", [condition({ attribute: "range", operator: "less-than", value: "15" })]);
+  progress = applySignal(progress, "validation-passed", "instance", model("instance", fixed, { rules: [seeded] }));
+  assert.equal(stepState(progress, step("answer-question")), "open");
   // Without knowing the model, nothing that depends on it completes.
-  progress = applySignal(progress, "saved", "metamodel", null);
-  assert.equal(stepState(progress, step("save-metamodel")), "open");
+  progress = applySignal(progress, "validation-passed", "instance", null);
+  assert.equal(stepState(progress, step("answer-question")), "open");
+  progress = applySignal(progress, "validation-passed", "instance", model("instance", fixed, { rules: [seeded, learners] }));
+  assert.equal(stepState(progress, step("answer-question")), "done");
+});
+
+test("a save step counts once the work before it is done and the diagram is saved", () => {
+  let progress = atLesson("define-type");
   const withCamera = [...startingTypes, element("new", "Camera", "Object")];
-  // An early save, before the attribute and the relationship exist, does not store them: not yet.
-  progress = applySignal(progress, "saved", "metamodel", model("metamodel", withCamera));
+  // Saved early, before the attribute and the relationship exist: that save did not store them.
+  progress = applyModelState(progress, model("metamodel", withCamera, { dirty: false }));
   assert.equal(stepState(progress, step("save-metamodel")), "open");
   for (const id of ["add-type", "name-type", "add-attribute", "relate-types"]) progress = skipStep(progress, id);
-  progress = applySignal(progress, "saved", "metamodel", model("metamodel", withCamera));
+  // Unsaved changes, or the untouched metamodel, are not it.
+  progress = applyModelState(progress, model("metamodel", withCamera, { dirty: true }));
+  assert.equal(stepState(progress, step("save-metamodel")), "current");
+  progress = applyModelState(progress, model("metamodel", startingTypes, { dirty: false }));
+  assert.equal(stepState(progress, step("save-metamodel")), "current");
+  // Saved, however the save was started (the button, Ctrl+S, automatic saving): done.
+  progress = applyModelState(progress, model("metamodel", withCamera, { dirty: false }));
   assert.equal(stepState(progress, step("save-metamodel")), "done");
 });
 
@@ -560,10 +576,12 @@ test("PPR: requirement, product, process and resource have to be connected the P
   assert.equal(stateOf(progress, "own-trace"), "done");
   // Only a clean validation answers the question, and the answer is kept by saving.
   assert.ok(!progressOf.isTutorialFinished(P, progress));
-  progress = progressOf.applySignal(P, progress, "validation-passed", "instance", complete);
+  progress = progressOf.applySignal(P, progress, "validation-passed", "instance", { ...complete, dirty: true });
   assert.equal(stateOf(progress, "own-validate"), "done");
-  assert.ok(!progressOf.isTutorialFinished(P, progress));
-  progress = progressOf.applySignal(P, progress, "saved", "instance", complete);
+  progress = progressOf.applyModelState(P, progress, { ...complete, dirty: true });
+  assert.ok(!progressOf.isTutorialFinished(P, progress), "not saved yet");
+  // Saved, before or after validating: the answer is kept.
+  progress = progressOf.applyModelState(P, progress, complete);
   assert.ok(progressOf.isTutorialFinished(P, progress));
 
   // The typical wrong ways do not count.
@@ -644,9 +662,9 @@ test("reuse: the imported projects are told apart from the learner's own, also w
   assert.equal(checkOf("remove-imported")(workspace([...own, imported[2]])), false, "the model is still there");
   assert.equal(checkOf("remove-imported")(workspace([...own, imported[0], imported[1]])), false, "the metamodels are still there");
   assert.equal(
-    checkOf("remove-imported")(workspace([...own.slice(0, 3), ...imported.slice(0, 2)])),
+    checkOf("remove-imported")(workspace([...own.slice(0, 3), imported[2]])),
     false,
-    "deleting your own copy instead is not it",
+    "deleting your own copy and the imported metamodels instead is not it",
   );
   assert.equal(checkOf("remove-imported")(workspace(own)), true);
 
@@ -855,4 +873,20 @@ test("a step that opens a diagram and asks for something in it is judged on that
   assert.equal(progressOf.stepState(opening, progress, openStep), "current");
   progress = progressOf.applyOpenedView(opening, progress, "instance", model("instance", [], { diagram: "Structure" }));
   assert.equal(progressOf.stepState(opening, progress, openStep), "done");
+});
+
+test("calc: a lesson-2 step skipped before the rate was renamed can still be done after", async () => {
+  const { CALC_TUTORIAL: C } = await import("@shared/tutorial-calc");
+  const checkOf = (id: string) => tutorialSteps(C).find((candidate) => candidate.id === id)!.check!;
+  const renamed = model("metamodel", [
+    element("t", "Print job", "Object", [
+      attribute("hourly rate", "4"),
+      attribute("machine cost", "", {
+        type: "derived",
+        formula: "[print time] * [hourly rate]",
+        references: ["print time", "hourly rate"],
+      }),
+    ]),
+  ]);
+  for (const id of ["add-rate", "add-machine-cost", "save-first"]) assert.equal(checkOf(id)(renamed), true, id);
 });
