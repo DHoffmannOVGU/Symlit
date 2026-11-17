@@ -8,7 +8,19 @@ have to pass. The reasoning behind the two existing tutorials is in `TUTORIAL_DI
 
 Steps 1 to 5 of section 6 are built: the groundwork, the app fixes, and tutorials 3 to 6. Step 6,
 trying the tutorials with learners, is open. All six tutorials are walked by a browser test from
-the first step to the end screen, with at least one wrong way per lesson that must not count.
+the first step to the end screen, with at least one wrong way per lesson that must not count
+(the questions count as the wrong way of a lesson whose steps leave little room for one), and
+unit tests cover the checks of each tutorial. Every lesson asks for a guess before the learner
+sees the result.
+
+A review of all six against the checklists in section 5 found checks that accepted the typical
+mistake, texts that claimed more than the model showed, and a few app faults. They are fixed:
+checks now test what a formula calculates and the values later lessons depend on, tell existing
+elements from new look-alikes, and wait for the step before them where a check would otherwise
+hold too early. In the app, a relationship let go on a card connects to its nearest handle,
+another diagram opens as a diagram instead of in the table the last one was left in, an imported
+project whose name is taken is marked *(imported)*, and removing a tutorial asks first and names
+every project that goes.
 
 How the decisions in section 6 were taken, as the most conservative choice where it was a
 product decision:
@@ -22,14 +34,20 @@ product decision:
 
 Where the result differs from section 3:
 
+- **Tutorial 3** calculates the margin in lesson 3; lesson 5 only writes the rule on it. Units are
+  read and labelled, not set: the step that would set one cannot be checked reliably. Lesson 3
+  renames an input instead of predicting what a rename or a delete would do.
 - **Tutorial 4** calls its type *Component*, not *Part*: the app reads a type named Part as the
   built-in kind Object when a diagram is loaded (an old rename), which would confuse every list.
 - **Tutorial 5** takes Composition and Generalization from its metamodel's setup; a metamodel
   created in the UI with the default purpose offers neither, and the setup cannot be changed later.
+  It does not practise reversing a relationship (hints name the way back). Pump is a Component
+  from the start; the learner makes the Grinder one in a guided lesson, and the unguided lesson
+  adds a steam wand.
 - **Tutorial 6** does not make the learner start from a template: there is nothing in the
   example to start from, and a look at the template list cannot be checked. Lesson 2 explains that
-  templates work like a copy. Its import lesson ends with removing what was imported, because the
-  imported projects carry the same names as the learner's own. The pattern library and the second
+  templates work like a copy. Its import lesson ends with removing what was imported, which Symlit
+  marks *(imported)* because the names are taken by the learner's own projects. The pattern library and the second
   metamodel's reference to the first come with the template, since the UI cannot make either.
 - Two app faults were found by walking the tutorials and fixed: saving after showing an existing
   element in a diagram was refused as a conflict, and the canvas and the coach triggered each
@@ -185,12 +203,12 @@ P = the learner does it and the result is checked. m = only mentioned. An empty 
 | Kind, type, element | P | P | | | P | |
 | Metamodel and model, saving in two steps | P | P | | | | |
 | Number attribute, value on an element | P | P | P | P | | |
-| Unit, default value | m | | P | | | |
+| Unit, default value | m | | P (unit: m) | | | |
 | Text, List, Yes/No, Date attributes | | | P | P | | |
 | Formula, references, calculated value | | | P | | | |
 | A type's attributes and formulas reach its elements | P | | P | | | |
 | Draw a relationship, direction matters | P | P | | | P | |
-| Name a relationship, choose its kind, reverse it | m | m | | | P | |
+| Name a relationship, choose its kind, reverse it | m | m | | | P (reverse: m) | |
 | Generalization | | m | | | P | |
 | Choose among several allowed relationships | | | | | P | |
 | Validate, read and fix an issue | P | P | P | P | | |
@@ -199,11 +217,11 @@ P = the learner does it and the result is checked. m = only mentioned. An empty 
 | Tag, condition groups, Yes/No and List conditions | m | | | P | | |
 | Rule in a metamodel for every model | | | | P | | |
 | Table view: read / edit and filter | P / | | P / | / P | | |
-| Auto layout | P | | | | P | |
+| Auto layout | P | | | | | |
 | Several diagrams, one element in two | m | m | | | P | |
 | Pattern: save and insert / library | P / | | | | | / P |
 | Export: project file / CSV / import | P / m / | | | / P / | | / / P |
-| Template, duplicate, second metamodel, type style | | | | | | P |
+| Template, duplicate, second metamodel, type style | | | | | | P (template: m) |
 | A model answers a question | P | P | P | P | P | P |
 | Work without step-by-step instructions | P | P | P | P | P | P |
 

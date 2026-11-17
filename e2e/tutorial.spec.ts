@@ -7,6 +7,8 @@ import {
   cancelEditor,
   card,
   connect,
+  dropOnCard,
+  waitForStillCanvas,
   expectDone,
   finishLesson as finishLessonOf,
   openOtherProject,
@@ -72,9 +74,15 @@ test("a learner works through the whole tutorial, and every step checks the resu
   await saveEditor(page);
   await expectDone(page, "add-attribute");
   // The direction counts: Camera to Drone is not what the step asks for.
-  await connect(page, "Camera", "top", "Battery", "bottom");
+  const edgesBefore = await page.locator(".react-flow__edge").count();
+  await connect(page, "Camera", "top", "Drone", "bottom");
+  await expect(page.locator(".react-flow__edge")).toHaveCount(edgesBefore + 1);
   await expect.poll(() => stepState(page, "relate-types")).toBe("current");
-  await connect(page, "Drone", "bottom", "Camera", "left");
+  await page.locator(".react-flow__pane").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(page.locator(".react-flow__edge")).toHaveCount(edgesBefore);
+  // Letting go on the card, as the step says, connects to its nearest handle.
+  await dropOnCard(page, "Drone", "bottom", "Camera");
   await expectDone(page, "relate-types");
   await saveDiagram(page);
   await finishLesson(page, 1);
@@ -90,6 +98,14 @@ test("a learner works through the whole tutorial, and every step checks the resu
   await page.getByTestId("input-attr-value-0").fill("12");
   await saveEditor(page);
   await expectDone(page, "set-value");
+  // From the camera to the drone is not the way the metamodel relates them.
+  const modelEdges = await page.locator(".react-flow__edge").count();
+  await connect(page, "Nose camera", "top", "Courier X1", "top");
+  await expect(page.locator(".react-flow__edge")).toHaveCount(modelEdges + 1);
+  await expect.poll(() => stepState(page, "connect-instances")).toBe("current");
+  await page.locator(".react-flow__pane").click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(page.locator(".react-flow__edge")).toHaveCount(modelEdges);
   await connect(page, "Courier X1", "top", "Nose camera", "top");
   await expectDone(page, "connect-instances");
   await saveDiagram(page);
@@ -112,7 +128,6 @@ test("a learner works through the whole tutorial, and every step checks the resu
   await page.getByTestId("button-validate-again").click();
   await expectDone(page, "validate-again");
   await page.getByTestId("button-model-rules").click();
-  await expectDone(page, "open-rules");
   // Write the rule that answers the question.
   const rules = page.getByTestId("model-rules-panel");
   await expect(rules.getByLabel("Rule name")).toHaveValue("Every battery needs a capacity");
@@ -148,16 +163,33 @@ test("a learner works through the whole tutorial, and every step checks the resu
   await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-side", "right");
   await page.getByTestId("button-toolbar-auto-layout").click();
   await expectDone(page, "auto-layout");
+  const savePattern = async (name: string) => {
+    await page.getByTestId("button-toolbar-save-pattern").click();
+    await page.getByRole("dialog").locator("input").first().fill(name);
+    await page.getByRole("dialog").getByRole("button", { name: "Save Pattern" }).click();
+  };
+  const insertPattern = async (name: string) => {
+    await page.getByRole("tab", { name: "Diagrams" }).click();
+    const entry = page.locator('[data-sidebar="sidebar"] li', { hasText: name });
+    await entry.hover();
+    await entry.locator('[data-testid^="button-insert-pattern-"]').click();
+  };
+  // A pattern of the drone alone inserts a drone without its battery: not what the step is about.
+  await card(page, "Courier X1").click({ position: { x: 12, y: 12 } });
+  await savePattern("Drone alone");
+  await expectDone(page, "save-pattern");
+  await insertPattern("Drone alone");
+  await expect(card(page, "Courier X1")).toHaveCount(2);
+  await expect.poll(() => stepState(page, "insert-pattern")).toBe("current");
+  await waitForStillCanvas(page);
+  await card(page, "Courier X1").last().click({ position: { x: 12, y: 12 } });
+  await page.keyboard.press("Delete");
+  await page.getByRole("alertdialog").getByRole("button", { name: "Delete" }).click();
+  await expect(card(page, "Courier X1")).toHaveCount(1);
   await card(page, "Courier X1").click({ position: { x: 12, y: 12 } });
   await card(page, "Pack A").click({ modifiers: ["ControlOrMeta"], position: { x: 12, y: 12 } });
-  await page.getByTestId("button-toolbar-save-pattern").click();
-  await page.getByRole("dialog").locator("input").first().fill("Drone with battery");
-  await page.getByRole("dialog").getByRole("button", { name: "Save Pattern" }).click();
-  await expectDone(page, "save-pattern");
-  await page.getByRole("tab", { name: "Diagrams" }).click();
-  const insert = page.locator('[data-testid^="button-insert-pattern-"]');
-  await insert.hover();
-  await insert.click();
+  await savePattern("Drone with battery");
+  await insertPattern("Drone with battery");
   await expect(card(page, "Courier X1")).toHaveCount(2);
   await finishLesson(page, 4);
 
@@ -188,7 +220,17 @@ test("a learner works through the whole tutorial, and every step checks the resu
   await page.getByTestId("button-toolbar-validate").click();
   await expectDone(page, "own-validate");
   await saveDiagram(page);
+  // A spreadsheet of the elements is not the project file the step asks for.
   await page.getByTestId("button-export-project").click();
+  await page.getByTestId("select-export-format").click();
+  await page.getByRole("option", { name: "Model elements (CSV)" }).click();
+  const csv = page.waitForEvent("download");
+  await page.getByRole("dialog").getByRole("button", { name: "Download" }).click();
+  await csv;
+  await expect.poll(() => stepState(page, "export")).toBe("current");
+  await page.getByTestId("button-export-project").click();
+  await page.getByTestId("select-export-format").click();
+  await page.getByRole("option", { name: "Structured model package (JSON)" }).click();
   const download = page.waitForEvent("download");
   await page.getByRole("dialog").getByRole("button", { name: "Download" }).click();
   await download;
@@ -255,6 +297,16 @@ test("the PPR tutorial leads from a requirement to product, process and resource
   // --- Lesson 3: derive the process ---
   await add("Process", "Bending", "15");
   await expectDone(page, "add-process");
+  // The process does not go into the product: the Blank goes into Bending.
+  const undoLastLine = async () => {
+    const edges = await page.locator(".react-flow__edge").count();
+    await page.locator(".react-flow__pane").click({ position: { x: 5, y: 5 } });
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(page.locator(".react-flow__edge")).toHaveCount(edges - 1);
+  };
+  await connect(page, "Bending", "top", "Blank", "bottom");
+  await expect.poll(() => stepState(page, "process-input")).toBe("current");
+  await undoLastLine();
   await connect(page, "Blank", "bottom", "Bending", "top");
   await expectDone(page, "process-input");
   await connect(page, "Bending", "left", "Bracket", "top");
@@ -288,8 +340,13 @@ test("the PPR tutorial leads from a requirement to product, process and resource
   await choose(3, "none");
   await choose(4, "Resource");
   await choose(5, "Name");
-  await choose(6, "is set");
   await choose(7, "report an issue");
+  // "is not set" would match every resource and report every process.
+  await choose(6, "is not set");
+  await page.getByTestId("button-save-rules").click();
+  await expect(page.getByText("Model rules saved").first()).toBeVisible();
+  await expect.poll(() => stepState(page, "add-rule")).toBe("current");
+  await choose(6, "is set");
   await page.getByTestId("button-save-rules").click();
   await expectDone(page, "add-rule");
   await rules.getByLabel("Close model rules").click();
@@ -302,6 +359,10 @@ test("the PPR tutorial leads from a requirement to product, process and resource
   // --- Lesson 5: assign the resource ---
   await add("Resource", "Press brake", "45");
   await expectDone(page, "add-resource");
+  // The Laser cutter cannot bend: it is not the resource the step is about.
+  await connect(page, "Laser cutter", "bottom", "Bending", "bottom");
+  await expect.poll(() => stepState(page, "assign-resource")).toBe("current");
+  await undoLastLine();
   await connect(page, "Press brake", "top", "Bending", "right");
   await expectDone(page, "assign-resource");
   await page.getByTestId("button-validate-again").click();
@@ -319,9 +380,12 @@ test("the PPR tutorial leads from a requirement to product, process and resource
   await add("Resource", "Coating booth");
   await connect(page, "Coating booth", "top", "Powder coating", "bottom");
   await expectDone(page, "own-resource");
-  await connect(page, "Powder coating", "top", "Corrosion protection", "bottom");
+  await connect(page, "Powder coating", "bottom", "Corrosion protection", "top");
   await expectDone(page, "own-trace");
   await page.getByTestId("button-toolbar-validate").click();
+  await expectDone(page, "own-validate");
+  // The answer is kept by saving the model.
+  await saveDiagram(page);
 
   const finished = page.getByTestId("tutorial-finished");
   await expect(finished).toBeVisible();

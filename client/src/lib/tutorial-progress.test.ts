@@ -253,6 +253,10 @@ test("a signal only completes its step when the model agrees", () => {
   progress = applySignal(progress, "saved", "metamodel", null);
   assert.equal(stepState(progress, step("save-metamodel")), "open");
   const withCamera = [...startingTypes, element("new", "Camera", "Object")];
+  // An early save, before the attribute and the relationship exist, does not store them: not yet.
+  progress = applySignal(progress, "saved", "metamodel", model("metamodel", withCamera));
+  assert.equal(stepState(progress, step("save-metamodel")), "open");
+  for (const id of ["add-type", "name-type", "add-attribute", "relate-types"]) progress = skipStep(progress, id);
   progress = applySignal(progress, "saved", "metamodel", model("metamodel", withCamera));
   assert.equal(stepState(progress, step("save-metamodel")), "done");
 });
@@ -301,7 +305,7 @@ test("checking the model: the seeded gap has to be found, fixed and checked agai
   ];
   for (const candidate of notYet) {
     progress = applyModelState(progress, model("instance", fixed, { rules: [seeded, candidate] }));
-    assert.equal(stepState(progress, step("add-rule")), "open");
+    assert.notEqual(stepState(progress, step("add-rule")), "done");
   }
   const withRule = model("instance", fixed, { rules: [seeded, rule("drone", [lessThan15])] });
   progress = applyModelState(progress, withRule);
@@ -554,10 +558,37 @@ test("PPR: requirement, product, process and resource have to be connected the P
   progress = progressOf.applyModelState(P, progress, complete);
   assert.equal(stateOf(progress, "own-resource"), "done");
   assert.equal(stateOf(progress, "own-trace"), "done");
-  // Only a clean validation answers the question.
+  // Only a clean validation answers the question, and the answer is kept by saving.
   assert.ok(!progressOf.isTutorialFinished(P, progress));
   progress = progressOf.applySignal(P, progress, "validation-passed", "instance", complete);
+  assert.equal(stateOf(progress, "own-validate"), "done");
+  assert.ok(!progressOf.isTutorialFinished(P, progress));
+  progress = progressOf.applySignal(P, progress, "saved", "instance", complete);
   assert.ok(progressOf.isTutorialFinished(P, progress));
+
+  // The typical wrong ways do not count.
+  const checkOf = (id: string) => pprStep(id).check!;
+  const isNotSet = rule("Process", [{ ...nothingPointsAtIt, type: "Resource", operator: "missing" }]);
+  assert.equal(checkOf("add-rule")(pprModel({ rules: [seeded, isNotSet] })), false, "is not set reports every process");
+  const laserBends = [...produced, link("laser", "bend")];
+  assert.equal(
+    checkOf("assign-resource")(model("instance", [...withBending, press], { relationships: laserBends })),
+    false,
+    "the Laser cutter cannot bend",
+  );
+  assert.equal(
+    checkOf("trace-new")(model("instance", [...start, angle], { relationships: [...chain, link("blank", "r3")] })),
+    false,
+    "the Blank does not have to have the angle",
+  );
+  const unchanged = [...executedBending, link("bracket", "coat"), link("coat", "bracket")];
+  assert.equal(checkOf("own-process")(model("instance", all, { relationships: unchanged })), false, "nothing was transformed");
+  // A learner who skipped Mounting angle can still trace Corrosion protection and finish.
+  const withoutAngle = all.filter((candidate) => candidate.id !== "r3");
+  const tracedWithoutAngle = [...transformed, link("booth", "coat"), link("coat", "r2")].filter(
+    (relationship) => relationship.to !== "r3",
+  );
+  assert.equal(checkOf("own-trace")(model("instance", withoutAngle, { relationships: tracedWithoutAngle })), true);
 });
 
 test("a step marked afterPrevious waits for the steps before it, even when its check holds from the start", async () => {
@@ -770,4 +801,24 @@ test("structure: the new relationship, the shown elements and the Generalization
     });
   assert.equal(checkOf("generalize")(generalization("component", "grinder")), false, "a Component is not a Grinder");
   assert.equal(checkOf("generalize")(generalization("grinder", "component")), true);
+});
+
+test("basics: deleting Pack B is no fix, a default is no value filled in, a lone drone is no pattern", () => {
+  const checkOf = (id: string) => step(id).check!;
+  const withCamera = [...startingModel, element("cam", "Nose camera", "Camera", { resolution: "12" })];
+  const withoutPackB = withCamera.filter((candidate) => candidate.id !== "b");
+  assert.equal(checkOf("fix-issue")(model("instance", withoutPackB)), false);
+  // A camera fresh from the type, with a default value and its placeholder name, is not filled in yet.
+  const fresh = [...startingModel, element("cam", "New Camera 5", "Camera", { resolution: "8" })];
+  assert.equal(checkOf("set-value")(model("instance", fresh)), false);
+  assert.equal(checkOf("set-value")(model("instance", withCamera)), true);
+  // Two drones, each with a battery: the pattern brought both.
+  const drones = (withBattery: boolean) =>
+    model(
+      "instance",
+      [...startingModel, element("x2", "Courier X1", "Drone"), element("a2", "Pack A", "Battery")],
+      { relationships: [link("x1", "a"), ...(withBattery ? [link("x2", "a2")] : [])] },
+    );
+  assert.equal(checkOf("insert-pattern")(drones(false)), false);
+  assert.equal(checkOf("insert-pattern")(drones(true)), true);
 });

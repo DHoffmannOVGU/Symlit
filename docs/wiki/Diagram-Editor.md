@@ -4,7 +4,8 @@ The same editor is used for metamodels and models.
 
 ## Canvas
 
-- Each element has one handle per side; drag from a handle to draw a relationship.
+- Each element has one handle per side; drag from a handle to draw a relationship, and let go on
+  a handle of the other element or anywhere on it (it connects to the nearest handle).
 - **Auto Layout** arranges the diagram.
 - Select two or more elements to align them or to save them as a [pattern](Patterns-Rules-and-Validation).
 - **Screenshot** exports the diagram as an image.

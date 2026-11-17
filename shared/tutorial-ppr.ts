@@ -41,13 +41,37 @@ const isOneOf = (names: string[], element: TutorialElement) => names.some((name)
 const ownRequirements = (state: TutorialModelState) =>
   ofType(state, "Requirement").filter((element) => !isOneOf(STARTING_REQUIREMENTS, element));
 
-/** A process is complete when a product goes in, a product comes out and a resource executes it. */
-const transforms = (state: TutorialModelState, process: TutorialElement) =>
-  related(state, ofType(state, "Product"), [process]) && related(state, [process], ofType(state, "Product"));
+/**
+ * A process transforms when a product goes in and another product comes out:
+ * what goes in and comes out unchanged was not transformed.
+ */
+const transforms = (state: TutorialModelState, process: TutorialElement) => {
+  const products = ofType(state, "Product");
+  const into = products.filter((product) => related(state, [product], [process]));
+  return (
+    into.length > 0 &&
+    products.some((product) => related(state, [process], [product]) && !into.some((input) => input.id === product.id))
+  );
+};
 const executed = (state: TutorialModelState, process: TutorialElement) =>
   related(state, ofType(state, "Resource"), [process]);
 const satisfied = (state: TutorialModelState, requirement: TutorialElement) =>
   state.relationships.some((relationship) => relationship.to === requirement.id);
+/** Resources the learner added: the Laser cutter cannot bend. */
+const addedResources = (state: TutorialModelState) =>
+  ofType(state, "Resource").filter((element) => !same(element.name, "Laser cutter"));
+const bendingExecutedByAddedResource = (state: TutorialModelState) =>
+  named(state, "Bending").some((process) => related(state, addedResources(state), [process]));
+/** The new process of the last lesson, between two products. */
+const ownProcessTransforms = (state: TutorialModelState) =>
+  ofType(state, "Process").some(
+    (process) => !isOneOf([...STARTING_PROCESSES, "Bending"], process) && transforms(state, process),
+  );
+const everyProcessExecuted = (state: TutorialModelState) =>
+  ofType(state, "Process").every((process) => executed(state, process));
+const everyRequirementSatisfied = (state: TutorialModelState) =>
+  named(state, "Corrosion protection").length > 0 &&
+  ofType(state, "Requirement").every((requirement) => satisfied(state, requirement));
 
 /** The learner's rule: a Process that no Resource points at is reported. */
 const processRule = (state: TutorialModelState) =>
@@ -60,7 +84,10 @@ const processRule = (state: TutorialModelState) =>
           condition.about === "connected" &&
           condition.direction === "incoming" &&
           condition.quantifier === "none" &&
-          same(condition.type, "Resource"),
+          same(condition.type, "Resource") &&
+          // "is not set" would match every resource, and so report every process.
+          condition.operator === "exists" &&
+          (condition.field === "name" || condition.field === "type"),
       ),
   );
 
@@ -76,7 +103,7 @@ const LESSONS: TutorialLesson[] = [
         id: "open-process-type",
         title: "Look at the Process type",
         instruction:
-          "You are in the metamodel PPR types. Look at how the three types are connected, then double-click Process to open it.",
+          "You are in the metamodel PPR types. Look at how the three types are connected. First guess: is a Process an Object, a Behavior or a Performer? Then double-click Process to see.",
         hint: "Read the relationships as sentences: a Product goes into a Process, a Process produces a Product, a Resource executes a Process. The hollow arrows say that all three are PPR elements.",
         done: "A Process is something that is done, so its kind is Behavior. A Product is an Object, a Resource a Performer. Every process will have a cycle time. Press Cancel to close the editor.",
         scope: "metamodel",
@@ -123,7 +150,7 @@ const LESSONS: TutorialLesson[] = [
         id: "relate-satisfies",
         title: "Let PPR elements satisfy requirements",
         instruction:
-          "In PPR types, draw a relationship from PPR element to Requirement.",
+          "First guess: do Product, Process and Resource each need their own relationship to Requirement, or is one enough? Then, in PPR types, draw a relationship from PPR element to Requirement.",
         hint: "Drag from a handle on the PPR element card to the Requirement card. You can double-click the new relationship and name it satisfies.",
         done: "One relationship is enough. Product, Process and Resource are PPR elements (the hollow arrows are Generalizations), so each of them may now satisfy a requirement.",
         scope: "metamodel",
@@ -145,7 +172,7 @@ const LESSONS: TutorialLesson[] = [
         title: "Trace an existing requirement",
         instruction:
           "In Bracket production, open the requirement Carries 5 kg and read its criterion. Then draw a relationship from the product Bracket to Carries 5 kg and confirm it.",
-        hint: "The direction says who is responsible: the Bracket satisfies the requirement, so start at Bracket.",
+        hint: "The direction says who is responsible: the Bracket satisfies the requirement, so start at Bracket. A line drawn the other way does not count and stays in the model: select it and press Delete.",
         done: "The model now says that the Bracket has to carry the load. The requirement has an owner.",
         scope: "instance",
         check: (state) => related(state, named(state, "Bracket"), named(state, "Carries 5 kg")),
@@ -168,7 +195,7 @@ const LESSONS: TutorialLesson[] = [
         instruction: "Say what has to satisfy Mounting angle: draw a relationship from Bracket to it.",
         done: "The Bracket now has to have a 90 degree angle. The model does not yet say how it gets one: nothing produces the Bracket. That is the next lesson.",
         scope: "instance",
-        check: (state) => related(state, ofType(state, "Product"), ownRequirements(state)),
+        check: (state) => related(state, named(state, "Bracket"), ownRequirements(state)),
         highlight: [{ selector: ELEMENT_CARD, text: "Bracket" }],
       },
     ],
@@ -217,9 +244,10 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "process-output",
         title: "Say what comes out",
-        instruction: "Bending turns the Blank into the Bracket: draw a relationship from Bending to Bracket and confirm it.",
+        instruction:
+          "First guess: is Bending a complete PPR step once the Bracket comes out of it? Then draw a relationship from Bending to Bracket and confirm it.",
         hint: "Processes produce products: start at the process, end on the product.",
-        done: "The chain is closed: Steel sheet, Laser cutting, Blank, Bending, Bracket. The model now says how the Bracket comes into being.",
+        done: "The chain is closed: Steel sheet, Laser cutting, Blank, Bending, Bracket. The model now says how the Bracket comes into being. Bending is not complete yet: no resource executes it.",
         scope: "instance",
         check: (state) => related(state, named(state, "Bending"), named(state, "Bracket")),
         highlight: [{ selector: ELEMENT_CARD, text: "Bending" }],
@@ -248,8 +276,8 @@ const LESSONS: TutorialLesson[] = [
       {
         id: "validate",
         title: "Validate the model",
-        instruction: "Press Validate and read what is reported.",
-        done: "A rule reports Corrosion protection: nothing satisfies it. Leave it for now; it is the task of the last lesson.",
+        instruction: "First guess: will validation report Bending, which no machine executes? Then press Validate and read what is reported.",
+        done: "A rule reports Corrosion protection: nothing satisfies it. Leave it for now; it is the task of the last lesson. Bending is not reported: no rule asks for a resource yet. A relationship reported as not allowed was drawn the wrong way round: click the issue, press Delete and draw it again.",
         signal: "validation-run",
         scope: "instance",
         highlight: [VALIDATE],
@@ -268,8 +296,8 @@ const LESSONS: TutorialLesson[] = [
         id: "add-rule",
         title: "Write the rule for processes",
         instruction:
-          "Add a rule named Every process has a resource. Elements: Process. Condition: Incoming from · none · Resource · Name · is set. Then: report an issue, with a message such as No resource executes this process. Save the rules.",
-        hint: "In the condition row, change This object to Incoming from; three more lists appear. Set them to none, Resource and Name, and the comparison to is set. In the Then row, switch to report an issue. The panel has its own Save.",
+          "Add a rule named Every process has a resource. For: Process. Condition: Incoming from · none · Resource · Name · is set. Then: report an issue, with a message such as No resource executes this process. Save the rules.",
+        hint: "In the list next to the rule name that shows All object types, choose Process. In the condition row, change This object to Incoming from; two more lists appear. Set them to none and Resource, set Choose attribute… to Name and the comparison to is set. In the Then row, switch to report an issue. The panel has its own Save.",
         done: "Your rule reads: a process that no Resource points at is reported. The Live results on the right already show which process that is.",
         scope: "instance",
         check: processRule,
@@ -279,7 +307,7 @@ const LESSONS: TutorialLesson[] = [
         id: "validate-rule",
         title: "Validate with your rule",
         instruction: "Close the rules panel and validate again.",
-        hint: "If Bending is not reported, compare your rule with: Incoming from · none · Resource · Name · is set.",
+        hint: "If Laser cutting is reported as well, or Bending is not, compare your rule with: Incoming from · none · Resource · Name · is set.",
         done: "Bending is reported: no resource executes it. The bracket is planned, but nobody can bend it yet. Laser cutting passes, because the Laser cutter executes it.",
         signal: "validation-run",
         scope: "instance",
@@ -318,20 +346,20 @@ const LESSONS: TutorialLesson[] = [
         id: "assign-resource",
         title: "Let it execute the process",
         instruction: "Draw a relationship from the new resource to Bending and confirm it.",
-        hint: "Resources execute processes: start at the resource, end on the process.",
+        hint: "Resources execute processes: start at the resource, end on the process. The Laser cutter cannot bend: use the resource you just added.",
         done: "Bending is a complete PPR step now: Blank in, Bracket out, executed by your resource.",
         scope: "instance",
-        check: (state) => named(state, "Bending").some((process) => executed(state, process)),
+        check: bendingExecutedByAddedResource,
         highlight: [{ selector: ELEMENT_CARD, text: "Bending" }],
       },
       {
         id: "validate-resource",
         title: "Validate again",
-        instruction: "Validate and check that Bending is no longer reported.",
+        instruction: "First guess: how many issues will be left? Then validate and check that Bending is no longer reported.",
         done: "Your rule passes for every process. One issue is left: Corrosion protection is still not satisfied.",
         signal: "validation-run",
         scope: "instance",
-        check: (state) => named(state, "Bending").some((process) => executed(state, process)),
+        check: bendingExecutedByAddedResource,
         highlight: ['[data-testid="button-validate-again"]', VALIDATE],
       },
     ],
@@ -363,10 +391,7 @@ const LESSONS: TutorialLesson[] = [
         hint: "The Bracket goes in. What comes out is a different product, for example a Coated bracket: add it as a Product. See lesson 3.",
         done: "The production chain is one step longer, and there is a new product at its end.",
         scope: "instance",
-        check: (state) =>
-          ofType(state, "Process").some(
-            (process) => !isOneOf([...STARTING_PROCESSES, "Bending"], process) && transforms(state, process),
-          ),
+        check: ownProcessTransforms,
       },
       {
         id: "own-resource",
@@ -375,8 +400,8 @@ const LESSONS: TutorialLesson[] = [
         hint: "For example a Coating booth. Your rule from lesson 4 tells you when a process has no resource. See lesson 5.",
         done: "Every process in the model can be carried out.",
         scope: "instance",
-        check: (state) =>
-          ofType(state, "Process").length >= 3 && ofType(state, "Process").every((process) => executed(state, process)),
+        // Named, not counted: a learner who skipped Bending can still finish.
+        check: (state) => ownProcessTransforms(state) && everyProcessExecuted(state),
       },
       {
         id: "own-trace",
@@ -385,22 +410,32 @@ const LESSONS: TutorialLesson[] = [
         hint: "The coated product, or the coating process: either is a defensible answer. See lesson 2.",
         done: "Every requirement has an owner.",
         scope: "instance",
-        check: (state) =>
-          ofType(state, "Requirement").length >= 3 &&
-          ofType(state, "Requirement").every((requirement) => satisfied(state, requirement)),
+        check: everyRequirementSatisfied,
       },
       {
         id: "own-validate",
         title: "Let the model answer",
-        instruction: "Validate. Fix whatever is reported until there are no issues, then save the diagram.",
+        instruction: "Validate. Fix whatever is reported until there are no issues.",
         hint: "A relationship the metamodel does not allow is reported as well: products go into processes, processes produce products, resources execute processes, and PPR elements satisfy requirements.",
         done: "No issues: every requirement is satisfied, every process has its products and a resource.",
         signal: "validation-passed",
         scope: "instance",
         check: (state) =>
-          ofType(state, "Process").length >= 3 &&
-          ofType(state, "Process").every((process) => executed(state, process)) &&
-          ofType(state, "Requirement").every((requirement) => satisfied(state, requirement)),
+          ownProcessTransforms(state) &&
+          everyProcessExecuted(state) &&
+          everyRequirementSatisfied(state) &&
+          ofType(state, "Process").every((process) => transforms(state, process)),
+      },
+      {
+        id: "own-save",
+        title: "Save the model",
+        instruction: "Save Bracket production.",
+        done: "Saved. The model and its two rules now answer the question for anyone who opens it.",
+        signal: "saved",
+        scope: "instance",
+        afterPrevious: true,
+        check: (state) => everyProcessExecuted(state) && everyRequirementSatisfied(state),
+        highlight: [SAVE_DIAGRAM],
       },
     ],
   },
@@ -412,7 +447,7 @@ export const PPR_TUTORIAL: TutorialDefinition = {
   title: "Production with PPR",
   question: QUESTION,
   answer:
-    "Yes: every requirement is satisfied by a product or a process, every process turns one product into another, and a resource executes each of them. Your rules keep checking that.",
+    "Yes: every requirement is traced to a product, process or resource that satisfies it, every process turns one product into another, and a resource executes each of them. Your two rules keep checking that every requirement has an owner and every process a resource.",
   answerStep: "own-validate",
   summary:
     "Model how a shelf bracket is made, the way production engineers do: products, processes and resources (PPR), starting from the customer's requirements. You trace each requirement to what satisfies it, derive the missing process, assign its resource, and write a rule that finds what is still missing.",
@@ -423,7 +458,7 @@ export const PPR_TUTORIAL: TutorialDefinition = {
   lessons: LESSONS,
   notCovered: [
     "Capabilities: describing what a resource can do, and matching that with what a process needs",
-    "Process requirements with numbers, such as a total cycle time, checked by rules on attribute values",
+    "Process requirements with numbers, such as a cycle time of at most 20 s for every process, checked by a rule on an attribute value (the tutorial Calculate with attributes writes such rules)",
     "Product structure: assemblies and their parts, with Composition",
     "Several diagrams of the same model, for example one per production line",
   ],

@@ -63,6 +63,18 @@ export async function connect(page: Page, from: string, fromSide: string, to: st
   await page.mouse.up();
 }
 
+/** Draws a relationship from a side handle of one card and lets go in the middle of another card. */
+export async function dropOnCard(page: Page, from: string, fromSide: string, to: string) {
+  await waitForStillCanvas(page);
+  const handle = card(page, from).first().locator(`.react-flow__handle[data-handlepos="${fromSide}"]`).first();
+  const start = (await handle.boundingBox())!;
+  const target = (await card(page, to).first().boundingBox())!;
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 12 });
+  await page.mouse.up();
+}
+
 /** Opens a card's editor. */
 export async function openEditor(page: Page, name: string) {
   await waitForStillCanvas(page);

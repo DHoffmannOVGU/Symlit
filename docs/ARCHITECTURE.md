@@ -182,8 +182,10 @@ SQL migration to `migrations/`. Commit both. CI fails if the schema and migratio
   tutorial's template. The first metamodel and the model are marked with the template's id in
   `projects.template_id`; further projects of the template (a second metamodel) with that id plus
   `+extra`. A run's projects are those created together, between one of its metamodels and the
-  next. `DELETE /api/tutorial/:tutorial` removes them, and with them any model that uses their
-  metamodels (a copy the learner made). Without an id, `POST /api/tutorial` creates the first
+  next. `DELETE /api/tutorial/:tutorial` removes them and, for a tutorial with steps in a copy of
+  its model, any model that uses their metamodels (the copies the learner made).
+  `projectsRemovedWithTutorial()` in `shared/tutorial.ts` decides which, for the server and for the
+  confirmation that lists them first. Without an id, `POST /api/tutorial` creates the first
   tutorial and `DELETE` removes all.
 - **Where a step happens** (`scope`): the tutorial's metamodel, its model, the project list
   (`projects`, checked with `checkProjects` on a `TutorialWorkspaceState`), or a `variant`: a model
@@ -191,10 +193,13 @@ SQL migration to `migrations/`. Commit both. CI fails if the schema and migratio
   diagram it happens in (`view`).
 - **When a step is done:** when the model shows its result (`check`), when a feature was used
   (`signal`), or both. `afterPrevious` holds a step back until the steps before it in its lesson
-  are done, for checks that are true from the start. The canvas reports the open diagram to the
+  are done or skipped, for checks that are true from the start; `afterPrevious: "done"` until the
+  step right before it is done, for a check that also holds when that step never happened. A check
+  on a formula uses `calculates()`, which evaluates the formula on sample inputs, so that any way of
+  writing the same calculation counts and a wrong one does not. The canvas reports the open diagram to the
   coach as a `TutorialModelState` (`useTutorialModelReporter`, only in a run's projects): elements
-  with their type, attributes (type, unit, formula, references, the value calculated now), tags
-  and colour; relationships with kind and name; the open element or relationship editor; the
+  with their type, attributes (type, unit, formula, references, the value calculated now), tags,
+  colour and whether they have a style of their own; relationships with kind and name; the open element or relationship editor; the
   table filter; the saved rules with their conditions; the diagram's name and the project's
   diagrams; the model's metamodels; unsaved changes. It is reported when it changes and on request,
   and not before the diagram, its rules and its types are loaded. Signals come from

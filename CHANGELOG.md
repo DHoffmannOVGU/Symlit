@@ -53,5 +53,14 @@ DATABASE_URL. No account, no external requests.
 - Saving a diagram after showing an existing element in it was refused as if
   the diagram had been changed somewhere else.
 - In a formula, a minus sign after * or / was applied wrongly (2 * -3 gave -3).
+- A relationship let go on a card, not on one of its handles, created
+  nothing; it now connects to the card's nearest handle.
+- Opening another diagram of a project kept the table the last one was left
+  in.
+- An imported project could not be told apart from the one of the same name
+  it came from; it is now marked "(imported)".
+- Removing a tutorial removed the copies made of its model without asking;
+  it now names every project that goes and asks first, and only the Reuse
+  tutorial, which asks for copies, removes them.
 
 Docs: README.md, docs/ARCHITECTURE.md, docs/BACKLOG.md.
