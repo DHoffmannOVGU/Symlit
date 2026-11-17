@@ -165,7 +165,6 @@ function complete(
   );
 }
 
-/** The step happens in the open project and, when it names one, in the open diagram. */
 /**
  * The step happens where the learner is and, when it names one, in the open
  * diagram. Where the learner is is the tutorial's metamodel or model (the
@@ -193,6 +192,29 @@ export function applySignal(
 ): TutorialProgress {
   const step = completable(tutorial, progress).find(
     (candidate) => candidate.signal === signal && candidate.scope === scope && checkPasses(candidate, state, scope),
+  );
+  return step ? complete(tutorial, progress, [step], now) : progress;
+}
+
+/**
+ * Applies the first state of a diagram that was just opened, for a step that
+ * opens a diagram and asks for something in it: the signal "view-opened" is
+ * sent before the new diagram is known, and only steps that need nothing of
+ * it complete then.
+ */
+export function applyOpenedView(
+  tutorial: TutorialDefinition,
+  progress: TutorialProgress,
+  scope: TutorialScope,
+  state: TutorialModelState,
+  now = Date.now(),
+): TutorialProgress {
+  const step = completable(tutorial, progress).find(
+    (candidate) =>
+      candidate.signal === "view-opened" &&
+      candidate.scope === scope &&
+      (!!candidate.check || !!candidate.view) &&
+      checkPasses(candidate, state, scope),
   );
   return step ? complete(tutorial, progress, [step], now) : progress;
 }

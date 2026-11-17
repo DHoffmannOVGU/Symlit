@@ -822,3 +822,37 @@ test("basics: deleting Pack B is no fix, a default is no value filled in, a lone
   assert.equal(checkOf("insert-pattern")(drones(false)), false);
   assert.equal(checkOf("insert-pattern")(drones(true)), true);
 });
+
+test("a step that opens a diagram and asks for something in it is judged on that diagram", () => {
+  const opening: typeof T = {
+    ...T,
+    lessons: [
+      {
+        ...T.lessons[0],
+        steps: [
+          {
+            id: "open-structure",
+            title: "Open Structure",
+            instruction: "Open the diagram Structure and look at it.",
+            done: "This is the diagram Structure.",
+            signal: "view-opened",
+            scope: "instance",
+            view: "Structure",
+          },
+          ...T.lessons[0].steps.slice(1),
+        ],
+      },
+      ...T.lessons.slice(1),
+    ],
+  };
+  const openStep = opening.lessons[0].steps[0];
+  let progress: TutorialProgress = { ...EMPTY_TUTORIAL_PROGRESS };
+  // The signal comes before the new diagram is known: nothing is judged on the one open before.
+  progress = progressOf.applySignal(opening, progress, "view-opened", "instance", null);
+  assert.equal(progressOf.stepState(opening, progress, openStep), "current");
+  // Another diagram opened first does not count; Structure does.
+  progress = progressOf.applyOpenedView(opening, progress, "instance", model("instance", [], { diagram: "Main" }));
+  assert.equal(progressOf.stepState(opening, progress, openStep), "current");
+  progress = progressOf.applyOpenedView(opening, progress, "instance", model("instance", [], { diagram: "Structure" }));
+  assert.equal(progressOf.stepState(opening, progress, openStep), "done");
+});

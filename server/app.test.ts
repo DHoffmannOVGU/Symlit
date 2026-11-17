@@ -805,7 +805,11 @@ describe("project import", () => {
     assert.equal(imported.status, 201, imported.text);
     assert.equal(imported.json.createdProjects, 2);
     assert.notEqual(imported.json.project.id, project.id);
-    assert.equal(imported.json.project.name, "Import me");
+    // Imported next to the projects it came from: both are marked, so the two pairs can be told apart.
+    assert.equal(imported.json.project.name, "Import me (imported)");
+    const names = ((await request("GET", "/api/projects")).json as Array<{ name: string }>).map((p) => p.name);
+    assert.ok(names.includes("Import types (imported)"));
+    assert.ok(names.includes("Import me") && names.includes("Import types"), "the originals keep their names");
     assert.equal(imported.json.project.referencedMetamodels.length, 1);
     assert.notEqual(imported.json.project.referencedMetamodels[0], metamodel.id);
 
@@ -816,6 +820,18 @@ describe("project import", () => {
     const labels = (flow: { nodes: Array<{ data: { label?: string } }> }) =>
       flow.nodes.map((node) => node.data.label).sort();
     assert.deepEqual(labels(copy), labels(original));
+
+    // Where the name is free, it is kept.
+    const exportedAgain = await request("POST", `/api/projects/${project.id}/export`, {
+      format: "json",
+      includeReferencedMetamodels: true,
+    });
+    const again = await request("POST", "/api/projects/import", {
+      ...exportedAgain.json,
+      project: { ...exportedAgain.json.project, name: "A free name" },
+    });
+    assert.equal(again.status, 201, again.text);
+    assert.equal(again.json.project.name, "A free name");
   });
 
   test("rejects files that are not project files, saving nothing", async () => {

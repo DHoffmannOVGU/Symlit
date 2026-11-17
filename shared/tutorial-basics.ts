@@ -188,7 +188,7 @@ const LESSONS: TutorialLesson[] = [
           ofType(state, "Camera").some(
             (element) => hasValue(element, "resolution") && !/^new camera\b/i.test(element.name.trim()),
           ),
-        highlight: ['[data-testid="input-attr-value-0"]', { selector: ELEMENT_CARD, text: "Camera" }],
+        highlight: ['[data-attribute-name="resolution"]', { selector: ELEMENT_CARD, text: "Camera" }],
       },
       {
         id: "connect-instances",

@@ -26,6 +26,7 @@ import type { RemovedProject } from "./ConfirmTutorialRemoval";
 import {
   answerQuestion,
   applyModelState,
+  applyOpenedView,
   applySignal,
   applyWorkspaceState,
   clearTutorialProgress,
@@ -215,8 +216,13 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
   const [modelState, setModelState] = useState<TutorialModelState | null>(null);
   const modelStateRef = useRef<TutorialModelState | null>(null);
   modelStateRef.current = modelState;
+  /** A diagram that was just opened, until its first state is known. */
+  const openedViewRef = useRef<number | null>(null);
   useEffect(() => {
     setModelState(null);
+    // Signals sent from now on must not be judged on the diagram that was open before.
+    modelStateRef.current = null;
+    openedViewRef.current = viewId ?? null;
     if (!scope || !viewId) return;
     const unsubscribe = subscribeDiagramEvent("tutorial-model-state", (detail) => {
       // Reported while the canvas renders; defer so we never update state mid-render.
@@ -231,7 +237,12 @@ export function useTutorialCoach({ project, allProjects, viewId, isDiagramDirty 
   useEffect(() => {
     if (!modelState || !progress || !definition || !scope) return;
     update((current) => applyModelState(definition, current, modelState, Date.now(), scope));
-  }, [definition, modelState, progress, scope, update]);
+    // The first state of a diagram just opened: a step that opens it and asks for something in it.
+    if (openedViewRef.current !== null && openedViewRef.current === viewId) {
+      openedViewRef.current = null;
+      update((current) => applyOpenedView(definition, current, scope, modelState));
+    }
+  }, [definition, modelState, progress, scope, update, viewId]);
 
   const signal = useCallback(
     (name: TutorialSignal) => {

@@ -332,8 +332,12 @@ Found while mapping it. Fixed, as part of step 1:
   new run started with old progress. Starting a tutorial clears it.
 - Each tutorial took about 200 px of the project list. The cards are compact and can be folded away.
 
-Still open:
+Fixed later:
 
-- "Show me" for a field assumes the attribute is the first in the list.
-- A step that combines the signal "view-opened" with a check is judged on the diagram that was open
-  before. No step does; `afterPrevious` covers the case that needed it.
+- "Show me" for a field assumed the attribute was the first in the list; value fields now carry
+  the attribute's name (`data-attribute-name`).
+- A step that combined the signal "view-opened" with a check was judged on the diagram that was
+  open before. Signals are no longer judged on it, and such a step is judged on the first state of
+  the diagram that was opened (`applyOpenedView`).
+
+Still open: nothing known, apart from trying the tutorials with learners.
