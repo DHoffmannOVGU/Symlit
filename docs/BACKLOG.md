@@ -41,9 +41,10 @@ commit that fixed them.
 ### Client
 - **Guided tutorials, still open** (`docs/ux/TUTORIAL_ROADMAP.md`): none of the six has been tried with
   learners; a single lesson cannot be reset on its own; per-step records (time, hints, Show me) stay in the
-  browser and have no export; "Show me" for a field points at the first attribute of a list.
-- **Formulas see only their own element.** No sum or count over parts, connected or child elements, so a mass or
-  cost budget across elements cannot be calculated. Decide whether to add aggregation (a syntax for "the parts'
+  browser and have no export.
+- **Formulas see only their own element.** Functions (`sum`, `avg`, `min`, `max`, …) work on that element's
+  values; there is no sum or count over parts, connected or child elements, so a mass or cost budget across
+  elements cannot be calculated. Decide whether to add aggregation (a syntax for "the parts'
   mass") before a tutorial relies on it.
 - **Flow mode is not reachable.** The canvas has a flow mode (start and end elements, ticks, playback), but
   `ProjectView` always mounts it in build mode and nothing switches it. The README and wiki no longer claim it.
@@ -72,6 +73,8 @@ commit that fixed them.
 
 ## Done
 - Four more guided tutorials, each with its own example (`docs/ux/TUTORIAL_ROADMAP.md`): Calculate with attributes (print jobs: attribute types, formulas, a rule on a calculated value), Classify and review (a control cabinet: tags, combined conditions, rules in a metamodel, the table), Structure and views (an espresso machine: relationship kinds, Generalization, one element in two diagrams) and Reuse and variants (sensor nodes: type styles, copies, pattern libraries, a second metamodel, project files). The tutorial system grew with them: steps can check attribute types and formulas, relationship kinds and names, tags, rules' conditions, the table filter, the open diagram and the project list; steps can happen in a named diagram, on the project list or in a copy of the tutorial's model; a tutorial can bring more than two projects; a save step completes however the save was started; finished tutorials are remembered. The project list offers the tutorials as compact cards.
+- Formula functions: `min`, `max`, `sum`, `avg`, `round` (to decimals), `floor`, `ceil`, `abs`, `sqrt`. The
+  language is parsed and calculated in one place (`shared/formula.ts`), for the editor and the tutorial checks.
 - Formulas: a minus sign after `*` or `/` was applied wrongly; an empty input made a formula count it as zero or blocked the editor, and now means "not calculated yet"; calculated values follow their inputs in the table and for new elements (they were refreshed only by the editor); the syntax is in the help. Elements inherit the attributes of the types their type specializes (`client/src/lib/type-attributes.ts`), as the wiki said they did.
 - Showing an existing element in a diagram stored its placement at once, so the editor's revision was outdated and the next save was refused as a conflict. The insert returns the new revision (`server/routes/flow.ts`, `useCanvasInsertion.ts`; `e2e/local-workspace.spec.ts`).
 - Saving a diagram with an element created since it was opened reset the undo history: the signature compared after the save depended on key order, which the database does not keep (`diagram-serialization.ts`). Found by a browser test that failed on CI only.

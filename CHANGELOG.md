@@ -27,7 +27,9 @@ DATABASE_URL. No account, no external requests.
 - Attributes: calculated values follow their inputs everywhere (editor,
   table, new elements); an input without a value means "not calculated yet"
   instead of blocking the editor; elements inherit the attributes of the
-  types their type specializes. The help lists how formulas work.
+  types their type specializes. Formulas have functions: min, max, sum, avg,
+  round (to decimals), floor, ceil, abs, sqrt. The help lists how formulas
+  work.
 - Rules that tag: tags have a column in the table, and the table filter
   finds them.
 - Versioned database migrations applied on start; strict server-side

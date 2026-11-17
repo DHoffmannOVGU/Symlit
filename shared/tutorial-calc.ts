@@ -154,7 +154,7 @@ const LESSONS: TutorialLesson[] = [
         title: "Calculate the machine cost",
         instruction:
           "Open Print job again and add an attribute named machine cost. Set its Type to Derived Formula and enter the formula [print time] * [machine rate]. First guess: what can the type calculate, when no print time is filled in on it? Look at the Calculated Value, then press Add attribute and Apply.",
-        hint: "Other attributes are referred to by their name in square brackets; typing [ offers the names. A formula can use + - * / and parentheses, and numbers written with a point (0.5).",
+        hint: "Other attributes are referred to by their name in square brackets; typing [ offers the names. A formula can use + - * / and parentheses, numbers written with a point (0.5), and functions such as max or round.",
         done: "The Calculated Value says it cannot be calculated yet: the type has no print time. That is as it should be. The type holds the formula; each job will supply its own print time.",
         scope: "metamodel",
         check: machineCostIsRight,

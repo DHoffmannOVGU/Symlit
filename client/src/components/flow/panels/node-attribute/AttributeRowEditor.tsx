@@ -458,8 +458,9 @@ export function AttributeRowEditor({
                   filter, then use arrow keys with `Enter` or `Tab` to insert.
                 </p>
                 <p className="text-[11px] text-muted-foreground" data-testid={`formula-syntax-${index}`}>
-                  Use + - * /, parentheses and numbers such as 0.5. Other
-                  attributes of this element go in square brackets, by name.
+                  Use + - * /, parentheses, numbers such as 0.5 and functions
+                  such as min, max, sum, avg or round([x], 1). Other attributes
+                  of this element go in square brackets, by name.
                 </p>
                 {extractFormulaReferences(
                   formulaDrafts[attr.id] ??

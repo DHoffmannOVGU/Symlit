@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { FORMULA_FUNCTIONS } from "@shared/formula";
 import type { ProjectType } from "@shared/schema";
 
 type HelpItem = {
@@ -18,7 +19,12 @@ export type DiagramHelpContent = {
 /** Calculated attributes (Derived Formula), the same in metamodels and models. */
 const FORMULAS: string[] = [
   "An attribute of the type Derived Formula is calculated from other attributes of the same element, for example [print time] * [machine rate].",
-  "A formula uses numbers (with a point: 0.5), + - * /, parentheses and minus signs (2 * -3). Other attributes go in square brackets, by name; typing [ offers them. Functions such as sum or round do not exist.",
+  "A formula uses numbers (with a point: 0.5), + - * /, parentheses and minus signs (2 * -3). Other attributes go in square brackets, by name; typing [ offers them.",
+  `Functions take values separated by commas, for example max([price], 10) or round([mass] / 7, 1): ${Object.values(
+    FORMULA_FUNCTIONS,
+  )
+    .map((fn) => `${fn.signature}, ${fn.description}`)
+    .join("; ")}. They work on the attributes of the same element, not across elements.`,
   "A formula can use another calculated attribute, so a calculation can be built up in steps. It cannot use itself, directly or in a circle.",
   "When an attribute it uses has no value yet, or it would divide by zero, the result is not calculated yet: it stays empty, and nothing is blocked.",
   "Results follow their inputs wherever those are edited: in the element's editor, in the table, and for a new element of a type.",

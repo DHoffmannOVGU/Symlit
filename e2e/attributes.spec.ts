@@ -216,3 +216,41 @@ test("an instance model without a metamodel offers the built-in kinds", async ({
   await object.click();
   await expect(page.locator(".react-flow__node")).toHaveCount(1);
 });
+
+test("a formula can use functions, and an unknown one says what exists", async ({ page, request }) => {
+  const { instanceUrl } = await createProjects(request, "functions");
+  await page.goto(instanceUrl);
+  await openElement(page, "Old pack");
+  const add = async (attribute: { name: string; type?: string; value?: string; formula?: string }) => {
+    await page.getByTestId("button-add-attribute").click();
+    await dialog(page).locator('[data-testid^="input-attr-name-"]').fill(attribute.name);
+    if (attribute.type) {
+      await dialog(page).locator('[data-testid^="select-attr-type-"]').click();
+      await page.getByRole("option", { name: attribute.type, exact: true }).click();
+    }
+    if (attribute.value !== undefined) await dialog(page).locator('input[data-testid^="input-attr-value-"]').fill(attribute.value);
+    if (attribute.formula) await dialog(page).locator('[data-testid^="input-attr-formula-"]').fill(attribute.formula);
+  };
+  await add({ name: "cells", value: "12" });
+  await page.getByTestId("button-attribute-done").click();
+  await add({ name: "rows", value: "7" });
+  await page.getByTestId("button-attribute-done").click();
+
+  // A function that does not exist is a mistake, and the message lists those that do.
+  await add({ name: "per row", type: "Derived Formula", formula: "mean([cells], [rows])" });
+  await expect(dialog(page)).toContainText('Unknown function "mean"');
+  await expect(dialog(page)).toContainText("avg");
+  await dialog(page).locator('[data-testid^="input-attr-formula-"]').fill("round([cells] / [rows], 2)");
+  await page.getByTestId("button-attribute-done").click();
+  await add({ name: "largest", type: "Derived Formula", formula: "max([cells], [rows], 10)" });
+  await page.getByTestId("button-attribute-done").click();
+
+  const panel = page.getByTestId("node-attribute-panel");
+  await expect(panel.getByTestId("attribute-summary-2")).toContainText("1.71");
+  await expect(panel.getByTestId("attribute-summary-3")).toContainText("12");
+  // Results follow their inputs.
+  await panel.getByTestId("input-attr-value-0").fill("21");
+  await expect(panel.getByTestId("attribute-summary-2")).toContainText("3");
+  await expect(panel.getByTestId("attribute-summary-3")).toContainText("21");
+  await saveElementAndDiagram(page);
+});

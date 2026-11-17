@@ -90,7 +90,14 @@ test("mistakes in a formula are errors, and say what is wrong", () => {
   assert.match(message("[mass] * "), /incomplete/);
   assert.match(message("(1 + 2"), /parentheses/);
   assert.match(message("[mass] ^ 2"), /Unexpected token/);
-  assert.match(message("sum([mass])"), /Unexpected token/);
+  assert.match(message("pow([mass], 2)"), /Unknown function "pow"/);
+  assert.match(message("mass * 2"), /Unknown function "mass".*square brackets/);
+  assert.match(message("max"), /parentheses/);
+  assert.match(message("round([mass], 1, 2)"), /round takes/);
+  assert.match(message("min()"), /min takes/);
+  assert.match(message("1, 2"), /comma/);
+  assert.match(message("round([mass], 0.5)"), /decimals/);
+  assert.match(message("sqrt(-4)"), /negative/);
   assert.match(message(""), /required/);
   assert.match(message("[rush] + 1", [{ id: "rush", name: "rush", value: "true", unit: "", type: "boolean" }]), /not numeric/);
   // A formula cannot refer to itself, directly or in a circle.
@@ -122,4 +129,41 @@ test("a value that cannot be calculated is left empty rather than stale", () => 
   assert.equal(recalculateDerivedAttributes(attributes)[1].value, "");
   const broken = [number("time", "print time", "6"), derived("cost", "cost", "[attr:gone] * 4", "24")];
   assert.equal(recalculateDerivedAttributes(broken)[1].value, "");
+});
+
+test("functions: min, max, sum, avg, round, floor, ceil, abs, sqrt", () => {
+  assert.equal(calc("min([mass], [print time], 10)", job), 6);
+  assert.equal(calc("max([mass], [print time]) / 2", job), 60);
+  assert.equal(calc("sum([mass], [print time], [machine rate])", job), 130);
+  assert.equal(calc("avg([print time], [machine rate])", job), 5);
+  assert.equal(calc("AVERAGE(2, 4, 9)"), 5, "names in any case; average for avg");
+  assert.equal(calc("round(2.5)"), 3);
+  assert.equal(calc("round(-2.5)"), -3, "half away from zero, as by hand");
+  assert.equal(calc("round(1.005, 2)"), 1.01);
+  assert.equal(calc("round([mass] / 7, 1)", job), 17.1);
+  assert.equal(calc("floor(2.9) + ceil(2.1)"), 5);
+  assert.equal(calc("abs(3 - [mass])", job), 117);
+  assert.equal(calc("sqrt(16)"), 4);
+  // Functions nest and mix with operators; a minus in front of one applies to its result.
+  assert.equal(calc("-max(1, min(5, 3)) * 2"), -6);
+});
+
+test("a function with an input that has no value yet is not calculated yet", () => {
+  const empty = [number("a", "a", "3"), number("b", "b", "")];
+  assert.throws(() => calc("max([a], [b])", empty), isFormulaPending);
+  // A mistake elsewhere is still reported, not hidden behind the empty input.
+  assert.throws(
+    () => calc("max([b], [weight])", empty),
+    (error) => !isFormulaPending(error) && /Unknown attribute "weight"/.test((error as Error).message),
+  );
+});
+
+test("references inside functions are stored by id and shown by name", () => {
+  const stored = getStoredFormulaFromDisplay("max([mass], [print time])", job, "result");
+  assert.equal(stored, "max([attr:mass], [attr:time])");
+  assert.equal(getDisplayFormula(stored, job, "result"), "max([mass], [print time])");
+  assert.deepEqual(
+    evaluateDerivedAttribute(derived("result", "result", stored), [...job, derived("result", "result", stored)]).references,
+    ["mass", "print time"],
+  );
 });

@@ -29,6 +29,9 @@ An attribute of the kind **Derived Formula** is calculated from other attributes
 element:
 
 - numbers (written with a point, `0.5`), `+ - * /`, parentheses and minus signs (`2 * -3`);
+- functions, their values separated by commas: `min`, `max`, `sum`, `avg` (or `average`) over
+  any number of values, `round(x)` or `round(x, decimals)` (halves away from zero), `floor`,
+  `ceil`, `abs` and `sqrt`. For example `max([price], 10)` or `round([mass] / 7, 1)`;
 - other attributes in square brackets, by name: `[print time] * [machine rate]`. Typing `[`
   offers them. A formula can use another calculated attribute, but not itself.
 - When an attribute it uses has no value yet, or it would divide by zero, the result is *not
@@ -36,7 +39,8 @@ element:
 - Results follow their inputs wherever those are edited: in the editor, in the table, and for a
   new element of a type.
 - Units are labels; nothing converts them. Grams to kilograms is `/ 1000` in the formula.
-- A formula sees only its own element. There is no sum over other elements.
+- A formula sees only its own element. `sum` adds up values of that element; there is no sum
+  over other elements.
 
 Model rules can test a calculated value like any other. The editor's **Help** lists the same.
 
