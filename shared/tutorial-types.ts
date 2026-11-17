@@ -43,7 +43,7 @@ export type TutorialProjectScope = "metamodel" | "instance";
 
 // --- what the tutorial can see of the open diagram ---------------------------
 
-export type TutorialAttributeType = "string" | "number" | "boolean" | "date" | "list" | "multiselect" | "derived";
+export type TutorialAttributeType = "string" | "number" | "boolean" | "date" | "list" | "multiselect" | "derived" | "related";
 
 export interface TutorialAttribute {
   name: string;

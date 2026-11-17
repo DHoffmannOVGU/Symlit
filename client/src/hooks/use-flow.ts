@@ -67,6 +67,8 @@ export function useSyncFlow() {
       // stale on their own: without this, switching away and back showed the
       // diagram as it was before the save.
       void queryClient.invalidateQueries({ queryKey: [api.flow.get.path] });
+      // Related Formulas calculate over the whole project's saved relationships.
+      void queryClient.invalidateQueries({ queryKey: [api.projects.graph.path] });
       // The project list shows and sorts by when a project was last edited.
       void queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
       if (variables.quiet) return;

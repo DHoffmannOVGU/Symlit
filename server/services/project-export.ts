@@ -1,5 +1,6 @@
 import type { Project } from "@shared/schema";
 import type { ProjectExportOptions } from "@shared/routes";
+import { withCalculatedValues } from "@shared/related-formula";
 import { storage } from "../storage";
 
 /**
@@ -37,7 +38,9 @@ export async function buildProjectExport(
   options: ProjectExportOptions,
   canRead: (project: Project) => Promise<boolean>,
 ): Promise<ProjectExportFile> {
-  const exportData = await storage.getProjectExportData(projectId);
+  const stored = await storage.getProjectExportData(projectId);
+  // Calculated values are worked out over the whole project, as the editor shows them.
+  const exportData = { ...stored, views: withCalculatedValues(stored.views) };
   const safeName = exportData.project.name.replace(/[^a-z0-9-_]+/gi, "_");
   const selectedViewIds = options.viewIds
     ? new Set(options.viewIds)

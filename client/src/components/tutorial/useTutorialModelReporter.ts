@@ -95,7 +95,11 @@ const describeAttributes = (stored: NodeAttribute[]): TutorialAttribute[] => {
       value: attribute.value == null ? "" : String(attribute.value),
       type: attribute.type ?? "string",
       unit: attribute.unit ?? "",
-      formula: derived ? getDisplayFormula(attribute.formula ?? "", attributes, attribute.id) : "",
+      formula: derived
+        ? getDisplayFormula(attribute.formula ?? "", attributes, attribute.id)
+        : attribute.type === "related"
+          ? (attribute.formula ?? "")
+          : "",
       references,
       options: attribute.options ?? [],
     };

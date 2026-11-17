@@ -24,7 +24,61 @@ export type FormulaNode =
   | { kind: "reference"; name: string }
   | { kind: "negate"; operand: FormulaNode }
   | { kind: "binary"; operator: "+" | "-" | "*" | "/"; left: FormulaNode; right: FormulaNode }
-  | { kind: "call"; name: string; args: FormulaNode[] };
+  | { kind: "call"; name: string; args: FormulaNode[] }
+  | AggregateNode;
+
+/** The functions that also aggregate over related elements. */
+export const AGGREGATE_FUNCTIONS = ["count", "sum", "avg", "min", "max"] as const;
+export type AggregateFunction = (typeof AGGREGATE_FUNCTIONS)[number];
+
+/**
+ * Which related elements: those a relationship of that name leads to
+ * (`of "consists of"`), those it comes from (`of incoming "feeds"`), or all
+ * related elements (`of all`, `of all outgoing`, `of all incoming`).
+ */
+export interface RelatedSelector {
+  direction: "outgoing" | "incoming" | "both";
+  /** The relationship's name; null for any relationship. */
+  relationship: string | null;
+}
+
+/** What a `where` compares: an attribute of the related element, its type or its name. */
+export type ConditionField = { kind: "attribute"; name: string } | { kind: "type" } | { kind: "name" };
+
+export type ConditionNode =
+  | { kind: "and" | "or"; left: ConditionNode; right: ConditionNode }
+  | {
+      kind: "compare";
+      field: ConditionField;
+      /** One of the model rules' operators (shared/value-comparison.ts). */
+      operator: "exists" | "missing" | "equals" | "not-equals" | "contains" | "greater-than" | "greater-than-or-equal" | "less-than" | "less-than-or-equal";
+      value: string;
+    };
+
+/**
+ * `sum([mass] of "consists of" where [status] = "released")`: a value
+ * calculated over related elements. In `value` and `where`, attributes are
+ * those of each related element.
+ */
+export interface AggregateNode {
+  kind: "aggregate";
+  fn: AggregateFunction;
+  /** What is added up (not for count), in the related element's terms. */
+  value: FormulaNode | null;
+  selector: RelatedSelector;
+  where: ConditionNode | null;
+}
+
+export interface ParseOptions {
+  /**
+   * Allows values of related elements (`… of "relationship" …`). Only a
+   * Related Formula may use them; a Derived Formula sees its own element.
+   */
+  aggregates?: boolean;
+}
+
+export const RELATED_ONLY_MESSAGE =
+  'Values of related elements ("… of …") need an attribute of the type Related Formula; a Derived Formula sees only its own element.';
 
 interface FormulaFunction {
   /** How it is written, for the help: `min(a, b, …)`. */
@@ -130,11 +184,15 @@ const functionNamed = (name: string) => {
   return FORMULA_FUNCTIONS[FUNCTION_ALIASES[key] ?? key];
 };
 
+type Symbol = "+" | "-" | "*" | "/" | "(" | ")" | "," | "=" | "!=" | "<" | ">" | "<=" | ">=";
 type Token =
   | { type: "number"; value: number }
   | { type: "reference"; value: string }
+  | { type: "string"; value: string }
   | { type: "name"; value: string }
-  | { type: "symbol"; value: "+" | "-" | "*" | "/" | "(" | ")" | "," };
+  | { type: "symbol"; value: Symbol };
+
+const QUOTES: Record<string, string> = { '"': '"', "\u201c": "\u201d", "\u201e": "\u201c" };
 
 const tokenize = (formula: string): Token[] => {
   const tokens: Token[] = [];
@@ -154,8 +212,22 @@ const tokenize = (formula: string): Token[] => {
       index = close + 1;
       continue;
     }
-    if ("+-*/(),".includes(char)) {
-      tokens.push({ type: "symbol", value: char as "+" });
+    if (char in QUOTES) {
+      // Text in quotes: a relationship's name, or a value to compare with. Typographic quotes count too.
+      const close = formula.indexOf(QUOTES[char], index + 1);
+      if (close === -1) throw new Error("Missing closing quote.");
+      tokens.push({ type: "string", value: formula.slice(index + 1, close) });
+      index = close + 1;
+      continue;
+    }
+    const two = formula.slice(index, index + 2);
+    if (two === "!=" || two === "<=" || two === ">=") {
+      tokens.push({ type: "symbol", value: two });
+      index += 2;
+      continue;
+    }
+    if ("+-*/(),=<>".includes(char)) {
+      tokens.push({ type: "symbol", value: char as Symbol });
       index += 1;
       continue;
     }
@@ -180,49 +252,189 @@ const tokenize = (formula: string): Token[] => {
   return tokens;
 };
 
+const COMPARISON_SYMBOLS: Record<string, Extract<ConditionNode, { kind: "compare" }>["operator"]> = {
+  "=": "equals",
+  "!=": "not-equals",
+  "<": "less-than",
+  ">": "greater-than",
+  "<=": "less-than-or-equal",
+  ">=": "greater-than-or-equal",
+};
+
 /** Reads a formula into its structure. Throws an Error that says what is wrong. */
-export function parseFormula(formula: string): FormulaNode {
+export function parseFormula(formula: string, options: ParseOptions = {}): FormulaNode {
   const tokens = tokenize(formula);
   if (tokens.length === 0) throw new Error("Formula is required.");
   let position = 0;
-  const peek = () => tokens[position];
+  const peek = (offset = 0) => tokens[position + offset];
   const isSymbol = (token: Token | undefined, value: string) => token?.type === "symbol" && token.value === value;
+  const isWord = (token: Token | undefined, word: string) =>
+    token?.type === "name" && token.value.toLowerCase() === word;
+  const expectClose = () => {
+    if (!isSymbol(tokens[position++], ")")) throw new Error("Mismatched parentheses.");
+  };
+
+  const selector = (): RelatedSelector => {
+    // "of" was read.
+    if (isWord(peek(), "all")) {
+      position += 1;
+      if (isWord(peek(), "outgoing") || isWord(peek(), "incoming")) {
+        const direction = (tokens[position++] as { value: string }).value.toLowerCase() as "outgoing" | "incoming";
+        return { direction, relationship: null };
+      }
+      return { direction: "both", relationship: null };
+    }
+    let direction: RelatedSelector["direction"] = "outgoing";
+    if (isWord(peek(), "incoming") || isWord(peek(), "outgoing")) {
+      direction = (tokens[position++] as { value: string }).value.toLowerCase() as "outgoing" | "incoming";
+    }
+    const name = tokens[position++];
+    if (name?.type !== "string" || !name.value.trim()) {
+      throw new Error('After "of" comes a relationship\'s name in quotes, for example of "consists of", or all.');
+    }
+    return { direction, relationship: name.value.trim() };
+  };
+
+  const conditionValue = (): string => {
+    const token = tokens[position++];
+    if (token?.type === "string") return token.value;
+    if (token?.type === "number") return String(token.value);
+    if (isSymbol(token, "-") && peek()?.type === "number") return String(-(tokens[position++] as { value: number }).value);
+    if (token?.type === "name" && ["yes", "no", "true", "false"].includes(token.value.toLowerCase())) {
+      return token.value.toLowerCase();
+    }
+    throw new Error('A condition compares with a number, a text in quotes, or yes/no.');
+  };
+
+  const comparison = (): ConditionNode => {
+    const token = tokens[position++];
+    let field: ConditionField;
+    if (token?.type === "reference") field = { kind: "attribute", name: token.value };
+    else if (isWord(token, "type")) field = { kind: "type" };
+    else if (isWord(token, "name")) field = { kind: "name" };
+    else throw new Error("A condition starts with an attribute in square brackets, type or name.");
+    if (isWord(peek(), "is")) {
+      position += 1;
+      const negated = isWord(peek(), "not");
+      if (negated) position += 1;
+      if (!isWord(tokens[position++], "set")) throw new Error('Write "is set" or "is not set".');
+      return { kind: "compare", field, operator: negated ? "missing" : "exists", value: "" };
+    }
+    if (isWord(peek(), "contains")) {
+      position += 1;
+      return { kind: "compare", field, operator: "contains", value: conditionValue() };
+    }
+    const symbol = tokens[position++];
+    const operator = symbol?.type === "symbol" ? COMPARISON_SYMBOLS[symbol.value] : undefined;
+    if (!operator) throw new Error("A condition compares with =, !=, <, >, <=, >=, contains, or is set.");
+    return { kind: "compare", field, operator, value: conditionValue() };
+  };
+  const conditionAtom = (): ConditionNode => {
+    if (isSymbol(peek(), "(")) {
+      position += 1;
+      const inner = condition();
+      expectClose();
+      return inner;
+    }
+    return comparison();
+  };
+  const conditionAnd = (): ConditionNode => {
+    let node = conditionAtom();
+    while (isWord(peek(), "and")) {
+      position += 1;
+      node = { kind: "and", left: node, right: conditionAtom() };
+    }
+    return node;
+  };
+  const condition = (): ConditionNode => {
+    let node = conditionAnd();
+    while (isWord(peek(), "or")) {
+      position += 1;
+      node = { kind: "or", left: node, right: conditionAnd() };
+    }
+    return node;
+  };
+
+  /** The rest of an aggregate, from its value (or "of" for count) to the closing parenthesis. */
+  const aggregate = (fn: AggregateFunction, value: FormulaNode | null): AggregateNode => {
+    if (!options.aggregates) throw new Error(RELATED_ONLY_MESSAGE);
+    if (!isWord(tokens[position++], "of")) {
+      throw new Error(fn === "count" ? 'count reads count(of "relationship").' : `${fn} over related elements reads ${fn}([attribute] of "relationship").`);
+    }
+    // One step only: what is added up comes from the related element itself.
+    if (value && formulaAggregates(value).length > 0) {
+      throw new Error("Inside an aggregate, values come from the related element itself: one step only.");
+    }
+    const node: AggregateNode = { kind: "aggregate", fn, value, selector: selector(), where: null };
+    if (isWord(peek(), "where")) {
+      position += 1;
+      node.where = condition();
+    }
+    if (!isSymbol(peek(), ")")) {
+      throw new Error(isSymbol(peek(), ",") ? "An aggregate takes one value: sum([attribute] of …)." : "Mismatched parentheses.");
+    }
+    position += 1;
+    return node;
+  };
 
   const primary = (): FormulaNode => {
     const token = tokens[position++];
     if (!token) throw new Error("Formula is incomplete.");
     if (token.type === "number") return { kind: "number", value: token.value };
     if (token.type === "reference") return { kind: "reference", name: token.value };
+    if (token.type === "string") throw new Error("Text in quotes only names a relationship or a value in a condition.");
     if (token.type === "name") {
+      const lower = token.value.toLowerCase();
+      const fnName = FUNCTION_ALIASES[lower] ?? lower;
+      const isAggregate = (AGGREGATE_FUNCTIONS as readonly string[]).includes(fnName);
+      if (isAggregate && isSymbol(peek(), "(")) {
+        const startsWithOf = isWord(peek(1), "of");
+        if (fnName === "count" || startsWithOf) {
+          position += 1;
+          if (fnName !== "count" && startsWithOf) throw new Error(`${fnName} needs a value before "of": ${fnName}([attribute] of …).`);
+          return aggregate("count", null);
+        }
+      }
       const fn = functionNamed(token.value);
-      if (!fn) {
+      if (!fn && !isAggregate) {
+        if (["of", "where", "and", "or", "all", "incoming", "outgoing"].includes(lower)) {
+          throw new Error(options.aggregates ? `"${token.value}" belongs inside an aggregate such as sum([attribute] of "relationship").` : RELATED_ONLY_MESSAGE);
+        }
         throw new Error(
-          `Unknown function "${token.value}". Functions: ${Object.keys(FORMULA_FUNCTIONS).join(", ")}. Attributes go in square brackets.`,
+          `Unknown function "${token.value}". Functions: ${Object.keys(FORMULA_FUNCTIONS).join(", ")}${options.aggregates ? ", count" : ""}. Attributes go in square brackets.`,
         );
       }
-      if (!isSymbol(peek(), "(")) throw new Error(`"${token.value}" needs its values in parentheses: ${fn.signature}.`);
+      if (!isSymbol(peek(), "(")) {
+        throw new Error(`"${token.value}" needs its values in parentheses: ${fn ? fn.signature : `${fnName}([attribute] of "relationship")`}.`);
+      }
       position += 1;
       const args: FormulaNode[] = [];
       if (!isSymbol(peek(), ")")) {
         args.push(sum());
+        // sum([mass] of "consists of"): the value is followed by "of".
+        if (isAggregate && isWord(peek(), "of")) {
+          return aggregate(fnName as AggregateFunction, args[0]);
+        }
         while (isSymbol(peek(), ",")) {
           position += 1;
           args.push(sum());
         }
       }
-      if (!isSymbol(tokens[position++], ")")) throw new Error("Mismatched parentheses.");
+      expectClose();
+      if (!fn) throw new Error(`${fnName} over related elements reads ${fnName}([attribute] of "relationship").`);
       if (args.length < fn.minArgs || args.length > fn.maxArgs) {
         throw new Error(`${token.value} takes ${fn.signature}.`);
       }
-      return { kind: "call", name: token.value.toLowerCase(), args };
+      return { kind: "call", name: fnName, args };
     }
     if (isSymbol(token, "(")) {
       const inner = sum();
-      if (!isSymbol(tokens[position++], ")")) throw new Error("Mismatched parentheses.");
+      expectClose();
       return inner;
     }
     if (isSymbol(token, ")")) throw new Error(position === 1 ? "Mismatched parentheses." : "Formula is incomplete.");
     if (isSymbol(token, ",")) throw new Error("A comma only separates the values of a function.");
+    if (token.value in COMPARISON_SYMBOLS) throw new Error(`"${token.value}" compares values only in a condition after where.`);
     throw new Error("Formula is incomplete.");
   };
   // A minus in front of a value: "-3", "2 * -3", "-[mass]".
@@ -255,15 +467,26 @@ export function parseFormula(formula: string): FormulaNode {
   if (rest) {
     if (isSymbol(rest, ")")) throw new Error("Mismatched parentheses.");
     if (isSymbol(rest, ",")) throw new Error("A comma only separates the values of a function.");
+    if (rest.type === "symbol" && rest.value in COMPARISON_SYMBOLS) {
+      throw new Error(`"${rest.value}" compares values only in a condition after where.`);
+    }
+    if (isWord(rest, "of") || isWord(rest, "where")) {
+      throw new Error(options.aggregates ? `"${rest.value}" belongs inside an aggregate such as sum([attribute] of "relationship").` : RELATED_ONLY_MESSAGE);
+    }
     throw new Error("Formula is incomplete.");
   }
   return node;
 }
 
-/** The references of a formula, in the order they are written. */
+/**
+ * The references of a formula to its own element's attributes, in the order
+ * they are written. References inside an aggregate are to the related
+ * elements' attributes and are not listed.
+ */
 export function formulaReferenceNames(node: FormulaNode): string[] {
   switch (node.kind) {
     case "number":
+    case "aggregate":
       return [];
     case "reference":
       return [node.name];
@@ -276,29 +499,56 @@ export function formulaReferenceNames(node: FormulaNode): string[] {
   }
 }
 
+/** The aggregates of a formula, in the order they are written. */
+export function formulaAggregates(node: FormulaNode): AggregateNode[] {
+  switch (node.kind) {
+    case "aggregate":
+      return [node];
+    case "negate":
+      return formulaAggregates(node.operand);
+    case "binary":
+      return [...formulaAggregates(node.left), ...formulaAggregates(node.right)];
+    case "call":
+      return node.args.flatMap(formulaAggregates);
+    default:
+      return [];
+  }
+}
+
 /**
  * Calculates a parsed formula. `valueOf` gives the number for a reference,
  * or throws (an unknown attribute, or a FormulaPendingError for one without
- * a value). Dividing by zero is pending, not an error.
+ * a value). `aggregateOf` calculates an aggregate over related elements; a
+ * formula without one never calls it. Dividing by zero is pending, not an error.
  */
-export function evaluateFormula(node: FormulaNode, valueOf: (name: string) => number): number {
-  switch (node.kind) {
-    case "number":
-      return node.value;
-    case "reference":
-      return valueOf(node.name);
-    case "negate":
-      return -evaluateFormula(node.operand, valueOf);
-    case "binary": {
-      const left = evaluateFormula(node.left, valueOf);
-      const right = evaluateFormula(node.right, valueOf);
-      if (node.operator === "+") return left + right;
-      if (node.operator === "-") return left - right;
-      if (node.operator === "*") return left * right;
-      if (right === 0) throw new FormulaPendingError("Cannot divide by zero.");
-      return left / right;
+export function evaluateFormula(
+  node: FormulaNode,
+  valueOf: (name: string) => number,
+  aggregateOf?: (node: AggregateNode) => number,
+): number {
+  const evaluate = (current: FormulaNode): number => {
+    switch (current.kind) {
+      case "number":
+        return current.value;
+      case "reference":
+        return valueOf(current.name);
+      case "negate":
+        return -evaluate(current.operand);
+      case "binary": {
+        const left = evaluate(current.left);
+        const right = evaluate(current.right);
+        if (current.operator === "+") return left + right;
+        if (current.operator === "-") return left - right;
+        if (current.operator === "*") return left * right;
+        if (right === 0) throw new FormulaPendingError("Cannot divide by zero.");
+        return left / right;
+      }
+      case "call":
+        return functionNamed(current.name)!.apply(current.args.map(evaluate));
+      case "aggregate":
+        if (!aggregateOf) throw new Error(RELATED_ONLY_MESSAGE);
+        return aggregateOf(current);
     }
-    case "call":
-      return functionNamed(node.name)!.apply(node.args.map((arg) => evaluateFormula(arg, valueOf)));
-  }
+  };
+  return evaluate(node);
 }

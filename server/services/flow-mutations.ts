@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { withoutCalculatedValues } from "@shared/related-formula";
 import { normalizeRelationship } from "@shared/relationships";
 import { db } from "../db";
 import {
@@ -86,7 +87,8 @@ export function flowRevision(flow: { nodes: FlowNodeWithPosition[]; edges: FlowE
     nodes: byId(flow.nodes).map((node) => [
       node.id,
       node.type,
-      canonical(node.data),
+      // Calculated values follow from the rest and from other elements: not a change of this diagram.
+      canonical(withoutCalculatedValues(node.data)),
       canonical(node.position),
       node.parentId ?? null,
     ]),

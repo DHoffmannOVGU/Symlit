@@ -1,5 +1,6 @@
 import { matchesTypeStyle, withoutElementStyle } from "@/lib/element-style";
 import { currentKindLabel } from "@shared/metamodel-setup";
+import { withoutCalculatedValues } from "@shared/related-formula";
 import type { FlowData } from "@/components/layout/sidebar-parts/types";
 import type { InsertFlowEdge, InsertFlowNode } from "@/hooks/use-flow";
 import type { ProjectType } from "@shared/schema";
@@ -62,7 +63,10 @@ export const normalizeFlow = (
       : "part";
   const normalizedNodes = nodes
     .map((node) => {
-      const rawData = isRecord(node.data) ? node.data : {};
+      // Calculated values follow from the rest, and a Related Formula's from
+      // other elements: recalculating one is not an edit.
+      const storedData = withoutCalculatedValues(node.data);
+      const rawData = isRecord(storedData) ? storedData : {};
       // An instance element that matches its type shows the type's style, which
       // the canvas copies onto it after loading. That copy is not an edit, so
       // the style is left out when comparing; matching or not still counts.

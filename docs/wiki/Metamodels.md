@@ -14,9 +14,9 @@ relationships offered in the palette.
 
 Double-click a type to edit it:
 
-- **Attributes:** named values of seven kinds: Text, Number (with a unit from the unit catalog),
-  Yes/No, Date, List (one choice from options), Multiselect (any number of choices from options)
-  and Derived Formula (calculated, see below). The value given on a type is the default each new
+- **Attributes:** named values of eight kinds: Text, Number (with a unit from the unit catalog),
+  Yes/No, Date, List (one choice from options), Multiselect (any number of choices from options),
+  Derived Formula and Related Formula (both calculated, see below). The value given on a type is the default each new
   element starts with; a Multiselect starts with nothing chosen unless the type ticks some.
 - **Style:** icon, colour, shape and border.
 
@@ -44,6 +44,40 @@ element:
   over other elements.
 
 Model rules can test a calculated value like any other. The editor's **Help** lists the same.
+
+## Calculated over related elements
+
+An attribute of the kind **Related Formula** is calculated over the elements this one is related
+to. It reads as it means:
+
+```
+count(of "consists of")
+sum([mass] of "consists of")
+sum([mass] of "consists of" where [status] = "released")
+max([lead time] of incoming "supplies" where [critical] = yes and [lead time] > 30)
+[mass] + sum([total mass] of "consists of")
+```
+
+- `count`, `sum`, `avg` (or `average`), `min` and `max`, then `of` and which related elements:
+  `of "name"` follows relationships of that name to the elements they lead to, `of incoming
+  "name"` to the elements they come from, `of all` takes every related element (`of all
+  outgoing`, `of all incoming`). Names are matched in any case.
+- Inside the parentheses, attributes are those of the related element; outside, those of this
+  one. What is added up can be calculated: `sum([mass] * [quantity] of "consists of")`.
+- `where` keeps some related elements: an attribute, `type` or `name` compared with a number, a
+  text in quotes or yes/no, with `=`, `!=`, `<`, `>`, `<=`, `>=`, `contains`, `is set` and `is not
+  set`, combined with `and`, `or` and parentheses. It compares as a model rule does.
+- One step only. For a total over several levels, the related elements read their own Related
+  Formula, as in the last example; a circle is reported.
+- The relationships of **all diagrams** of the project count, each once, with the open diagram as
+  it is now (unsaved changes included). That is unlike model rules' conditions on connected
+  elements, which look at the open diagram.
+- Over no related elements, `count` and `sum` give 0 and `avg`, `min` and `max` are *not
+  calculated yet*. Related elements without the attribute do not take part; one whose value is
+  still empty makes the result not calculated yet.
+- Attributes are named in the formula, not linked: renaming one means editing the formula.
+- The editor shows which related elements it used and how many a `where` left out, and offers this
+  element's relationships to insert. A Derived Formula can use a Related Formula of its element.
 
 ## Relationships between types
 

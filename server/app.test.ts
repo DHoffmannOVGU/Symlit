@@ -256,6 +256,40 @@ describe("views and diagrams", () => {
     assert.equal(current.status, 200, current.text);
   });
 
+  test("the project graph lists every element once and the relationships of all diagrams", async () => {
+    const project = await createProject({ projectType: "instance" });
+    const first = await createView(project.id, "First");
+    const second = await createView(project.id, "Second");
+    const flow = sampleFlow(`graph${project.id}`);
+    flow.edges[0] = { ...flow.edges[0], data: { label: "drives" } } as typeof flow.edges[0];
+    await request("POST", `/api/views/${first.id}/sync`, flow);
+    await request("POST", `/api/views/${second.id}/sync`, {
+      nodes: [flow.nodes[0]],
+      edges: [],
+    });
+    const graph = (await request("GET", `/api/projects/${project.id}/graph`)).json;
+    assert.deepEqual(graph.elements.map((element: { name: string }) => element.name).sort(), ["Frame", "Motor"]);
+    assert.deepEqual(graph.relationships, [
+      { source: flow.nodes[0].id, target: flow.nodes[1].id, name: "drives", viewId: first.id },
+    ]);
+  });
+
+  test("a calculated value is not a change: saving one does not make the other diagram's save a conflict", async () => {
+    const project = await createProject({ projectType: "instance" });
+    const first = await createView(project.id, "First");
+    const second = await createView(project.id, "Second");
+    const total = { id: "total", name: "total", type: "related", formula: 'count(of all)', value: "1", unit: "" };
+    const flow = sampleFlow(`calc${project.id}`);
+    flow.nodes[0] = { ...flow.nodes[0], data: { ...flow.nodes[0].data, attributes: [total] } } as typeof flow.nodes[0];
+    await request("POST", `/api/views/${first.id}/sync`, flow);
+    await request("POST", `/api/views/${second.id}/sync`, { nodes: [flow.nodes[0]], edges: [] });
+    const opened = (await request("GET", `/api/views/${second.id}/flow`)).json.revision;
+    // The first diagram is saved with a recalculated value of the shared element.
+    const recalculated = { ...flow, nodes: [{ ...flow.nodes[0], data: { ...flow.nodes[0].data, attributes: [{ ...total, value: "5" }] } }, flow.nodes[1]] };
+    assert.equal((await request("POST", `/api/views/${first.id}/sync`, recalculated)).status, 200);
+    assert.equal((await request("GET", `/api/views/${second.id}/flow`)).json.revision, opened);
+  });
+
   test("rejects edges whose endpoints are missing", async () => {
     const project = await createProject();
     const view = await createView(project.id);

@@ -42,10 +42,11 @@ commit that fixed them.
 - **Guided tutorials, still open** (`docs/ux/TUTORIAL_ROADMAP.md`): none of the six has been tried with
   learners; a single lesson cannot be reset on its own; per-step records (time, hints, Show me) stay in the
   browser and have no export.
-- **Formulas see only their own element.** Functions (`sum`, `avg`, `min`, `max`, …) work on that element's
-  values; there is no sum or count over parts, connected or child elements, so a mass or cost budget across
-  elements cannot be calculated. Decide whether to add aggregation (a syntax for "the parts'
-  mass") before a tutorial relies on it.
+- **Related Formulas, next steps.** Model rules' conditions on connected elements still look only at the open
+  diagram, while Related Formulas look at the whole project. `where type = "…"` matches the type's name, not
+  its specializations. References in a Related Formula are by name (a rename means editing it). Paths of more
+  than one step, filters that compare with this element's own values, and a shortcut such as `of parts` for
+  compositions are left out on purpose until it is clear how people write these.
 - **Flow mode is not reachable.** The canvas has a flow mode (start and end elements, ticks, playback), but
   `ProjectView` always mounts it in build mode and nothing switches it. The README and wiki no longer claim it.
   Make it reachable (and test it), or remove the code.
@@ -73,6 +74,12 @@ commit that fixed them.
 
 ## Done
 - Four more guided tutorials, each with its own example (`docs/ux/TUTORIAL_ROADMAP.md`): Calculate with attributes (print jobs: attribute types, formulas, a rule on a calculated value), Classify and review (a control cabinet: tags, combined conditions, rules in a metamodel, the table), Structure and views (an espresso machine: relationship kinds, Generalization, one element in two diagrams) and Reuse and variants (sensor nodes: type styles, copies, pattern libraries, a second metamodel, project files). The tutorial system grew with them: steps can check attribute types and formulas, relationship kinds and names, tags, rules' conditions, the table filter, the open diagram and the project list; steps can happen in a named diagram, on the project list or in a copy of the tutorial's model; a tutorial can bring more than two projects; a save step completes however the save was started; finished tutorials are remembered. The project list offers the tutorials as compact cards.
+- Related Formulas: attributes calculated over related elements, `sum([mass] of "consists of" where [status] =
+  "released")`, one step along the relationships of all the project's diagrams (`shared/related-formula.ts`). The
+  editor calculates them live over the saved project and the open diagram (`RelatedCalculationProvider`), the
+  server for exports and `GET /api/projects/:id/graph`; calculated values are left out of the unsaved-changes
+  signature and of the diagram revision, so they never count as an edit or a conflict. `where` compares as model
+  rules do (`shared/value-comparison.ts`, now used by both).
 - Multiselect attributes: several of a type's options per element, stored as a JSON array of strings
   (`shared/attribute-values.ts`), editable in the element editor and the table; rules compare each chosen option.
   Enter in a list's "Add option" field no longer closes the attribute editor.

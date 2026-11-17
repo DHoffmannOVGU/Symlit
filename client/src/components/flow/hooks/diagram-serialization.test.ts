@@ -466,3 +466,15 @@ test("the signature ignores key order (the database returns keys reordered)", ()
   );
   assert.equal(sent, stored);
 });
+
+test("a recalculated value is not an unsaved change; a changed formula or input is", () => {
+  const withAttributes = (attributes: Array<Record<string, unknown>>) =>
+    normalizeFlow([node({ data: { label: "Machine", type: "Object", attributes } })], [], "instance");
+  const mass = { id: "mass", name: "mass", type: "number", value: "2", unit: "" };
+  const total = { id: "total", name: "total", type: "related", formula: 'sum([mass] of "consists of")', value: "7", unit: "" };
+  const reserve = { id: "reserve", name: "reserve", type: "derived", formula: "10 - [attr:total]", value: "3", unit: "" };
+  const before = withAttributes([mass, total, reserve]);
+  assert.equal(withAttributes([mass, { ...total, value: "8" }, { ...reserve, value: "2" }]), before);
+  assert.notEqual(withAttributes([mass, { ...total, formula: 'count(of "consists of")' }, reserve]), before);
+  assert.notEqual(withAttributes([{ ...mass, value: "3" }, total, reserve]), before);
+});

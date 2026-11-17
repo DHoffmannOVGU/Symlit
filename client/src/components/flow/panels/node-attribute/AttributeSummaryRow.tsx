@@ -28,7 +28,7 @@ const typeLabel = (type: NodeAttribute["type"]) =>
 
 /** Shown value of an attribute, as text. */
 function formatValue(attr: NodeAttribute, derived?: { value?: string; error?: string }) {
-  if (attr.type === "derived") return derived?.error ? "Invalid formula" : derived?.value || "–";
+  if (attr.type === "derived" || attr.type === "related") return derived?.error ? "Invalid formula" : derived?.value || "–";
   if (attr.type === "boolean") return attr.value === "true" ? "Yes" : "No";
   return displayAttributeValue(attr).trim() || "–";
 }
@@ -47,7 +47,8 @@ export function AttributeSummaryRow({
   onEdit,
   onRemove,
 }: AttributeSummaryRowProps) {
-  const unit = attr.type === "number" || attr.type === "derived" ? attr.unit.trim() : "";
+  const calculated = attr.type === "derived" || attr.type === "related";
+  const unit = attr.type === "number" || calculated ? attr.unit.trim() : "";
   const options = sanitizeAttributeOptions(attr.options);
   const description = attr.description?.trim();
 
@@ -133,7 +134,7 @@ export function AttributeSummaryRow({
             {description}
           </p>
         ) : null}
-        {!valueEditable || attr.type === "derived" ? (
+        {!valueEditable || calculated ? (
           <p className={cn("mt-1 text-sm", derived?.error && "text-destructive")}>
             <span className="text-xs text-muted-foreground">{valueLabel}: </span>
             {formatValue(attr, derived)}
@@ -141,7 +142,7 @@ export function AttributeSummaryRow({
           </p>
         ) : null}
       </button>
-      {valueEditable && attr.type !== "derived" ? <div className="shrink-0 pt-0.5">{valueField()}</div> : null}
+      {valueEditable && !calculated ? <div className="shrink-0 pt-0.5">{valueField()}</div> : null}
       <div className="flex shrink-0 gap-0.5 opacity-60 group-hover:opacity-100">
         <Button
           type="button"

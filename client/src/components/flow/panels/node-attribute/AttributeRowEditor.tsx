@@ -1,4 +1,6 @@
 import type { Dispatch, SetStateAction } from "react";
+import type { AggregateExplanation } from "@shared/related-formula";
+import { RelatedFormulaEditor } from "./RelatedFormulaEditor";
 import { MultiselectValue } from "./MultiselectValue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,10 +35,21 @@ import { UnitPicker } from "./UnitPicker";
 
 export type DerivedAttributeStateMap = globalThis.Map<
   string,
-  { value?: string; references: string[]; error?: string; pending?: string }
+  {
+    value?: string;
+    references: string[];
+    error?: string;
+    pending?: string;
+    /** A Related Formula: what its aggregates looked at. */
+    explanations?: AggregateExplanation[];
+    /** A Related Formula on a type: what happens instead of a value. */
+    note?: string;
+  }
 >;
 
 export interface AttributeRowEditorProps {
+  /** The element (or type) the attribute belongs to. */
+  nodeId?: string;
   attr: NodeAttribute;
   index: number;
   attributes: NodeAttribute[];
@@ -74,6 +87,7 @@ export interface AttributeRowEditorProps {
 }
 
 export function AttributeRowEditor({
+  nodeId,
   attr,
   index,
   attributes,
@@ -283,6 +297,15 @@ export function AttributeRowEditor({
                 )}
               </div>
             </div>
+          ) : attr.type === "related" ? (
+            <RelatedFormulaEditor
+              nodeId={nodeId}
+              index={index}
+              formula={attr.formula ?? ""}
+              state={derivedAttributeState.get(attr.id)}
+              onFormulaChange={(formula) => onAttributeChange(attr.id, "formula", formula)}
+              onAutoResize={onAutoResize}
+            />
           ) : attr.type === "derived" ? (
             <div className="space-y-3">
               <div className="space-y-1">

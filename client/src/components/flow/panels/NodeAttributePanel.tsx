@@ -1,4 +1,7 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { formulaReferenceNames, parseFormula } from "@shared/formula";
+import { resolveAttributeReference } from "@shared/related-formula";
+import { useRelatedCalculation } from "../related/RelatedCalculationProvider";
 import { formatMultiselectValue, parseMultiselectValue } from "@shared/attribute-values";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -34,7 +37,7 @@ import {
   syncFormulaDrafts,
   type FormulaAutocompleteState,
 } from "./node-attribute/formula-utils";
-import { AttributeRowEditor } from "./node-attribute/AttributeRowEditor";
+import { AttributeRowEditor, type DerivedAttributeStateMap } from "./node-attribute/AttributeRowEditor";
 import { AttributeEditorDialog } from "./node-attribute/AttributeEditorDialog";
 import { AttributeSummaryRow } from "./node-attribute/AttributeSummaryRow";
 import { missingTypeAttributes } from "@/lib/type-attributes";
@@ -256,13 +259,37 @@ export function NodeAttributePanel({
     );
   }, [attributes]);
 
+  const { preview: previewRelated } = useRelatedCalculation();
   const derivedAttributeState = useMemo(() => {
-    const next: globalThis.Map<
-      string,
-      { value?: string; references: string[]; error?: string; pending?: string }
-    > = new globalThis.Map();
+    const next: DerivedAttributeStateMap = new globalThis.Map();
 
     attributes.forEach((attr) => {
+      if (attr.type === "related") {
+        // On a type, the formula is only checked: each element of the type calculates it.
+        if (node?.type !== "part") {
+          try {
+            const parsed = parseFormula(attr.formula ?? "", { aggregates: true });
+            formulaReferenceNames(parsed).forEach((name) => resolveAttributeReference(name, attributes, attr.id));
+            next.set(attr.id, { references: [], note: "Each element of this type calculates it over its own related elements." });
+          } catch (error) {
+            next.set(attr.id, { references: [], error: error instanceof Error ? error.message : "Invalid formula." });
+          }
+          return;
+        }
+        // Calculated over the related elements, with the attributes as edited here.
+        const result = node ? previewRelated(node.id, attributes, attr.id) : null;
+        if (!result) return;
+        next.set(attr.id, {
+          references: [],
+          explanations: result.explanations,
+          ...(result.problem
+            ? result.problem.pending
+              ? { pending: result.problem.message }
+              : { error: result.problem.message }
+            : { value: formatDerivedValue(result.value ?? Number.NaN) }),
+        });
+        return;
+      }
       if (attr.type !== "derived") return;
 
       try {
@@ -294,7 +321,7 @@ export function NodeAttributePanel({
     });
 
     return next;
-  }, [attributes, formulaDrafts]);
+  }, [attributes, formulaDrafts, node, previewRelated]);
 
   const getAttributeKey = (attr: NodeAttribute) => attr.id;
 
@@ -406,7 +433,7 @@ export function NodeAttributePanel({
               ? options?.includes(chosen[0] ?? "")
                 ? chosen[0]
                 : getDefaultValueForType(type, options)
-              : type === "derived"
+              : type === "derived" || type === "related"
                 ? ""
                 : attr.type === "multiselect"
                   ? chosen.join(", ") || getDefaultValueForType(type)
@@ -415,8 +442,19 @@ export function NodeAttributePanel({
           ...attr,
           type,
           value: nextValue,
-          unit: type === "number" || type === "derived" ? attr.unit : "",
-          formula: type === "derived" ? attr.formula ?? "" : undefined,
+          unit: type === "number" || type === "derived" || type === "related" ? attr.unit : "",
+          // Between the two formulas, the text carries over: a Related Formula
+          // names attributes, a Derived Formula stores them by id.
+          formula:
+            type === "related"
+              ? attr.type === "derived"
+                ? getDisplayFormula(attr.formula ?? "", prev, attr.id)
+                : (attr.formula ?? "")
+              : type === "derived"
+                ? attr.type === "related"
+                  ? getStoredFormulaFromDisplay(attr.formula ?? "", prev, attr.id)
+                  : (attr.formula ?? "")
+                : undefined,
           options,
         });
       });
@@ -495,6 +533,9 @@ export function NodeAttributePanel({
     attributes
       .filter((attr) => attr.name.trim())
       .map((attr) => {
+        if (attr.type === "related") {
+          return normalizeAttribute({ ...attr, value: derivedAttributeState.get(attr.id)?.value ?? "" });
+        }
         if (attr.type !== "derived") {
           return normalizeAttribute(attr);
         }
@@ -651,7 +692,7 @@ export function NodeAttributePanel({
         : null;
 
   const hasDerivedFormulaErrors = attributes.some(
-    (attr) => attr.type === "derived" && !!derivedAttributeState.get(attr.id)?.error,
+    (attr) => (attr.type === "derived" || attr.type === "related") && !!derivedAttributeState.get(attr.id)?.error,
   );
   const hasDuplicateAttributeNames = duplicateAttributeNameSet.size > 0;
 
@@ -888,6 +929,7 @@ export function NodeAttributePanel({
                 {editedAttribute ? (
                   <TooltipProvider delayDuration={0}>
                     <AttributeRowEditor
+                      nodeId={node.id}
                       attr={editedAttribute}
                       index={attributes.indexOf(editedAttribute)}
                       attributes={attributes}

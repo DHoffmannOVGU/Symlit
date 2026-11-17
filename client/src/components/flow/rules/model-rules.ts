@@ -1,5 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
-import { parseMultiselectValue } from "@shared/attribute-values";
+import { compareValue } from "@shared/value-comparison";
 import type {
   ModelRule,
   ModelRuleCondition,
@@ -124,58 +124,11 @@ const getFieldValue = (node: Node, condition: Extract<ModelRuleCondition, { kind
   return getAttribute(data, condition.attribute)?.value;
 };
 
-/**
- * A comparison with a multiselect attribute looks at its chosen options:
- * equals means "one of them is", contains "one of them contains", is set
- * "at least one is chosen". Numbers compare with no option.
- */
-const compareChosen = (chosen: string[], condition: Extract<ModelRuleCondition, { kind: "comparison" }>) => {
-  const expected = condition.value?.trim().toLocaleLowerCase() ?? "";
-  const options = chosen.map((option) => option.toLocaleLowerCase());
-  switch (condition.operator) {
-    case "exists": return options.length > 0;
-    case "missing": return options.length === 0;
-    case "equals": return !!expected && options.includes(expected);
-    case "not-equals": return !!expected && !options.includes(expected);
-    case "contains": return !!expected && options.some((option) => option.includes(expected));
-    default: return false;
-  }
-};
-
 const compareField = (node: Node, condition: Extract<ModelRuleCondition, { kind: "comparison" }>) => {
-  if (condition.field === "attribute") {
-    const attribute = getAttribute(node.data as NodeData | undefined, condition.attribute);
-    if (attribute?.type === "multiselect") {
-      if (!condition.attribute?.trim()) return false;
-      return compareChosen(parseMultiselectValue(attribute.value), condition);
-    }
-  }
-  return compare(getFieldValue(node, condition), condition);
-};
-
-const compare = (rawValue: unknown, condition: Extract<ModelRuleCondition, { kind: "comparison" }>) => {
-  const value = rawValue == null ? "" : String(rawValue).trim();
-  const expected = condition.value?.trim() ?? "";
   if (condition.field === "attribute" && !condition.attribute?.trim()) return false;
-  if (!["exists", "missing", "is-true", "is-false"].includes(condition.operator) && !expected) return false;
-  switch (condition.operator) {
-    case "exists": return value.length > 0;
-    case "missing": return value.length === 0;
-    case "equals": return value.toLocaleLowerCase() === expected.toLocaleLowerCase();
-    case "not-equals": return value.toLocaleLowerCase() !== expected.toLocaleLowerCase();
-    case "contains": return value.toLocaleLowerCase().includes(expected.toLocaleLowerCase());
-    case "is-true": return ["true", "yes", "1"].includes(value.toLocaleLowerCase());
-    case "is-false": return ["false", "no", "0"].includes(value.toLocaleLowerCase());
-    default: {
-      const numericValue = Number(value);
-      const numericExpected = Number(expected);
-      if (!Number.isFinite(numericValue) || !Number.isFinite(numericExpected)) return false;
-      if (condition.operator === "greater-than") return numericValue > numericExpected;
-      if (condition.operator === "greater-than-or-equal") return numericValue >= numericExpected;
-      if (condition.operator === "less-than") return numericValue < numericExpected;
-      return numericValue <= numericExpected;
-    }
-  }
+  const attributeType =
+    condition.field === "attribute" ? getAttribute(node.data as NodeData | undefined, condition.attribute)?.type : undefined;
+  return compareValue(getFieldValue(node, condition), condition.operator, condition.value, attributeType);
 };
 
 type EvaluationContext = { nodes: Node[]; edges: Edge[]; nodeById: Map<string, Node> };

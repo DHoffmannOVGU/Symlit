@@ -30,6 +30,12 @@ DATABASE_URL. No account, no external requests.
   types their type specializes. Formulas have functions: min, max, sum, avg,
   round (to decimals), floor, ceil, abs, sqrt. The help lists how formulas
   work.
+- Related Formulas: attributes calculated over the elements an element is
+  related to, in all diagrams of the project, for example
+  sum([mass] of "consists of" where [status] = "released"). Roll-ups over
+  several levels come from formulas that read the related elements' own.
+  The editor shows what was counted and calculates live; exports carry the
+  calculated values.
 - Multiselect attributes: any number of choices from a type's options, picked
   in the editor or in the table; the table filter finds them, and a rule's
   condition looks at each chosen option.

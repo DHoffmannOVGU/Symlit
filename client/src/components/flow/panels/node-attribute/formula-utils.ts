@@ -16,7 +16,7 @@ export const normalizeAttribute = (
   const options = hasOptions ? sanitizeAttributeOptions(attribute.options) : undefined;
   const nextValue = String(attribute.value ?? "");
   const formula =
-    attribute.type === "derived" ? String(attribute.formula ?? "") : undefined;
+    attribute.type === "derived" || attribute.type === "related" ? String(attribute.formula ?? "") : undefined;
 
   return {
     ...attribute,
@@ -29,7 +29,7 @@ export const normalizeAttribute = (
             : options[0]
           : nextValue,
     unit:
-      attribute.type === "number" || attribute.type === "derived"
+      attribute.type === "number" || attribute.type === "derived" || attribute.type === "related"
         ? String(attribute.unit ?? "")
         : "",
     formula,

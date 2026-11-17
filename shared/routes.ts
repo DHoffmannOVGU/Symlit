@@ -341,6 +341,30 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
+    /**
+     * Every element of the project and the relationships of all its
+     * diagrams, as saved: what Related Formulas calculate over.
+     */
+    graph: {
+      method: 'GET' as const,
+      path: '/api/projects/:id/graph',
+      responses: {
+        200: z.object({
+          elements: z.array(
+            z.object({
+              id: z.string(),
+              name: z.string(),
+              type: z.string(),
+              attributes: z.array(z.record(z.unknown())),
+            }),
+          ),
+          relationships: z.array(
+            z.object({ source: z.string(), target: z.string(), name: z.string(), viewId: z.number().optional() }),
+          ),
+        }),
+        404: errorSchemas.notFound,
+      },
+    },
     export: {
       method: 'POST' as const,
       path: '/api/projects/:id/export',
