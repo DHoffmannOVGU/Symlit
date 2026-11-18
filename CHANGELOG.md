@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Pluggable sign-in: `server/auth-provider.ts` returns an `AuthProvider`, so a hosted
+  deployment can add its own login without changing the rest of the server. The local
+  edition is unchanged.
+
 ## v0.1.0 – first local edition
 
 Symlit runs entirely on your machine: one Node.js process serves the app and

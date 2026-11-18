@@ -1,4 +1,5 @@
-import type { NextFunction, Request, RequestHandler, Response } from "express";
+import type { Express, NextFunction, Request, RequestHandler, Response } from "express";
+import type { Server } from "node:http";
 import { isDatabaseId } from "./http-guards";
 import { storage } from "./storage";
 import type { WorkspaceRole } from "@shared/authorization";
@@ -11,7 +12,7 @@ declare global {
     interface Request {
       workspaceUser?: User;
       workspaceRole?: WorkspaceRole;
-      authKind?: "local";
+      authKind?: string;
     }
   }
 }
@@ -19,10 +20,39 @@ declare global {
 export const LOCAL_USERNAME = "local";
 
 /**
+ * How requests are tied to a user. The local edition uses `createLocalAuth`;
+ * a hosted deployment supplies its own provider through `server/auth-provider.ts`
+ * and leaves the rest of the server untouched.
+ */
+export interface AuthProvider {
+  /** Reported to the client as `authKind`, e.g. "local" or "replit". */
+  kind: string;
+  /**
+   * Mounts whatever sign-in needs (session middleware, login and callback
+   * routes, a redirect for signed-out page loads). Runs before the API and
+   * before the client is served.
+   */
+  setup?: (app: Express, httpServer: Server) => void | Promise<void>;
+  /**
+   * Sets `req.workspaceUser` and `req.workspaceRole` for signed-in requests.
+   * Leaving them unset makes the API answer 401.
+   */
+  attachUser: RequestHandler;
+  /** Owner of the demo project seeded at startup; omit to skip that seeding. */
+  resolveSeedOwner?: () => Promise<User>;
+  /** Where the client sends a signed-out browser. */
+  signInUrl?: string;
+  /** Shown as a sign-out link when set. */
+  signOutUrl?: string;
+}
+
+/**
  * The local edition is single-user: every request acts as one implicit local
  * owner. The user row is created on first use and cached for the process.
  */
-export function createLocalAuth(displayName: string) {
+export function createLocalAuth(displayName: string): AuthProvider & {
+  resolveLocalUser: () => Promise<User>;
+} {
   let cached: User | undefined;
 
   const resolveLocalUser = async (): Promise<User> => {
@@ -46,7 +76,12 @@ export function createLocalAuth(displayName: string) {
     }
   };
 
-  return { resolveLocalUser, attachLocalUser };
+  return {
+    kind: "local",
+    attachUser: attachLocalUser,
+    resolveSeedOwner: resolveLocalUser,
+    resolveLocalUser,
+  };
 }
 
 /** Owners administer their own projects; nobody else has access. */
@@ -85,14 +120,14 @@ function pathParts(req: Request) {
  * node id) and checks that the current user owns it. Resource ownership is
  * checked here instead of trusting ids supplied by the browser.
  */
-export function authorizeWorkspaceApi(): RequestHandler {
+export function authorizeWorkspaceApi(signInUrl?: string): RequestHandler {
   return async (req: Request, res: Response, next: NextFunction) => {
     const parts = pathParts(req);
     if (parts[1] === "config" || (parts[1] === "auth" && parts[2] === "me")) {
       return next();
     }
     if (!req.workspaceUser) {
-      return res.status(401).json({ message: "Authentication required" });
+      return res.status(401).json({ message: "Authentication required", signInUrl });
     }
 
     try {
