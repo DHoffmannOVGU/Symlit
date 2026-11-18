@@ -279,7 +279,8 @@ export const api = {
         200: z.object({
           user: z.custom<typeof users.$inferSelect>(),
           role: z.string(),
-          authKind: z.literal("local"),
+          authKind: z.string(),
+          signOutUrl: z.string().optional(),
           capabilities: z.record(z.boolean()),
         }),
       },

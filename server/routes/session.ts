@@ -20,7 +20,8 @@ export function registerSessionRoutes(app: Express, config: AppConfig) {
     res.json({
       user: req.workspaceUser,
       role: req.workspaceRole,
-      authKind: "local",
+      authKind: req.authKind ?? "local",
+      signOutUrl: req.app.locals.auth?.signOutUrl,
       capabilities: roleCapabilities(req.workspaceRole),
     });
   });

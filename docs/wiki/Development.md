@@ -38,3 +38,18 @@ shared/   Database schema, API contract and domain logic used by both sides
 The wiki pages are kept in the repository under `docs/wiki/` and published from there with
 `script/publish-wiki.sh`. Change them in the repository so that they are reviewed with the
 code; edits made directly in the wiki are overwritten by the next publish.
+
+## Hosting with your own sign-in
+
+The local edition has no login. To host Symlit for several users, keep your deployment in a
+separate (private) repository that pulls releases from this one, and replace only
+`server/auth-provider.ts`. It returns an `AuthProvider` (defined in `server/auth.ts`):
+
+- `setup(app)` mounts session middleware and your login, callback and logout routes.
+- `attachUser` sets `req.workspaceUser` (create users with `storage.getOrCreateUser`) and
+  `req.workspaceRole`; signed-out API requests then get `401` with your `signInUrl`, and the
+  client redirects there.
+- `signOutUrl` shows a sign-out link in the sidebar.
+
+Projects already belong to their user, so each account only sees its own work. Use
+PostgreSQL (`DATABASE_URL`) when hosting, and set `HOST=0.0.0.0` and `SYMLIT_ALLOWED_HOSTS`.

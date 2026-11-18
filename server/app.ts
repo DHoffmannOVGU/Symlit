@@ -1,7 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import { createServer, type Server } from "node:http";
 import { registerRoutes } from "./routes/index";
-import { authorizeWorkspaceApi, createLocalAuth } from "./auth";
+import { authorizeWorkspaceApi, createLocalAuth, type AuthProvider } from "./auth";
 import type { AppConfig } from "./config";
 import { catchAsyncRouteErrors, guardLocalApi, rejectInvalidIds } from "./http-guards";
 import { log } from "./log";
@@ -9,7 +9,7 @@ import { log } from "./log";
 export interface CreatedApp {
   app: express.Express;
   httpServer: Server;
-  resolveLocalUser: ReturnType<typeof createLocalAuth>["resolveLocalUser"];
+  auth: AuthProvider;
 }
 
 /**
@@ -18,11 +18,12 @@ export interface CreatedApp {
  */
 export async function createApp(
   config: AppConfig,
-  options: { requestLogging?: boolean } = {},
+  options: { requestLogging?: boolean; auth?: AuthProvider } = {},
 ): Promise<CreatedApp> {
   const app = express();
   const httpServer = createServer(app);
-  const localAuth = createLocalAuth(config.localUserName);
+  const auth = options.auth ?? createLocalAuth(config.localUserName);
+  app.locals.auth = { kind: auth.kind, signInUrl: auth.signInUrl, signOutUrl: auth.signOutUrl };
 
   app.disable("x-powered-by");
   catchAsyncRouteErrors(app);
@@ -46,8 +47,13 @@ export async function createApp(
     });
   }
 
-  app.use("/api", localAuth.attachLocalUser);
-  app.use("/api", authorizeWorkspaceApi());
+  await auth.setup?.(app, httpServer);
+  app.use("/api", auth.attachUser);
+  app.use("/api", (req, _res, next) => {
+    req.authKind ??= auth.kind;
+    next();
+  });
+  app.use("/api", authorizeWorkspaceApi(auth.signInUrl));
 
   await registerRoutes(httpServer, app, config);
 
@@ -65,5 +71,5 @@ export async function createApp(
     });
   });
 
-  return { app, httpServer, resolveLocalUser: localAuth.resolveLocalUser };
+  return { app, httpServer, auth };
 }
