@@ -83,6 +83,19 @@ end, and an object as `data`. Saving checks `data` with `relationshipDataSchema`
 have the right type, other fields are kept. Reading stays lenient (`flowEdgeSchema`) so unexpected
 stored data never stops a diagram from opening; migration 0005 cleaned existing data to this form.
 
+Calculated attributes: a Derived Formula calculates from its own element's attributes, a Related Formula
+over the elements its element is related to, one step along the relationships of all the project's diagrams
+(`sum([mass] of "consists of" where [status] = "released")`; `shared/formula.ts`, `shared/related-formula.ts`).
+The editor calculates them live over the saved project and the open diagram (`RelatedCalculationProvider`), the
+server for exports and `GET /api/projects/:id/graph`. Calculated values are left out of the unsaved-changes
+signature and of the diagram revision, so they never count as an edit or a conflict. Formulas store references
+by id (`[attr:<id>]`, relationships `"rel:<id>"`) where a name stands for one, and show them by name.
+
+A model relationship drawn with Symlit's suggestion records which metamodel relationship it is
+(`data.relationId`); older ones get it recorded at start (`server/services/relationship-links.ts`). Formulas,
+rules and validation match relationships by it, and saving a renamed metamodel relationship renames the
+model relationships that record it in the same transaction (`syncFlow`).
+
 Model rules are stored per diagram (`views.model_rules`, `modelRuleSchema` in `shared/contracts.ts`). A
 rule's condition is text (`expression`) in the rule language of `shared/rule-text.ts`, which builds on the
 formula language of `shared/formula.ts` (one `formulaReader` reads both): parsing, printing, the rules
