@@ -78,7 +78,7 @@ export interface IStorage {
     nodes: SyncFlowNodeInput[],
     edges: FlowEdgeInput[],
     options?: { baseRevision?: string },
-  ): Promise<{ revision: string | null }>;
+  ): Promise<{ revision: string | null; relabeled: number }>;
   insertNodeIntoView(
     viewId: number,
     nodeId: string,
@@ -261,7 +261,7 @@ export class DatabaseStorage implements IStorage {
     newNodes: SyncFlowNodeInput[],
     newEdges: FlowEdgeInput[],
     options?: { baseRevision?: string },
-  ): Promise<{ revision: string | null }> {
+  ): Promise<{ revision: string | null; relabeled: number }> {
     return syncFlowService(viewId, newNodes, newEdges, options);
   }
 

@@ -34,8 +34,9 @@ diagram.
 - your model rules.
 
 A relationship drawn with Symlit's suggestion records which metamodel relationship it is. When that
-relationship is renamed in the metamodel, the model's relationships drawn before keep their old label
-and stay valid.
+relationship is renamed in the metamodel, saving the metamodel renames the models' relationships made
+from it too; the confirmation says how many. A relationship renamed in a model is its own and keeps its
+name.
 
 The results appear in a panel beside the canvas, so you can fix things while the list stays open.
 

@@ -292,12 +292,61 @@ export async function deleteUnplacedNodes(
   return deleted.length;
 }
 
+const labelOf = (data: unknown) => {
+  const label = data && typeof data === "object" && !Array.isArray(data) ? (data as { label?: unknown }).label : undefined;
+  return typeof label === "string" ? label.trim() : "";
+};
+
+/**
+ * The relationships of a metamodel diagram whose name a save changes: their
+ * id and new name. A relationship that is new or removed is not renamed.
+ */
+export function renamedRelationships(
+  stored: Array<{ id: string; data?: unknown }>,
+  saved: Array<{ id: string; data?: unknown }>,
+): Map<string, string> {
+  const before = new Map(stored.map((edge) => [edge.id, labelOf(edge.data)]));
+  const renamed = new Map<string, string>();
+  for (const edge of saved) {
+    const previous = before.get(edge.id);
+    if (previous !== undefined && previous !== labelOf(edge.data)) renamed.set(edge.id, labelOf(edge.data));
+  }
+  return renamed;
+}
+
+/**
+ * Gives the model relationships that record a renamed metamodel relationship
+ * (`data.relationId`) its new name. Returns how many changed.
+ */
+async function relabelModelRelationships(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  renamed: Map<string, string>,
+): Promise<number> {
+  let relabeled = 0;
+  for (const [relationId, label] of Array.from(renamed)) {
+    const rows = await tx
+      .select({ id: edges.id, data: edges.data })
+      .from(edges)
+      .where(sql`${edges.data}->>'relationId' = ${relationId}`);
+    for (const row of rows) {
+      if (labelOf(row.data) === label) continue;
+      const { label: _previous, ...rest } = (row.data ?? {}) as Record<string, unknown>;
+      await tx
+        .update(edges)
+        .set({ data: label ? { ...rest, label } : rest })
+        .where(eq(edges.id, row.id));
+      relabeled += 1;
+    }
+  }
+  return relabeled;
+}
+
 export async function syncFlow(
   viewId: number,
   newNodes: SyncFlowNodeInput[],
   newEdges: FlowEdgeInput[],
   options: { baseRevision?: string } = {},
-): Promise<{ revision: string | null }> {
+): Promise<{ revision: string | null; relabeled: number }> {
   validateFlowRecords(newNodes, newEdges);
 
   const [view] = await db.select().from(views).where(eq(views.id, viewId));
@@ -311,6 +360,7 @@ export async function syncFlow(
   const [project] = await db
     .select({
       id: projects.id,
+      projectType: projects.projectType,
       referencedMetamodels: projects.referencedMetamodels,
     })
     .from(projects)
@@ -341,7 +391,16 @@ export async function syncFlow(
     existingNodes.map((node) => [node.id, node]),
   );
 
+  let relabeled = 0;
   await db.transaction(async (tx) => {
+    // In a metamodel, a renamed relationship renames the model relationships made from it.
+    const renamed =
+      project.projectType === "metamodel"
+        ? renamedRelationships(
+            await tx.select({ id: edges.id, data: edges.data }).from(edges).where(eq(edges.viewId, viewId)),
+            newEdges,
+          )
+        : new Map<string, string>();
     const previouslyPlaced = await tx
       .select({ nodeId: nodeViews.nodeId })
       .from(nodeViews)
@@ -406,8 +465,9 @@ export async function syncFlow(
         .filter((id) => !keptIds.has(id)),
     );
     await tx.update(projects).set({ updatedAt: new Date() }).where(eq(projects.id, view.projectId));
+    if (renamed.size > 0) relabeled = await relabelModelRelationships(tx, renamed);
   });
-  return { revision: await currentRevision(viewId) };
+  return { revision: await currentRevision(viewId), relabeled };
 }
 
 export async function insertNodeIntoView(
