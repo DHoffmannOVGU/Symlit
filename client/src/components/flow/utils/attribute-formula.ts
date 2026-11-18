@@ -1,3 +1,9 @@
+import {
+  evaluateFormula,
+  FormulaPendingError,
+  formulaReferenceNames,
+  parseFormula,
+} from "@shared/formula";
 import type { NodeAttribute } from "../types";
 
 const ATTRIBUTE_REFERENCE_PREFIX = "attr:";
@@ -10,38 +16,18 @@ export interface FormulaReference {
   missing?: boolean;
 }
 
-type Token =
-  | { type: "number"; value: number }
-  // "neg" is the minus sign in front of a value ("-3", "2 * -3"); it never appears in the text.
-  | { type: "operator"; value: "+" | "-" | "*" | "/" | "neg" }
-  | { type: "paren"; value: "(" | ")" }
-  | { type: "reference"; value: string };
-
 export interface EvaluatedAttributeResult {
   value: number;
   references: string[];
 }
 
-/**
- * A formula that is written correctly but cannot give a number yet: one of
- * its inputs has no value, or it would divide by zero. Unlike a mistake in
- * the formula, this is a normal state (a type without default values, an
- * element not filled in yet) and must not stop anyone from saving.
- */
-export class FormulaPendingError extends Error {
-  readonly pending = true;
-}
-
-export const isFormulaPending = (error: unknown): error is FormulaPendingError =>
-  error instanceof FormulaPendingError;
+export { FormulaPendingError, isFormulaPending } from "@shared/formula";
 
 interface ResolvedReference {
   attribute: NodeAttribute;
   displayName: string;
 }
 
-const WHITESPACE = /\s/;
-type OperatorToken = Extract<Token, { type: "operator" }>;
 
 const isStoredAttributeReference = (value: string) =>
   value.startsWith(ATTRIBUTE_REFERENCE_PREFIX);
@@ -65,144 +51,6 @@ export const remapStoredFormulaReferences = (
     const nextAttributeId = attributeIdMap.get(sourceAttributeId);
     return nextAttributeId ? formatStoredAttributeReference(nextAttributeId) : match;
   });
-
-const tokenizeFormula = (formula: string): Token[] => {
-  const tokens: Token[] = [];
-  let index = 0;
-
-  while (index < formula.length) {
-    const char = formula[index];
-
-    if (WHITESPACE.test(char)) {
-      index += 1;
-      continue;
-    }
-
-    if (char === "[") {
-      const closeIndex = formula.indexOf("]", index + 1);
-      if (closeIndex === -1) {
-        throw new Error("Missing closing ] for attribute reference.");
-      }
-
-      const name = formula.slice(index + 1, closeIndex).trim();
-      if (!name) {
-        throw new Error("Attribute references cannot be empty.");
-      }
-
-      tokens.push({ type: "reference", value: name });
-      index = closeIndex + 1;
-      continue;
-    }
-
-    if (char === "+" || char === "-" || char === "*" || char === "/") {
-      tokens.push({ type: "operator", value: char });
-      index += 1;
-      continue;
-    }
-
-    if (char === "(" || char === ")") {
-      tokens.push({ type: "paren", value: char });
-      index += 1;
-      continue;
-    }
-
-    if (/[0-9.]/.test(char)) {
-      let end = index + 1;
-      while (end < formula.length && /[0-9.]/.test(formula[end])) {
-        end += 1;
-      }
-
-      const raw = formula.slice(index, end);
-      if (!/^\d+(\.\d+)?$|^\.\d+$/.test(raw)) {
-        throw new Error(`Invalid number "${raw}".`);
-      }
-
-      tokens.push({ type: "number", value: Number(raw) });
-      index = end;
-      continue;
-    }
-
-    throw new Error(`Unexpected token "${char}".`);
-  }
-
-  return tokens;
-};
-
-const precedence = (operator: OperatorToken["value"]) =>
-  operator === "neg" ? 3 : operator === "+" || operator === "-" ? 1 : 2;
-
-const toRpn = (tokens: Token[]) => {
-  const output: Token[] = [];
-  const operators: Token[] = [];
-
-  tokens.forEach((token, index) => {
-    if (token.type === "number" || token.type === "reference") {
-      output.push(token);
-      return;
-    }
-
-    if (token.type === "operator") {
-      const prev = tokens[index - 1];
-      const isUnaryMinus =
-        token.value === "-" &&
-        (!prev ||
-          prev.type === "operator" ||
-          (prev.type === "paren" && prev.value === "("));
-
-      if (isUnaryMinus) {
-        // Binds tighter than * and /, and applies to what follows it, so
-        // nothing waiting on the stack is applied first.
-        operators.push({ type: "operator", value: "neg" });
-        return;
-      }
-
-      while (operators.length > 0) {
-        const top = operators[operators.length - 1];
-        if (
-          top.type === "operator" &&
-          precedence(top.value) >= precedence(token.value)
-        ) {
-          output.push(operators.pop() as Token);
-          continue;
-        }
-        break;
-      }
-      operators.push(token);
-      return;
-    }
-
-    if (token.type === "paren" && token.value === "(") {
-      operators.push(token);
-      return;
-    }
-
-    if (token.type === "paren" && token.value === ")") {
-      let matched = false;
-      while (operators.length > 0) {
-        const top = operators.pop() as Token;
-        if (top.type === "paren" && top.value === "(") {
-          matched = true;
-          break;
-        }
-        output.push(top);
-      }
-
-      if (!matched) {
-        throw new Error("Mismatched parentheses.");
-      }
-    }
-  });
-
-  while (operators.length > 0) {
-    const top = operators.pop() as Token;
-    if (top.type === "paren") {
-      throw new Error("Mismatched parentheses.");
-    }
-    output.push(top);
-  }
-
-  return output;
-};
 
 const buildAttributeNameIndex = (
   attributes: NodeAttribute[],
@@ -376,84 +224,34 @@ export const evaluateDerivedAttribute = (
     throw new Error("Circular formula reference detected.");
   }
 
-  const tokens = tokenizeFormula(formula);
-  if (tokens.length === 0) {
-    throw new Error("Formula is required.");
-  }
-
-  const rpn = toRpn(tokens);
-  const stackValues: number[] = [];
-  const references = new Set<string>();
-
-  rpn.forEach((token) => {
-    if (token.type === "number") {
-      stackValues.push(token.value);
-      return;
+  const parsed = parseFormula(formula);
+  // Every reference is resolved before anything is calculated, so a mistake
+  // (an unknown attribute) is reported even when another input is still empty.
+  const resolved = new Map(
+    formulaReferenceNames(parsed).map((name) => [name, resolveReference(name, attributes, attribute.id)] as const),
+  );
+  const value = evaluateFormula(parsed, (name) => {
+    const { attribute: referenced, displayName } = resolved.get(name)!;
+    let nextValue: number;
+    if (referenced.type === "derived") {
+      nextValue = evaluateDerivedAttribute(referenced, attributes, [...stack, attribute.id]).value;
+    } else {
+      const raw = String(referenced.value ?? "").trim();
+      // An empty input is "not known yet", not zero.
+      if (raw === "") {
+        throw new FormulaPendingError(`"${displayName}" has no value yet.`);
+      }
+      nextValue = Number(raw);
     }
-
-    if (token.type === "reference") {
-      const resolved = resolveReference(token.value, attributes, attribute.id);
-      const referenced = resolved.attribute;
-
-      let nextValue: number;
-      if (referenced.type === "derived") {
-        nextValue = evaluateDerivedAttribute(referenced, attributes, [
-          ...stack,
-          attribute.id,
-        ]).value;
-      } else {
-        const raw = String(referenced.value ?? "").trim();
-        // An empty input is "not known yet", not zero.
-        if (raw === "") {
-          throw new FormulaPendingError(`"${resolved.displayName}" has no value yet.`);
-        }
-        nextValue = Number(raw);
-      }
-
-      if (!Number.isFinite(nextValue)) {
-        throw new Error(`Attribute "${resolved.displayName}" is not numeric.`);
-      }
-
-      stackValues.push(nextValue);
-      references.add(resolved.displayName);
-      return;
+    if (!Number.isFinite(nextValue)) {
+      throw new Error(`Attribute "${displayName}" is not numeric.`);
     }
-
-    if (token.type === "operator" && token.value === "neg") {
-      const operand = stackValues.pop();
-      if (operand === undefined) {
-        throw new Error("Formula is incomplete.");
-      }
-      stackValues.push(-operand);
-      return;
-    }
-
-    if (token.type === "operator") {
-      const right = stackValues.pop();
-      const left = stackValues.pop();
-      if (left === undefined || right === undefined) {
-        throw new Error("Formula is incomplete.");
-      }
-
-      if (token.value === "+") stackValues.push(left + right);
-      if (token.value === "-") stackValues.push(left - right);
-      if (token.value === "*") stackValues.push(left * right);
-      if (token.value === "/") {
-        if (right === 0) {
-          throw new FormulaPendingError("Cannot divide by zero.");
-        }
-        stackValues.push(left / right);
-      }
-    }
+    return nextValue;
   });
 
-  if (stackValues.length !== 1) {
-    throw new Error("Formula is incomplete.");
-  }
-
   return {
-    value: stackValues[0],
-    references: Array.from(references),
+    value,
+    references: Array.from(new Set(Array.from(resolved.values(), (entry) => entry.displayName))),
   };
 };
 

@@ -18,6 +18,9 @@ A condition compares a field of the element (its name, description, type or an a
 the elements a relationship leads to. Several conditions can be combined: **all** of them must
 hold, or **any** of them.
 
+On a Multiselect attribute a condition looks at the chosen options: *equals* holds when one of
+them is the value, *contains* when one of them contains it, *is set* when at least one is chosen.
+
 A rule in a **metamodel** applies to every model built from it; in the model it is listed under
 *Rules from metamodels* and cannot be changed there. A rule in a model's diagram applies to that
 diagram.
@@ -29,6 +32,10 @@ diagram.
 - that every element has a type from a referenced metamodel,
 - that every relationship is allowed between the types of its two ends,
 - your model rules.
+
+A relationship drawn with Symlit's suggestion records which metamodel relationship it is. When that
+relationship is renamed in the metamodel, the model's relationships drawn before keep their old label
+and stay valid.
 
 The results appear in a panel beside the canvas, so you can fix things while the list stays open.
 

@@ -69,7 +69,7 @@ export function buildMetamodelProposalElements(
       type: attribute.type,
       value: "",
       unit: attribute.unit,
-      ...(attribute.type === "list" ? { options: attribute.options } : {}),
+      ...(attribute.type === "list" || attribute.type === "multiselect" ? { options: attribute.options } : {}),
     }));
     const data: NodeData = {
       label: node.name,

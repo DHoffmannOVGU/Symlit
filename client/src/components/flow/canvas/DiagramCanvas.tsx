@@ -1,4 +1,5 @@
 import { DiagramLoadError } from "./DiagramLoadError";
+import { RelatedCalculationProvider } from "../related/RelatedCalculationProvider";
 import { SavePatternDialog } from "./SavePatternDialog";
 import { DiagramHelpDialog } from "./DiagramHelpDialog";
 import { ValidationResultsDialog } from "./ValidationResultsDialog";
@@ -541,7 +542,9 @@ export function DiagramCanvas(props: DiagramCanvasProps) {
     <ReactFlowProvider>
       <DiagramStoreProvider>
         <DiagramModelProvider {...props}>
-          <FlowInner {...props} />
+          <RelatedCalculationProvider>
+            <FlowInner {...props} />
+          </RelatedCalculationProvider>
         </DiagramModelProvider>
       </DiagramStoreProvider>
     </ReactFlowProvider>

@@ -1,4 +1,8 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { formulaReferenceNames, parseFormula } from "@shared/formula";
+import { remapOwnReferences, resolveAttributeReference, storeRelatedFormula } from "@shared/related-formula";
+import { useRelatedCalculation } from "../related/RelatedCalculationProvider";
+import { formatMultiselectValue, parseMultiselectValue } from "@shared/attribute-values";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,7 +37,7 @@ import {
   syncFormulaDrafts,
   type FormulaAutocompleteState,
 } from "./node-attribute/formula-utils";
-import { AttributeRowEditor } from "./node-attribute/AttributeRowEditor";
+import { AttributeRowEditor, type DerivedAttributeStateMap } from "./node-attribute/AttributeRowEditor";
 import { AttributeEditorDialog } from "./node-attribute/AttributeEditorDialog";
 import { AttributeSummaryRow } from "./node-attribute/AttributeSummaryRow";
 import { missingTypeAttributes } from "@/lib/type-attributes";
@@ -255,13 +259,37 @@ export function NodeAttributePanel({
     );
   }, [attributes]);
 
+  const { preview: previewRelated, formulaContext } = useRelatedCalculation();
   const derivedAttributeState = useMemo(() => {
-    const next: globalThis.Map<
-      string,
-      { value?: string; references: string[]; error?: string; pending?: string }
-    > = new globalThis.Map();
+    const next: DerivedAttributeStateMap = new globalThis.Map();
 
     attributes.forEach((attr) => {
+      if (attr.type === "related") {
+        // On a type, the formula is only checked: each element of the type calculates it.
+        if (node?.type !== "part") {
+          try {
+            const parsed = parseFormula(attr.formula ?? "", { aggregates: true });
+            formulaReferenceNames(parsed).forEach((name) => resolveAttributeReference(name, attributes, attr.id));
+            next.set(attr.id, { references: [], note: "Each element of this type calculates it over its own related elements." });
+          } catch (error) {
+            next.set(attr.id, { references: [], error: error instanceof Error ? error.message : "Invalid formula." });
+          }
+          return;
+        }
+        // Calculated over the related elements, with the attributes as edited here.
+        const result = node ? previewRelated(node.id, attributes, attr.id) : null;
+        if (!result) return;
+        next.set(attr.id, {
+          references: [],
+          explanations: result.explanations,
+          ...(result.problem
+            ? result.problem.pending
+              ? { pending: result.problem.message }
+              : { error: result.problem.message }
+            : { value: formatDerivedValue(result.value ?? Number.NaN) }),
+        });
+        return;
+      }
       if (attr.type !== "derived") return;
 
       try {
@@ -293,7 +321,7 @@ export function NodeAttributePanel({
     });
 
     return next;
-  }, [attributes, formulaDrafts]);
+  }, [attributes, formulaDrafts, node, previewRelated]);
 
   const getAttributeKey = (attr: NodeAttribute) => attr.id;
 
@@ -349,7 +377,8 @@ export function NodeAttributePanel({
         return normalizeAttribute({
           ...attr,
           options,
-          value: attr.value || options[0] || "",
+          // A list starts on its first option; a multiselect starts with nothing chosen.
+          value: attr.type === "multiselect" ? attr.value : attr.value || options[0] || "",
         });
       });
       setFormulaDrafts((drafts) => syncFormulaDrafts(drafts, nextAttributes));
@@ -368,7 +397,12 @@ export function NodeAttributePanel({
         return normalizeAttribute({
           ...attr,
           options,
-          value: attr.value === optionToRemove ? (options[0] ?? "") : attr.value,
+          value:
+            attr.type === "multiselect"
+              ? attr.value
+              : attr.value === optionToRemove
+                ? (options[0] ?? "")
+                : attr.value,
         });
       });
       setFormulaDrafts((drafts) => syncFormulaDrafts(drafts, nextAttributes));
@@ -387,21 +421,30 @@ export function NodeAttributePanel({
     setAttributes((prev) => {
       const nextAttributes = prev.map((attr) => {
         if (attr.id !== id) return attr;
-        const options = type === "list" ? sanitizeAttributeOptions(attr.options) : undefined;
+        const hasOptions = type === "list" || type === "multiselect";
+        const options = hasOptions ? sanitizeAttributeOptions(attr.options) : undefined;
+        // Between a list and a multiselect, the chosen options carry over.
+        const chosen =
+          attr.type === "multiselect" ? parseMultiselectValue(attr.value) : attr.value ? [attr.value] : [];
         const nextValue =
-          type === "list"
-            ? options?.includes(attr.value)
-              ? attr.value
-              : getDefaultValueForType(type, options)
-            : type === "derived"
-              ? ""
-              : attr.value || getDefaultValueForType(type);
+          type === "multiselect"
+            ? formatMultiselectValue(chosen, options)
+            : type === "list"
+              ? options?.includes(chosen[0] ?? "")
+                ? chosen[0]
+                : getDefaultValueForType(type, options)
+              : type === "derived" || type === "related"
+                ? ""
+                : attr.type === "multiselect"
+                  ? chosen.join(", ") || getDefaultValueForType(type)
+                  : attr.value || getDefaultValueForType(type);
         return normalizeAttribute({
           ...attr,
           type,
           value: nextValue,
-          unit: type === "number" || type === "derived" ? attr.unit : "",
-          formula: type === "derived" ? attr.formula ?? "" : undefined,
+          unit: type === "number" || type === "derived" || type === "related" ? attr.unit : "",
+          // Both formulas store references by id: between them, the formula carries over.
+          formula: type === "related" || type === "derived" ? (attr.formula ?? "") : undefined,
           options,
         });
       });
@@ -480,6 +523,15 @@ export function NodeAttributePanel({
     attributes
       .filter((attr) => attr.name.trim())
       .map((attr) => {
+        if (attr.type === "related") {
+          // Linked again with what is known now (the project's relationships may have loaded since it was typed).
+          const draft = formulaDrafts[attr.id];
+          const formula =
+            draft !== undefined && node
+              ? storeRelatedFormula(draft, formulaContext(node.id, attributes, attr.id))
+              : (attr.formula ?? "");
+          return normalizeAttribute({ ...attr, formula, value: derivedAttributeState.get(attr.id)?.value ?? "" });
+        }
         if (attr.type !== "derived") {
           return normalizeAttribute(attr);
         }
@@ -577,6 +629,10 @@ export function NodeAttributePanel({
       );
       setAttributes((prev) => {
         const remappedInherited = inheritedDrafts.map(({ source, next }) => {
+          if (source.type === "related" && source.formula?.trim()) {
+            // Its own references get the new ids; those inside aggregates name the related elements' attributes.
+            return normalizeAttribute({ ...next, formula: remapOwnReferences(source.formula, inheritedAttributeIdMap) });
+          }
           if (source.type !== "derived" || !source.formula?.trim()) {
             return next;
           }
@@ -636,7 +692,7 @@ export function NodeAttributePanel({
         : null;
 
   const hasDerivedFormulaErrors = attributes.some(
-    (attr) => attr.type === "derived" && !!derivedAttributeState.get(attr.id)?.error,
+    (attr) => (attr.type === "derived" || attr.type === "related") && !!derivedAttributeState.get(attr.id)?.error,
   );
   const hasDuplicateAttributeNames = duplicateAttributeNameSet.size > 0;
 
@@ -873,6 +929,7 @@ export function NodeAttributePanel({
                 {editedAttribute ? (
                   <TooltipProvider delayDuration={0}>
                     <AttributeRowEditor
+                      nodeId={node.id}
                       attr={editedAttribute}
                       index={attributes.indexOf(editedAttribute)}
                       attributes={attributes}

@@ -1,4 +1,5 @@
 import { useDiagramModel } from "../state/DiagramModelProvider";
+import { displayAttributeValue } from "@shared/attribute-values";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useMemo } from "react";
 import { type CustomEdgeData } from "../edges/CustomEdges";
@@ -107,7 +108,7 @@ export function useCanvasTableRows({
         row.type,
         row.description,
         ...row.tags.map((tag) => tag.label),
-        ...row.attributes.flatMap((attr) => [attr.name, attr.value, attr.unit]),
+        ...row.attributes.flatMap((attr) => [attr.name, displayAttributeValue(attr), attr.unit]),
       ]
         .join(" ")
         .toLowerCase()

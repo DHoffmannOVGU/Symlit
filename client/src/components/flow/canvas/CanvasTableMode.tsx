@@ -1,4 +1,5 @@
 import type { NodeAttribute } from "../types";
+import { MultiselectValue } from "../panels/node-attribute/MultiselectValue";
 import { recalculateDerivedAttributes } from "../utils/attribute-formula";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useDiagramModel } from "../state/DiagramModelProvider";
@@ -112,14 +113,34 @@ function AttributeCell({
 }) {
   // The element does not have this attribute.
   if (!attribute) return <TableCell className="text-muted-foreground/50">–</TableCell>;
-  const unit = attribute.type === "number" || attribute.type === "derived" ? attribute.unit?.trim() : "";
+  const unit =
+    attribute.type === "number" || attribute.type === "derived" || attribute.type === "related" ? attribute.unit?.trim() : "";
   const stop = (event: React.SyntheticEvent) => event.stopPropagation();
   const fieldClass =
     "h-8 border-transparent bg-transparent px-2 shadow-none focus-visible:border-slate-300 focus-visible:ring-1 focus-visible:ring-slate-300";
   let field: React.ReactNode;
-  if (attribute.type === "derived") {
-    // Calculated from other attributes: shown, not edited.
-    field = <span className="px-2 text-sm" title="Calculated by a formula">{attribute.value || "–"}</span>;
+  if (attribute.type === "derived" || attribute.type === "related") {
+    // Calculated from other attributes, or from related elements: shown, not edited.
+    field = (
+      <span
+        className="px-2 text-sm"
+        title={attribute.type === "related" ? "Calculated over related elements" : "Calculated by a formula"}
+      >
+        {attribute.value || "–"}
+      </span>
+    );
+  } else if (attribute.type === "multiselect") {
+    field = (
+      <MultiselectValue
+        options={attribute.options ?? []}
+        value={attribute.value}
+        disabled={disabled}
+        onOpen={onBegin}
+        onChange={(value) => onChange(attribute.id, value)}
+        ariaLabel={attribute.name}
+        className="border-transparent bg-transparent shadow-none"
+      />
+    );
   } else if (attribute.type === "boolean" || attribute.type === "list") {
     const options = attribute.type === "boolean" ? ["true", "false"] : (attribute.options ?? []);
     field = (

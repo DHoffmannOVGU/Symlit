@@ -61,9 +61,18 @@ export const relationshipDataSchema = z
     animated: z.boolean().optional(),
     sourceAnchor: anchorSchema.optional(),
     targetAnchor: anchorSchema.optional(),
+    /** In a model: the id of the metamodel relationship it was made from. */
+    relationId: z.string().min(1).optional(),
   })
   .passthrough();
 export type RelationshipData = z.infer<typeof relationshipDataSchema>;
+
+/**
+ * The id that names a metamodel relationship wherever it is shown: the
+ * metamodel edge's own id. A model's editor knows a referenced metamodel's
+ * relationships as `mm:<metamodel>:<diagram>:<edge id>`.
+ */
+export const metaRelationIdOf = (id: string) => /^mm:\d+:\d+:(.+)$/.exec(id)?.[1] ?? id;
 
 /** A handle as sent by clients: a side, an older id, or nothing (the default). */
 export const handleInputSchema = z

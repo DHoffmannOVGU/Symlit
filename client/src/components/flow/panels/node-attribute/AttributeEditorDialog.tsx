@@ -40,8 +40,14 @@ export function AttributeEditorDialog({
         className="max-h-[90vh] overflow-y-auto sm:max-w-[520px]"
         data-testid="attribute-editor-dialog"
         onKeyDown={(event) => {
-          // Enter in a one-line field finishes; text areas keep Enter for new lines.
-          if (event.key === "Enter" && event.target instanceof HTMLInputElement && !problem) {
+          // Enter in a one-line field finishes; text areas keep Enter for new lines,
+          // and a field that handles Enter itself (adding a list option) keeps it too.
+          if (
+            event.key === "Enter" &&
+            !event.defaultPrevented &&
+            event.target instanceof HTMLInputElement &&
+            !problem
+          ) {
             event.preventDefault();
             onDone();
           }

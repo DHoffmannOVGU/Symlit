@@ -4,8 +4,23 @@ import { api } from "@shared/routes";
 import { projectRole } from "../auth";
 import { buildProjectExport } from "../services/project-export";
 import { importProjectFile, ProjectFileError } from "../services/project-import";
+import { graphFromFlows } from "@shared/related-formula";
+import { storage } from "../storage";
 
 export function registerExportRoutes(app: Express) {
+  app.get(api.projects.graph.path, async (req, res) => {
+    try {
+      const data = await storage.getProjectExportData(Number(req.params.id));
+      res.json(graphFromFlows(data.views));
+    } catch (err) {
+      if (err instanceof Error && err.message === "Project not found") {
+        return res.status(404).json({ message: "Project not found" });
+      }
+      console.error("Failed to read the project graph:", err);
+      res.status(500).json({ message: "The project could not be read." });
+    }
+  });
+
   app.post(api.projects.import.path, async (req, res) => {
     try {
       // A project imported next to one of the same name (a file exported from

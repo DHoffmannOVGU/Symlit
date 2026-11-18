@@ -216,3 +216,93 @@ test("an instance model without a metamodel offers the built-in kinds", async ({
   await object.click();
   await expect(page.locator(".react-flow__node")).toHaveCount(1);
 });
+
+test("a formula can use functions, and an unknown one says what exists", async ({ page, request }) => {
+  const { instanceUrl } = await createProjects(request, "functions");
+  await page.goto(instanceUrl);
+  await openElement(page, "Old pack");
+  const add = async (attribute: { name: string; type?: string; value?: string; formula?: string }) => {
+    await page.getByTestId("button-add-attribute").click();
+    await dialog(page).locator('[data-testid^="input-attr-name-"]').fill(attribute.name);
+    if (attribute.type) {
+      await dialog(page).locator('[data-testid^="select-attr-type-"]').click();
+      await page.getByRole("option", { name: attribute.type, exact: true }).click();
+    }
+    if (attribute.value !== undefined) await dialog(page).locator('input[data-testid^="input-attr-value-"]').fill(attribute.value);
+    if (attribute.formula) await dialog(page).locator('[data-testid^="input-attr-formula-"]').fill(attribute.formula);
+  };
+  await add({ name: "cells", value: "12" });
+  await page.getByTestId("button-attribute-done").click();
+  await add({ name: "rows", value: "7" });
+  await page.getByTestId("button-attribute-done").click();
+
+  // A function that does not exist is a mistake, and the message lists those that do.
+  await add({ name: "per row", type: "Derived Formula", formula: "mean([cells], [rows])" });
+  await expect(dialog(page)).toContainText('Unknown function "mean"');
+  await expect(dialog(page)).toContainText("avg");
+  await dialog(page).locator('[data-testid^="input-attr-formula-"]').fill("round([cells] / [rows], 2)");
+  await page.getByTestId("button-attribute-done").click();
+  await add({ name: "largest", type: "Derived Formula", formula: "max([cells], [rows], 10)" });
+  await page.getByTestId("button-attribute-done").click();
+
+  const panel = page.getByTestId("node-attribute-panel");
+  await expect(panel.getByTestId("attribute-summary-2")).toContainText("1.71");
+  await expect(panel.getByTestId("attribute-summary-3")).toContainText("12");
+  // Results follow their inputs.
+  await panel.getByTestId("input-attr-value-0").fill("21");
+  await expect(panel.getByTestId("attribute-summary-2")).toContainText("3");
+  await expect(panel.getByTestId("attribute-summary-3")).toContainText("21");
+  await saveElementAndDiagram(page);
+});
+
+test("a multiselect attribute: options on the type, several chosen on an element, in the table", async ({ page, request }) => {
+  const { metamodelUrl, instanceUrl } = await createProjects(request, "multiselect");
+
+  // The type defines the attribute and its options; nothing is chosen by default.
+  await page.goto(metamodelUrl);
+  await openElement(page, "Battery");
+  await page.getByTestId("button-add-attribute").click();
+  await page.keyboard.type("chemistries");
+  await dialog(page).locator('[data-testid^="select-attr-type-"]').click();
+  await page.getByRole("option", { name: "Multiselect", exact: true }).click();
+  for (const option of ["Li-ion", "LiPo", "NiMH"]) {
+    await page.getByTestId("input-attr-options-0").fill(option);
+    await page.getByTestId("input-attr-options-0").press("Enter");
+  }
+  await expect(dialog(page).getByTestId("input-attr-value-0")).toContainText("Choose");
+  await page.getByTestId("button-attribute-done").click();
+  await expect(page.getByTestId("attribute-summary-0")).toContainText("Multiselect");
+  await saveElementAndDiagram(page);
+
+  // On an element, several options are ticked in a row.
+  await page.goto(instanceUrl);
+  await openElement(page, "Old pack");
+  await page.getByTestId("button-add-missing-attributes").click();
+  const value = page.getByTestId("node-attribute-panel").getByTestId("input-attr-value-0");
+  await value.click();
+  await page.getByRole("menuitemcheckbox", { name: "LiPo" }).click();
+  await page.getByRole("menuitemcheckbox", { name: "Li-ion" }).click();
+  await page.keyboard.press("Escape");
+  // Shown in the order of the type's options, not the order they were ticked.
+  await expect(value).toHaveText(/Li-ion, LiPo/);
+  await saveElementAndDiagram(page);
+
+  // The table shows the chosen options, its filter finds them, and they can be changed there.
+  await page.getByTestId("button-toolbar-table").click();
+  const cell = page.getByTestId("table-attribute-chemistries");
+  await expect(cell).toContainText("Li-ion, LiPo");
+  await page.getByTestId("input-node-table-filter").fill("lipo");
+  await expect(page.locator('[data-testid="table-element-row"]')).toHaveCount(1);
+  await page.getByTestId("input-node-table-filter").fill("");
+  await cell.getByRole("button").click();
+  await page.getByRole("menuitemcheckbox", { name: "NiMH" }).click();
+  await page.keyboard.press("Escape");
+  await expect(cell).toContainText("Li-ion, LiPo, NiMH");
+  await page.getByTestId("button-save-diagram-header").click();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+
+  // Stored, and read back after a reload.
+  await page.reload();
+  await openElement(page, "Old pack");
+  await expect(page.getByTestId("node-attribute-panel").getByTestId("input-attr-value-0")).toHaveText(/Li-ion, LiPo, NiMH/);
+});

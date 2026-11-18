@@ -8,6 +8,7 @@
  * where the model can show whether the work was done. The didactic reasoning
  * is in docs/ux/TUTORIAL_DIDACTICS.md.
  */
+import { evaluateFormula, parseFormula } from "./formula";
 
 /** Things the app reports while someone works; some steps wait for them. */
 export const tutorialSignals = [
@@ -42,7 +43,7 @@ export type TutorialProjectScope = "metamodel" | "instance";
 
 // --- what the tutorial can see of the open diagram ---------------------------
 
-export type TutorialAttributeType = "string" | "number" | "boolean" | "date" | "list" | "derived";
+export type TutorialAttributeType = "string" | "number" | "boolean" | "date" | "list" | "multiselect" | "derived" | "related";
 
 export interface TutorialAttribute {
   name: string;
@@ -210,52 +211,19 @@ export const calculatedFrom = (element: TutorialElement, name: string, reference
 
 /**
  * What a formula gives for the given values of the attributes it names, or
- * null when it names another attribute or cannot be read. It reads what the
- * app's formulas can contain (numbers, [names], + - * /, parentheses and a
- * leading minus), so that a step can check what a formula calculates, not
- * only what it refers to.
+ * null when it names another attribute or cannot be read. It calculates as
+ * the app does (shared/formula.ts), so that a step can check what a formula
+ * calculates, not only what it refers to.
  */
 export function formulaResult(formula: string, values: Record<string, number>): number | null {
-  const tokens = formula.match(/\[[^\]]*\]|\d+(?:\.\d+)?|\.\d+|\S/g) ?? [];
   const known = new Map(Object.entries(values).map(([name, value]) => [name.trim().toLowerCase(), value]));
-  let position = 0;
-  const fail = (): never => {
-    throw new Error("unreadable");
-  };
-  const operand = (): number => {
-    const token = tokens[position++] ?? fail();
-    if (token === "(") {
-      const value = sum();
-      if (tokens[position++] !== ")") fail();
-      return value;
-    }
-    if (token === "-") return -operand();
-    if (token === "+") return operand();
-    if (token.startsWith("[")) return known.get(token.slice(1, -1).trim().toLowerCase()) ?? fail();
-    const number = Number(token);
-    return Number.isNaN(number) ? fail() : number;
-  };
-  const product = (): number => {
-    let value = operand();
-    while (tokens[position] === "*" || tokens[position] === "/") {
-      const operator = tokens[position++];
-      const right = operand();
-      value = operator === "*" ? value * right : value / right;
-    }
-    return value;
-  };
-  const sum = (): number => {
-    let value = product();
-    while (tokens[position] === "+" || tokens[position] === "-") {
-      const operator = tokens[position++];
-      const right = product();
-      value = operator === "+" ? value + right : value - right;
-    }
-    return value;
-  };
   try {
-    const value = sum();
-    return position === tokens.length && Number.isFinite(value) ? value : null;
+    const value = evaluateFormula(parseFormula(formula), (name) => {
+      const found = known.get(name.trim().toLowerCase());
+      if (found === undefined) throw new Error(`Unknown attribute "${name}".`);
+      return found;
+    });
+    return Number.isFinite(value) ? value : null;
   } catch {
     return null;
   }

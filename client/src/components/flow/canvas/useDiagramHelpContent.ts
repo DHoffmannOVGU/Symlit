@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { FORMULA_FUNCTIONS } from "@shared/formula";
 import type { ProjectType } from "@shared/schema";
 
 type HelpItem = {
@@ -18,12 +19,21 @@ export type DiagramHelpContent = {
 /** Calculated attributes (Derived Formula), the same in metamodels and models. */
 const FORMULAS: string[] = [
   "An attribute of the type Derived Formula is calculated from other attributes of the same element, for example [print time] * [machine rate].",
-  "A formula uses numbers (with a point: 0.5), + - * /, parentheses and minus signs (2 * -3). Other attributes go in square brackets, by name; typing [ offers them. Functions such as sum or round do not exist.",
+  "A formula uses numbers (with a point: 0.5), + - * /, parentheses and minus signs (2 * -3). Other attributes go in square brackets, by name; typing [ offers them.",
+  `Functions take values separated by commas, for example max([price], 10) or round([mass] / 7, 1): ${Object.values(
+    FORMULA_FUNCTIONS,
+  )
+    .map((fn) => `${fn.signature}, ${fn.description}`)
+    .join("; ")}. They work on the attributes of the same element, not across elements.`,
   "A formula can use another calculated attribute, so a calculation can be built up in steps. It cannot use itself, directly or in a circle.",
   "When an attribute it uses has no value yet, or it would divide by zero, the result is not calculated yet: it stays empty, and nothing is blocked.",
   "Results follow their inputs wherever those are edited: in the element's editor, in the table, and for a new element of a type.",
   "Units are labels. Nothing converts them: grams to kilograms is a division by 1000 in the formula.",
   "A formula defined on a type is copied to each new element, which calculates with its own values. Changing the formula on the type later does not reach existing elements.",
+  'An attribute of the type Related Formula is calculated over the elements this one is related to: count, sum, avg, min or max, followed by the relationship, for example sum([mass] of "consists of"), count(of incoming "feeds") or count(of all). A where keeps some of them: where [status] = "released" and [mass] > 1, or type = "Pump", name contains "valve", [notes] is set.',
+  "Like a Derived Formula, a Related Formula follows renamed attributes and relationships. Inside an aggregate this holds for attributes the related elements share because they got them from one type, and for relationships of the metamodel; anything else is matched by name, and the editor says so.",
+  "A Related Formula looks one step along the relationships, in all diagrams of the project; each related element counts once. For a total over several levels, let it read the related elements' own Related Formula: [mass] + sum([total mass] of \"consists of\").",
+  "Over no related elements, count and sum give 0 and avg, min and max are not calculated yet. Related elements without the attribute do not take part; one whose value is still empty makes the result not calculated yet.",
   "Model rules can test a calculated value like any other, for example margin is less than 0.",
 ];
 

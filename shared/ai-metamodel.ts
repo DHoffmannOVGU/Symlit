@@ -9,7 +9,7 @@ export type AiMetamodelNodeKind = (typeof aiMetamodelNodeKindEnum)[number];
 export const aiMetamodelAttributeSchema = z.object({
   name: z.string().trim().min(1).max(80),
   description: z.string().trim().max(300).default(""),
-  type: z.enum(["string", "number", "boolean", "date", "list"]),
+  type: z.enum(["string", "number", "boolean", "date", "list", "multiselect"]),
   unit: z.string().trim().max(30).default(""),
   options: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
 });

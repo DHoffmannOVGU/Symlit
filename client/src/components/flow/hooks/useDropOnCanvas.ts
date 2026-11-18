@@ -202,6 +202,7 @@ export function useDropOnCanvas() {
           edgeType: suggested?.edgeType ?? "association",
           label: suggested?.label,
           flowType: suggested?.flowType || inferFlowTypeFromNodes(sourceNode, targetDraft),
+          relationId: suggested?.id,
         }),
       );
       dispatchDiagramEvent("diagram-model-node-created", { viewId, nodeId: ghostId });

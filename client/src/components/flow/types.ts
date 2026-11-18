@@ -17,7 +17,7 @@ export interface NodeAttribute {
   description?: string;
   value: string;
   unit: string;
-  type: "string" | "number" | "boolean" | "date" | "list" | "derived";
+  type: "string" | "number" | "boolean" | "date" | "list" | "multiselect" | "derived" | "related";
   formula?: string;
   options?: string[];
   inheritedFrom?: {

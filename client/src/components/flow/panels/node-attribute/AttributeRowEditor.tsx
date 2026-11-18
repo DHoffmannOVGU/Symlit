@@ -1,4 +1,7 @@
 import type { Dispatch, SetStateAction } from "react";
+import type { AggregateExplanation } from "@shared/related-formula";
+import { RelatedFormulaEditor } from "./RelatedFormulaEditor";
+import { MultiselectValue } from "./MultiselectValue";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,10 +35,21 @@ import { UnitPicker } from "./UnitPicker";
 
 export type DerivedAttributeStateMap = globalThis.Map<
   string,
-  { value?: string; references: string[]; error?: string; pending?: string }
+  {
+    value?: string;
+    references: string[];
+    error?: string;
+    pending?: string;
+    /** A Related Formula: what its aggregates looked at. */
+    explanations?: AggregateExplanation[];
+    /** A Related Formula on a type: what happens instead of a value. */
+    note?: string;
+  }
 >;
 
 export interface AttributeRowEditorProps {
+  /** The element (or type) the attribute belongs to. */
+  nodeId?: string;
   attr: NodeAttribute;
   index: number;
   attributes: NodeAttribute[];
@@ -73,6 +87,7 @@ export interface AttributeRowEditorProps {
 }
 
 export function AttributeRowEditor({
+  nodeId,
   attr,
   index,
   attributes,
@@ -177,7 +192,7 @@ export function AttributeRowEditor({
             />
           </div>
 
-          {attr.type === "list" ? (
+          {attr.type === "list" || attr.type === "multiselect" ? (
             <div className="space-y-2">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[220px_minmax(0,1fr)] sm:items-start">
                 <div className="space-y-1">
@@ -239,7 +254,16 @@ export function AttributeRowEditor({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">{attributeValueLabel}</Label>
-                {sanitizeAttributeOptions(attr.options).length > 0 ? (
+                {attr.type === "multiselect" ? (
+                  <MultiselectValue
+                    options={sanitizeAttributeOptions(attr.options)}
+                    value={attr.value}
+                    onChange={(value) => onAttributeChange(attr.id, "value", value)}
+                    ariaLabel={`${attr.name || "Attribute"} ${attributeValueLabel.toLowerCase()}`}
+                    className="w-full max-w-none"
+                    testId={`input-attr-value-${index}`}
+                  />
+                ) : sanitizeAttributeOptions(attr.options).length > 0 ? (
                   <Select
                     value={
                       sanitizeAttributeOptions(attr.options).includes(
@@ -273,6 +297,18 @@ export function AttributeRowEditor({
                 )}
               </div>
             </div>
+          ) : attr.type === "related" ? (
+            <RelatedFormulaEditor
+              nodeId={nodeId}
+              index={index}
+              attr={attr}
+              attributes={attributes}
+              draft={formulaDrafts[attr.id]}
+              state={derivedAttributeState.get(attr.id)}
+              onDraftChange={(text) => setFormulaDrafts((prev) => ({ ...prev, [attr.id]: text }))}
+              onStoredChange={(formula) => onAttributeChange(attr.id, "formula", formula)}
+              onAutoResize={onAutoResize}
+            />
           ) : attr.type === "derived" ? (
             <div className="space-y-3">
               <div className="space-y-1">
@@ -458,8 +494,9 @@ export function AttributeRowEditor({
                   filter, then use arrow keys with `Enter` or `Tab` to insert.
                 </p>
                 <p className="text-[11px] text-muted-foreground" data-testid={`formula-syntax-${index}`}>
-                  Use + - * /, parentheses and numbers such as 0.5. Other
-                  attributes of this element go in square brackets, by name.
+                  Use + - * /, parentheses, numbers such as 0.5 and functions
+                  such as min, max, sum, avg or round([x], 1). Other attributes
+                  of this element go in square brackets, by name.
                 </p>
                 {extractFormulaReferences(
                   formulaDrafts[attr.id] ??

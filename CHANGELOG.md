@@ -27,7 +27,22 @@ DATABASE_URL. No account, no external requests.
 - Attributes: calculated values follow their inputs everywhere (editor,
   table, new elements); an input without a value means "not calculated yet"
   instead of blocking the editor; elements inherit the attributes of the
-  types their type specializes. The help lists how formulas work.
+  types their type specializes. Formulas have functions: min, max, sum, avg,
+  round (to decimals), floor, ceil, abs, sqrt. The help lists how formulas
+  work.
+- Related Formulas: attributes calculated over the elements an element is
+  related to, in all diagrams of the project, for example
+  sum([mass] of "consists of" where [status] = "released"). Roll-ups over
+  several levels come from formulas that read the related elements' own.
+  The editor shows what was counted and calculates live; exports carry the
+  calculated values. References are stored by id, as in a Derived Formula,
+  so renamed attributes and relationships keep working. A model's
+  relationships record which metamodel relationship they were made from,
+  and validation accepts them by it, so renaming a metamodel relationship
+  does not make the relationships drawn before invalid.
+- Multiselect attributes: any number of choices from a type's options, picked
+  in the editor or in the table; the table filter finds them, and a rule's
+  condition looks at each chosen option.
 - Rules that tag: tags have a column in the table, and the table filter
   finds them.
 - Versioned database migrations applied on start; strict server-side

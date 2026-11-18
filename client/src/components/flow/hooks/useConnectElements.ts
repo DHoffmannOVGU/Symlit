@@ -85,6 +85,7 @@ export function useConnectElements({
           edgeType,
           label: suggested?.label,
           flowType: suggested?.flowType ?? inferredFlow,
+          relationId: suggested?.id,
         }),
       );
       if (added) takeSnapshot(before.nodes, before.edges);
