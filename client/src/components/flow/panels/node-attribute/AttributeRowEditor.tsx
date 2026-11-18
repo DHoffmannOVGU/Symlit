@@ -301,9 +301,12 @@ export function AttributeRowEditor({
             <RelatedFormulaEditor
               nodeId={nodeId}
               index={index}
-              formula={attr.formula ?? ""}
+              attr={attr}
+              attributes={attributes}
+              draft={formulaDrafts[attr.id]}
               state={derivedAttributeState.get(attr.id)}
-              onFormulaChange={(formula) => onAttributeChange(attr.id, "formula", formula)}
+              onDraftChange={(text) => setFormulaDrafts((prev) => ({ ...prev, [attr.id]: text }))}
+              onStoredChange={(formula) => onAttributeChange(attr.id, "formula", formula)}
               onAutoResize={onAutoResize}
             />
           ) : attr.type === "derived" ? (

@@ -21,7 +21,8 @@ const consistsOf = (id: string, source: string, target: string) => ({
 
 const openElement = async (page: Page, label: string) => {
   await expect(async () => {
-    await page.locator(".react-flow__node", { hasText: label }).first().dblclick();
+    // Near the corner: a relationship of a type to itself has its label in the middle of the card.
+    await page.locator(".react-flow__node", { hasText: label }).first().dblclick({ position: { x: 16, y: 16 } });
     await expect(page.getByTestId("node-attribute-panel")).toBeVisible({ timeout: 1000 });
   }).toPass({ timeout: 10_000 });
 };
@@ -136,7 +137,8 @@ test("defined on a type, a Related Formula is checked there and calculated by ea
             data: { label: "Part", type: "Object", attributes: [attribute("mass", "")] },
           },
         ],
-        edges: [],
+        // A part consists of parts: how a roll-up is defined.
+        edges: [consistsOf("part-part", "part", "part")],
       },
     ],
   });
@@ -175,6 +177,9 @@ test("defined on a type, a Related Formula is checked there and calculated by ea
   await expect(dialog.locator('[data-testid^="related-formula-result-"]')).toContainText(
     "Each element of this type calculates it",
   );
+  // The type's relationship to itself is known, so the parts' total is linked, not matched by name.
+  await expect(dialog.locator('[data-testid^="related-formula-relationships-"]')).toContainText('of "consists of"');
+  await expect(dialog.locator('[data-testid^="related-formula-by-name-"]')).toHaveCount(0);
   await page.getByTestId("button-attribute-done").click();
   await page.getByTestId("button-save-attributes").click();
   await page.getByTestId("button-save-diagram-header").click();
@@ -194,4 +199,33 @@ test("defined on a type, a Related Formula is checked there and calculated by ea
   await expect(total("Wrist")).toContainText("0.5");
   await expect(total("Arm")).toContainText("1.5");
   await expect(total("Frame")).toContainText("5.5");
+
+  // Stored by id, like a Derived Formula: its own mass and the parts' total.
+  const typeData = (await (await request.get(`/api/views/${metaViewId}/flow`)).json()).nodes[0].data;
+  const ids = Object.fromEntries(typeData.attributes.map((item: { id: string; name: string }) => [item.name, item.id]));
+  const stored = typeData.attributes.find((item: { name: string }) => item.name === "total mass").formula;
+  expect(stored).toBe(`[attr:${ids["mass"]}] + sum([attr:${ids["total mass"]}] of "consists of")`);
+
+  // Renamed on one element, an attribute keeps working in every formula that uses it, and shows by its new name.
+  await page.getByTestId("button-toolbar-graph").click();
+  await openElement(page, "Wrist");
+  const panel = page.getByTestId("node-attribute-panel");
+  await panel.getByTestId("button-attr-open-0").click();
+  await page.getByTestId("input-attr-name-0").fill("weight");
+  await page.getByTestId("button-attribute-done").click();
+  await panel.getByTestId("button-attr-open-1").click();
+  await page.getByTestId("input-attr-name-1").fill("assembly weight");
+  // Its own mass follows the rename. Inside the sum, the parts' attribute keeps the name the other parts give it
+  // (Wrist has no parts of its own).
+  await expect(dialog.locator('[data-testid^="input-attr-formula-"]')).toHaveValue('[weight] + sum([total mass] of "consists of")');
+  await page.getByTestId("button-attribute-done").click();
+  await page.getByTestId("button-save-attributes").click();
+  await page.getByTestId("button-toolbar-table").click();
+  await expect(total("Arm")).toContainText("1.5");
+  await expect(total("Frame")).toContainText("5.5");
+  // Arm's formula names the attribute as its related element calls it now.
+  await page.getByTestId("button-toolbar-graph").click();
+  await openElement(page, "Arm");
+  await panel.getByTestId("button-attr-open-1").click();
+  await expect(dialog.locator('[data-testid^="input-attr-formula-"]')).toHaveValue('[mass] + sum([assembly weight] of "consists of")');
 });

@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from "react";
 import { formulaReferenceNames, parseFormula } from "@shared/formula";
-import { resolveAttributeReference } from "@shared/related-formula";
+import { remapOwnReferences, resolveAttributeReference, storeRelatedFormula } from "@shared/related-formula";
 import { useRelatedCalculation } from "../related/RelatedCalculationProvider";
 import { formatMultiselectValue, parseMultiselectValue } from "@shared/attribute-values";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
@@ -259,7 +259,7 @@ export function NodeAttributePanel({
     );
   }, [attributes]);
 
-  const { preview: previewRelated } = useRelatedCalculation();
+  const { preview: previewRelated, formulaContext } = useRelatedCalculation();
   const derivedAttributeState = useMemo(() => {
     const next: DerivedAttributeStateMap = new globalThis.Map();
 
@@ -443,18 +443,8 @@ export function NodeAttributePanel({
           type,
           value: nextValue,
           unit: type === "number" || type === "derived" || type === "related" ? attr.unit : "",
-          // Between the two formulas, the text carries over: a Related Formula
-          // names attributes, a Derived Formula stores them by id.
-          formula:
-            type === "related"
-              ? attr.type === "derived"
-                ? getDisplayFormula(attr.formula ?? "", prev, attr.id)
-                : (attr.formula ?? "")
-              : type === "derived"
-                ? attr.type === "related"
-                  ? getStoredFormulaFromDisplay(attr.formula ?? "", prev, attr.id)
-                  : (attr.formula ?? "")
-                : undefined,
+          // Both formulas store references by id: between them, the formula carries over.
+          formula: type === "related" || type === "derived" ? (attr.formula ?? "") : undefined,
           options,
         });
       });
@@ -534,7 +524,13 @@ export function NodeAttributePanel({
       .filter((attr) => attr.name.trim())
       .map((attr) => {
         if (attr.type === "related") {
-          return normalizeAttribute({ ...attr, value: derivedAttributeState.get(attr.id)?.value ?? "" });
+          // Linked again with what is known now (the project's relationships may have loaded since it was typed).
+          const draft = formulaDrafts[attr.id];
+          const formula =
+            draft !== undefined && node
+              ? storeRelatedFormula(draft, formulaContext(node.id, attributes, attr.id))
+              : (attr.formula ?? "");
+          return normalizeAttribute({ ...attr, formula, value: derivedAttributeState.get(attr.id)?.value ?? "" });
         }
         if (attr.type !== "derived") {
           return normalizeAttribute(attr);
@@ -633,6 +629,10 @@ export function NodeAttributePanel({
       );
       setAttributes((prev) => {
         const remappedInherited = inheritedDrafts.map(({ source, next }) => {
+          if (source.type === "related" && source.formula?.trim()) {
+            // Its own references get the new ids; those inside aggregates name the related elements' attributes.
+            return normalizeAttribute({ ...next, formula: remapOwnReferences(source.formula, inheritedAttributeIdMap) });
+          }
           if (source.type !== "derived" || !source.formula?.trim()) {
             return next;
           }

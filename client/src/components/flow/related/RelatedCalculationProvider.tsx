@@ -6,8 +6,10 @@ import {
   hasRelatedFormulas,
   isCalculatedAttribute,
   RelatedCalculator,
+  relatedFormulaContext,
   relationshipNameOf,
   type CalculationResult,
+  type RelatedFormulaContext,
   type GraphAttribute,
   type GraphElement,
   type ProjectGraphRelationship,
@@ -34,11 +36,18 @@ interface RelatedCalculation {
   preview: (nodeId: string, attributes: NodeAttribute[], attributeId: string) => CalculationResult | null;
   /** The named relationships an element takes part in. */
   relationshipsOf: (nodeId: string) => RelationshipSummary[];
+  /**
+   * What linking a Related Formula's references needs: the element's
+   * attributes as edited, the attributes its aggregates reach, and every
+   * attribute known by id (also the types of the metamodels a model uses).
+   */
+  formulaContext: (nodeId: string, attributes: NodeAttribute[], attributeId: string) => RelatedFormulaContext;
 }
 
 const RelatedCalculationContext = createContext<RelatedCalculation>({
   preview: () => null,
   relationshipsOf: () => [],
+  formulaContext: (nodeId, attributes, attributeId) => relatedFormulaContext(null, nodeId, attributes, attributeId),
 });
 
 export const useRelatedCalculation = () => useContext(RelatedCalculationContext);
@@ -52,7 +61,7 @@ export const useRelatedCalculation = () => useContext(RelatedCalculationContext)
  * values are left out of the unsaved-changes signature).
  */
 export function RelatedCalculationProvider({ children }: { children: ReactNode }) {
-  const { projectId, viewId, projectType } = useDiagramModel();
+  const { projectId, viewId, projectType, availablePartDefNodes } = useDiagramModel();
   // Types define the formula; their elements, in models, calculate it.
   const calculates = projectType === "instance";
   const nodes = useDiagramStore((state) => state.nodes);
@@ -65,7 +74,8 @@ export function RelatedCalculationProvider({ children }: { children: ReactNode }
   );
   // The editor asks for the project's relationships as soon as someone writes a Related Formula.
   const [wanted, setWanted] = useState(false);
-  const enabled = calculates && (liveHasRelated || wanted);
+  // In a metamodel the graph only serves to link a formula's references to the types' attributes.
+  const enabled = (calculates && liveHasRelated) || wanted;
   const graphQuery = useQuery({
     queryKey: [api.projects.graph.path, projectId],
     queryFn: () => apiCall(api.projects.graph, { params: { id: projectId } }),
@@ -121,9 +131,8 @@ export function RelatedCalculationProvider({ children }: { children: ReactNode }
 
   const preview = useCallback(
     (nodeId: string, attributes: NodeAttribute[], attributeId: string) => {
-      if (!calculates) return null;
       if (!wanted) queueMicrotask(() => setWanted(true));
-      if (!graph) return null;
+      if (!calculates || !graph) return null;
       const node = nodes.find((candidate) => candidate.id === nodeId);
       const draft: GraphElement = {
         ...(node ? graphElementOf(node) : { id: nodeId, name: "", type: "" }),
@@ -158,6 +167,24 @@ export function RelatedCalculationProvider({ children }: { children: ReactNode }
     [graph],
   );
 
-  const value = useMemo(() => ({ preview, relationshipsOf }), [preview, relationshipsOf]);
+  const knownAttributes = useMemo(
+    () =>
+      availablePartDefNodes.flatMap((type) =>
+        Array.isArray(type.data?.attributes) ? (type.data.attributes as GraphAttribute[]) : [],
+      ),
+    [availablePartDefNodes],
+  );
+  const formulaContext = useCallback(
+    (nodeId: string, attributes: NodeAttribute[], attributeId: string) => {
+      if (!wanted) queueMicrotask(() => setWanted(true));
+      return relatedFormulaContext(graph, nodeId, attributes as GraphAttribute[], attributeId, knownAttributes);
+    },
+    [graph, knownAttributes, wanted],
+  );
+
+  const value = useMemo(
+    () => ({ preview, relationshipsOf, formulaContext }),
+    [formulaContext, preview, relationshipsOf],
+  );
   return <RelatedCalculationContext.Provider value={value}>{children}</RelatedCalculationContext.Provider>;
 }

@@ -35,7 +35,8 @@ DATABASE_URL. No account, no external requests.
   sum([mass] of "consists of" where [status] = "released"). Roll-ups over
   several levels come from formulas that read the related elements' own.
   The editor shows what was counted and calculates live; exports carry the
-  calculated values.
+  calculated values. References are stored by id, as in a Derived Formula,
+  so renamed attributes keep working.
 - Multiselect attributes: any number of choices from a type's options, picked
   in the editor or in the table; the table filter finds them, and a rule's
   condition looks at each chosen option.

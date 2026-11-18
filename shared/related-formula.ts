@@ -17,6 +17,8 @@ import {
   type ConditionNode,
   type FormulaNode,
   type RelatedSelector,
+  scopedReferences,
+  type ScopedReference,
 } from "./formula";
 
 export interface GraphAttribute {
@@ -421,4 +423,174 @@ export function withCalculatedValues<F extends FlowLike>(flows: F[]): F[] {
       };
     }),
   }));
+}
+
+/**
+ * What the editor knows to link a Related Formula's references to
+ * attributes, and to show them by name again.
+ */
+export interface RelatedFormulaContext {
+  /** The element's attributes, as edited. */
+  attributes: GraphAttribute[];
+  /** The attribute the formula belongs to (not a reference target). */
+  attributeId?: string;
+  /** The attributes of the elements an aggregate relates to; empty when none are known. */
+  relatedAttributes: (selector: RelatedSelector) => GraphAttribute[];
+  /** An attribute by id anywhere known (other elements, types), to show its name. */
+  attributeById: (id: string) => GraphAttribute | undefined;
+}
+
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+const storedId = (name: string) =>
+  name.trim().startsWith(ATTRIBUTE_REFERENCE_PREFIX) ? name.trim().slice(ATTRIBUTE_REFERENCE_PREFIX.length) : null;
+
+function referencesOf(formula: string): ScopedReference[] | null {
+  try {
+    return scopedReferences(parseFormula(formula, { aggregates: true }));
+  } catch {
+    return null;
+  }
+}
+
+/** Replaces references from the last to the first, so earlier positions stay valid. */
+function rewrite(formula: string, references: ScopedReference[], replace: (reference: ScopedReference) => string | null) {
+  let next = formula;
+  for (const reference of [...references].sort((a, b) => b.start - a.start)) {
+    const replacement = replace(reference);
+    if (replacement !== null) next = `${next.slice(0, reference.start)}${replacement}${next.slice(reference.end)}`;
+  }
+  return next;
+}
+
+/**
+ * The attribute an aggregate's reference names, when it is one attribute:
+ * every related element that has an attribute of that name has it under the
+ * same id (they got it from one type, or from a type it specializes).
+ */
+function linkedRelatedAttribute(name: string, related: GraphAttribute[]): GraphAttribute | null {
+  const matching = related.filter((attribute) => sameName(attribute.name, name));
+  const ids = new Set(matching.map((attribute) => attribute.id));
+  return ids.size === 1 ? matching[0] : null;
+}
+
+/**
+ * A Related Formula as written (attributes by name) in the form it is
+ * stored: references by id where they name one attribute, as in a Derived
+ * Formula, so that they follow renames. A reference inside an aggregate
+ * whose related elements have separate attributes of that name stays by
+ * name. Text that cannot be read yet is stored as it is.
+ */
+export function storeRelatedFormula(text: string, context: RelatedFormulaContext): string {
+  const references = referencesOf(text);
+  if (!references) return text;
+  return rewrite(text, references, (reference) => {
+    if (storedId(reference.name)) return null;
+    if (!reference.aggregate) {
+      try {
+        return `[${ATTRIBUTE_REFERENCE_PREFIX}${resolveAttributeReference(reference.name, context.attributes, context.attributeId).id}]`;
+      } catch {
+        return null;
+      }
+    }
+    const linked = linkedRelatedAttribute(reference.name, context.relatedAttributes(reference.aggregate.selector));
+    return linked ? `[${ATTRIBUTE_REFERENCE_PREFIX}${linked.id}]` : null;
+  });
+}
+
+/**
+ * A stored Related Formula as it is shown: references by the attributes'
+ * names now. A reference to an attribute that cannot be found is shown as
+ * stored, so that nothing is lost.
+ */
+export function displayRelatedFormula(stored: string, context: RelatedFormulaContext): string {
+  const nameOf = (id: string, reference: ScopedReference | null) => {
+    const own = context.attributes.find((attribute) => attribute.id === id && attribute.id !== context.attributeId);
+    if (!reference?.aggregate && own) return own.name;
+    const related = reference?.aggregate
+      ? context.relatedAttributes(reference.aggregate.selector).find((attribute) => attribute.id === id)
+      : undefined;
+    return (related ?? own ?? context.attributeById(id))?.name ?? null;
+  };
+  const references = referencesOf(stored);
+  if (!references) {
+    // Not readable: show what can be shown.
+    return stored.replace(/\[(attr:[^\]]+)\]/g, (match, raw: string) => {
+      const name = nameOf(raw.slice(ATTRIBUTE_REFERENCE_PREFIX.length), null);
+      return name ? `[${name}]` : match;
+    });
+  }
+  return rewrite(stored, references, (reference) => {
+    const id = storedId(reference.name);
+    if (!id) return null;
+    const name = nameOf(id, reference);
+    return name ? `[${name}]` : null;
+  });
+}
+
+/** The references inside aggregates that are by name (not linked), for the editor to point out. */
+export function unlinkedRelatedReferences(stored: string): string[] {
+  const references = referencesOf(stored) ?? [];
+  return Array.from(
+    new Set(references.filter((reference) => reference.aggregate && !storedId(reference.name)).map((reference) => reference.name)),
+  );
+}
+
+/**
+ * Gives this element's references new ids (its attributes were copied with
+ * new ids). References inside aggregates name the related elements'
+ * attributes and keep theirs.
+ */
+export function remapOwnReferences(formula: string, ids: Map<string, string>): string {
+  const references = referencesOf(formula);
+  if (!references) {
+    return formula.replace(/\[(attr:[^\]]+)\]/g, (match, raw: string) => {
+      const next = ids.get(raw.slice(ATTRIBUTE_REFERENCE_PREFIX.length));
+      return next ? `[${ATTRIBUTE_REFERENCE_PREFIX}${next}]` : match;
+    });
+  }
+  return rewrite(formula, references, (reference) => {
+    const id = storedId(reference.name);
+    const next = !reference.aggregate && id ? ids.get(id) : undefined;
+    return next ? `[${ATTRIBUTE_REFERENCE_PREFIX}${next}]` : null;
+  });
+}
+
+/**
+ * The context for an element of a graph, with its attributes as edited.
+ * `knownAttributes` are attributes outside the graph that a reference may
+ * name (the types of the metamodels a model uses).
+ */
+export function relatedFormulaContext(
+  graph: RelatedGraph | null,
+  elementId: string,
+  attributes: GraphAttribute[],
+  attributeId?: string,
+  knownAttributes: GraphAttribute[] = [],
+): RelatedFormulaContext {
+  // Which elements an aggregate reaches. Unlike in a calculation, an element
+  // related to itself counts: in a metamodel, "Part consists of Part" is how a
+  // roll-up is defined.
+  const elements = new Map((graph?.elements ?? []).map((element) => [element.id, element]));
+  elements.set(elementId, { id: elementId, name: "", type: "", attributes });
+  const reached = (selector: RelatedSelector) => {
+    const wanted = selector.relationship?.trim().toLowerCase() ?? null;
+    const ids = new Set<string>();
+    for (const relationship of graph?.relationships ?? []) {
+      if (wanted !== null && relationship.name.trim().toLowerCase() !== wanted) continue;
+      if (selector.direction !== "incoming" && relationship.source === elementId) ids.add(relationship.target);
+      if (selector.direction !== "outgoing" && relationship.target === elementId) ids.add(relationship.source);
+    }
+    return Array.from(ids, (id) => elements.get(id)).filter((element): element is GraphElement => !!element);
+  };
+  const everywhere = new Map<string, GraphAttribute>();
+  for (const attribute of knownAttributes) everywhere.set(attribute.id, attribute);
+  for (const element of graph?.elements ?? []) {
+    for (const attribute of element.attributes) if (!everywhere.has(attribute.id)) everywhere.set(attribute.id, attribute);
+  }
+  return {
+    attributes,
+    attributeId,
+    relatedAttributes: (selector) => reached(selector).flatMap((element) => element.attributes),
+    attributeById: (id) => everywhere.get(id),
+  };
 }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { displayRelatedFormula, relatedFormulaContext } from "@shared/related-formula";
 import type { ModelRule, ModelRuleCondition } from "@shared/schema";
 import type {
   TutorialAttribute,
@@ -98,7 +99,7 @@ const describeAttributes = (stored: NodeAttribute[]): TutorialAttribute[] => {
       formula: derived
         ? getDisplayFormula(attribute.formula ?? "", attributes, attribute.id)
         : attribute.type === "related"
-          ? (attribute.formula ?? "")
+          ? displayRelatedFormula(attribute.formula ?? "", relatedFormulaContext(null, "", attributes, attribute.id))
           : "",
       references,
       options: attribute.options ?? [],

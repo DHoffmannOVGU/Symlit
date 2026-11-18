@@ -21,7 +21,8 @@ export const isFormulaPending = (error: unknown): error is FormulaPendingError =
 
 export type FormulaNode =
   | { kind: "number"; value: number }
-  | { kind: "reference"; name: string }
+  /** `start`/`end`: where the reference, brackets included, stands in the formula's text. */
+  | { kind: "reference"; name: string; start?: number; end?: number }
   | { kind: "negate"; operand: FormulaNode }
   | { kind: "binary"; operator: "+" | "-" | "*" | "/"; left: FormulaNode; right: FormulaNode }
   | { kind: "call"; name: string; args: FormulaNode[] }
@@ -43,7 +44,10 @@ export interface RelatedSelector {
 }
 
 /** What a `where` compares: an attribute of the related element, its type or its name. */
-export type ConditionField = { kind: "attribute"; name: string } | { kind: "type" } | { kind: "name" };
+export type ConditionField =
+  | { kind: "attribute"; name: string; start?: number; end?: number }
+  | { kind: "type" }
+  | { kind: "name" };
 
 export type ConditionNode =
   | { kind: "and" | "or"; left: ConditionNode; right: ConditionNode }
@@ -187,7 +191,7 @@ const functionNamed = (name: string) => {
 type Symbol = "+" | "-" | "*" | "/" | "(" | ")" | "," | "=" | "!=" | "<" | ">" | "<=" | ">=";
 type Token =
   | { type: "number"; value: number }
-  | { type: "reference"; value: string }
+  | { type: "reference"; value: string; start: number; end: number }
   | { type: "string"; value: string }
   | { type: "name"; value: string }
   | { type: "symbol"; value: Symbol };
@@ -208,7 +212,7 @@ const tokenize = (formula: string): Token[] => {
       if (close === -1) throw new Error("Missing closing ] for attribute reference.");
       const name = formula.slice(index + 1, close).trim();
       if (!name) throw new Error("Attribute references cannot be empty.");
-      tokens.push({ type: "reference", value: name });
+      tokens.push({ type: "reference", value: name, start: index, end: close + 1 });
       index = close + 1;
       continue;
     }
@@ -309,7 +313,7 @@ export function parseFormula(formula: string, options: ParseOptions = {}): Formu
   const comparison = (): ConditionNode => {
     const token = tokens[position++];
     let field: ConditionField;
-    if (token?.type === "reference") field = { kind: "attribute", name: token.value };
+    if (token?.type === "reference") field = { kind: "attribute", name: token.value, start: token.start, end: token.end };
     else if (isWord(token, "type")) field = { kind: "type" };
     else if (isWord(token, "name")) field = { kind: "name" };
     else throw new Error("A condition starts with an attribute in square brackets, type or name.");
@@ -381,7 +385,7 @@ export function parseFormula(formula: string, options: ParseOptions = {}): Formu
     const token = tokens[position++];
     if (!token) throw new Error("Formula is incomplete.");
     if (token.type === "number") return { kind: "number", value: token.value };
-    if (token.type === "reference") return { kind: "reference", name: token.value };
+    if (token.type === "reference") return { kind: "reference", name: token.value, start: token.start, end: token.end };
     if (token.type === "string") throw new Error("Text in quotes only names a relationship or a value in a condition.");
     if (token.type === "name") {
       const lower = token.value.toLowerCase();
@@ -551,4 +555,55 @@ export function evaluateFormula(
     }
   };
   return evaluate(node);
+}
+
+/** A reference in a formula's text, and whose attribute it names. */
+export interface ScopedReference {
+  name: string;
+  start: number;
+  end: number;
+  /** null: this element's attribute; an aggregate: the attribute of the elements it relates to. */
+  aggregate: AggregateNode | null;
+}
+
+/** Every reference of a parsed formula with where it stands, in the order they are written. */
+export function scopedReferences(node: FormulaNode): ScopedReference[] {
+  const found: ScopedReference[] = [];
+  const visit = (current: FormulaNode, aggregate: AggregateNode | null) => {
+    switch (current.kind) {
+      case "reference":
+        if (current.start !== undefined && current.end !== undefined) {
+          found.push({ name: current.name, start: current.start, end: current.end, aggregate });
+        }
+        return;
+      case "negate":
+        visit(current.operand, aggregate);
+        return;
+      case "binary":
+        visit(current.left, aggregate);
+        visit(current.right, aggregate);
+        return;
+      case "call":
+        current.args.forEach((arg) => visit(arg, aggregate));
+        return;
+      case "aggregate": {
+        if (current.value) visit(current.value, current);
+        const conditions = (condition: ConditionNode | null) => {
+          if (!condition) return;
+          if (condition.kind !== "compare") {
+            conditions(condition.left);
+            conditions(condition.right);
+          } else if (condition.field.kind === "attribute" && condition.field.start !== undefined && condition.field.end !== undefined) {
+            found.push({ name: condition.field.name, start: condition.field.start, end: condition.field.end, aggregate: current });
+          }
+        };
+        conditions(current.where);
+        return;
+      }
+      default:
+        return;
+    }
+  };
+  visit(node, null);
+  return found.sort((a, b) => a.start - b.start);
 }

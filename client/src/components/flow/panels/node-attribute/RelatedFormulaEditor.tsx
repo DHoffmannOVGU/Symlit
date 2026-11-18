@@ -1,4 +1,10 @@
-import type { AggregateExplanation } from "@shared/related-formula";
+import {
+  displayRelatedFormula,
+  storeRelatedFormula,
+  unlinkedRelatedReferences,
+  type AggregateExplanation,
+} from "@shared/related-formula";
+import type { NodeAttribute } from "../../types";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useRelatedCalculation } from "../../related/RelatedCalculationProvider";
@@ -32,21 +38,38 @@ export function describeExplanation(explanation: AggregateExplanation): string {
 export function RelatedFormulaEditor({
   nodeId,
   index,
-  formula,
+  attr,
+  attributes,
+  draft,
   state,
-  onFormulaChange,
+  onDraftChange,
+  onStoredChange,
   onAutoResize,
 }: {
   nodeId: string | undefined;
   index: number;
-  formula: string;
+  attr: NodeAttribute;
+  /** The element's attributes, as edited. */
+  attributes: NodeAttribute[];
+  /** What is being typed; undefined when nothing was typed since it opened. */
+  draft: string | undefined;
   state: RelatedFormulaState | undefined;
-  onFormulaChange: (formula: string) => void;
+  onDraftChange: (text: string) => void;
+  /** The formula as stored: references by id where they name one attribute. */
+  onStoredChange: (formula: string) => void;
   onAutoResize: (element: HTMLTextAreaElement) => void;
 }) {
-  const { relationshipsOf } = useRelatedCalculation();
+  const { relationshipsOf, formulaContext } = useRelatedCalculation();
   const relationships = nodeId ? relationshipsOf(nodeId) : [];
-  const insert = (text: string) => onFormulaChange(formula ? `${formula}${/\s$/.test(formula) ? "" : " "}${text}` : text);
+  const context = formulaContext(nodeId ?? "", attributes, attr.id);
+  // Shown by the attributes' names now, so a rename shows here.
+  const formula = draft ?? displayRelatedFormula(attr.formula ?? "", context);
+  const unlinked = unlinkedRelatedReferences(attr.formula ?? "");
+  const change = (text: string) => {
+    onDraftChange(text);
+    onStoredChange(storeRelatedFormula(text, context));
+  };
+  const insert = (text: string) => change(formula ? `${formula}${/\s$/.test(formula) ? "" : " "}${text}` : text);
   return (
     <div className="space-y-3">
       <div className="space-y-1">
@@ -57,7 +80,7 @@ export function RelatedFormulaEditor({
           id={`related-formula-${index}`}
           value={formula}
           onChange={(event) => {
-            onFormulaChange(event.target.value);
+            change(event.target.value);
             onAutoResize(event.currentTarget);
           }}
           onInput={(event) => onAutoResize(event.currentTarget)}
@@ -71,7 +94,8 @@ export function RelatedFormulaEditor({
           <code>sum([mass] of "consists of")</code>, <code>count(of incoming "feeds")</code>,{" "}
           <code>count(of all)</code>. Add <code>where</code> to keep some:{" "}
           <code>where [status] = "released" and [mass] &gt; 1</code>. Inside, attributes are those of the related
-          element; outside, those of this one. Each relationship counts once, from all diagrams of the project.
+          element; outside, those of this one. References follow renames, as in a Derived Formula. Each relationship
+          counts once, from all diagrams of the project.
         </p>
         {relationships.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1.5 text-[11px]" data-testid={`related-formula-relationships-${index}`}>
@@ -96,6 +120,13 @@ export function RelatedFormulaEditor({
           </div>
         ) : null}
       </div>
+      {unlinked.length > 0 ? (
+        <p className="text-[11px] leading-4 text-muted-foreground" data-testid={`related-formula-by-name-${index}`}>
+          By name: {unlinked.map((name) => `[${name}]`).join(", ")}. The related elements have separate attributes of
+          this name (or none are related yet), so it is matched by name and does not follow a rename. References to
+          attributes the related elements share, because they got them from one type, follow renames.
+        </p>
+      ) : null}
       <div className="rounded-md border bg-muted/20 px-3 py-2 text-sm" data-testid={`related-formula-result-${index}`}>
         {state?.error ? (
           <p className="text-destructive">Invalid formula: {state.error}</p>

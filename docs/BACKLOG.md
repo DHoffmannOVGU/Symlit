@@ -44,7 +44,8 @@ commit that fixed them.
   browser and have no export.
 - **Related Formulas, next steps.** Model rules' conditions on connected elements still look only at the open
   diagram, while Related Formulas look at the whole project. `where type = "…"` matches the type's name, not
-  its specializations. References in a Related Formula are by name (a rename means editing it). Paths of more
+  its specializations. A reference inside an aggregate whose related elements have separate attributes of that
+  name stays matched by name (it is linked when they share one, from a type). Paths of more
   than one step, filters that compare with this element's own values, and a shortcut such as `of parts` for
   compositions are left out on purpose until it is clear how people write these.
 - **Flow mode is not reachable.** The canvas has a flow mode (start and end elements, ticks, playback), but
@@ -79,7 +80,9 @@ commit that fixed them.
   editor calculates them live over the saved project and the open diagram (`RelatedCalculationProvider`), the
   server for exports and `GET /api/projects/:id/graph`; calculated values are left out of the unsaved-changes
   signature and of the diagram revision, so they never count as an edit or a conflict. `where` compares as model
-  rules do (`shared/value-comparison.ts`, now used by both).
+  rules do (`shared/value-comparison.ts`, now used by both). References are stored by id like a Derived Formula's
+  (`storeRelatedFormula`/`displayRelatedFormula`): own attributes always, related elements' attributes when they
+  share one id (copied from one type), otherwise by name.
 - Multiselect attributes: several of a type's options per element, stored as a JSON array of strings
   (`shared/attribute-values.ts`), editable in the element editor and the table; rules compare each chosen option.
   Enter in a list's "Add option" field no longer closes the attribute editor.

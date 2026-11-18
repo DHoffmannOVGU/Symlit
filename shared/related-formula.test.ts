@@ -146,3 +146,87 @@ test("the phrase reads as it means, and mistakes say what is wrong", async () =>
   assert.match(message('count(of "x" where [a] = )'), /number, a text in quotes, or yes\/no/);
   assert.match(message('count(of "x" where [a] is)'), /is set/);
 });
+
+test("references are stored by id where they name one attribute, and shown by the name it has now", async () => {
+  const {
+    displayRelatedFormula,
+    relatedFormulaContext,
+    remapOwnReferences,
+    storeRelatedFormula,
+    unlinkedRelatedReferences,
+  } = await import("./related-formula");
+  // Parts made from one type share its attributes' ids; a hand-made element has its own.
+  const typed = (id: string, mass: string): GraphElement => ({
+    id,
+    name: id,
+    type: "Part",
+    attributes: [
+      { id: "type-mass", name: "mass", type: "number", value: mass },
+      { id: "type-total", name: "total", type: "related", formula: "" },
+      { id: `${id}-status`, name: "status", type: "string", value: "released" },
+    ],
+  });
+  const graph: RelatedGraph = {
+    elements: [typed("Frame", "4"), typed("Arm", "1"), typed("Wrist", "0.5")],
+    // Two parts of the frame, each with a status of its own.
+    relationships: [link("Frame", "Arm"), link("Frame", "Wrist")],
+  };
+  const frame = graph.elements[0];
+  const context = relatedFormulaContext(graph, "Frame", frame.attributes, "type-total");
+
+  const written = '[mass] + sum([total] of "consists of" where [status] = "released")';
+  const stored = storeRelatedFormula(written, context);
+  // Its own mass and the parts' total are one attribute each; the parts' status are separate ones.
+  assert.equal(stored, '[attr:type-mass] + sum([attr:type-total] of "consists of" where [status] = "released")');
+  assert.deepEqual(unlinkedRelatedReferences(stored), ["status"]);
+  assert.equal(displayRelatedFormula(stored, context), written);
+
+  // Renamed on the elements: the formula shows the new names and still calculates.
+  for (const element of graph.elements) {
+    element.attributes[0].name = "weight";
+    element.attributes[1].name = "total weight";
+  }
+  const renamed = relatedFormulaContext(graph, "Frame", frame.attributes, "type-total");
+  assert.equal(
+    displayRelatedFormula(stored, renamed),
+    '[weight] + sum([total weight] of "consists of" where [status] = "released")',
+  );
+  for (const element of graph.elements) element.attributes[1].formula = stored;
+  assert.equal(new RelatedCalculator(graph).value("Frame", "type-total"), 5.5);
+
+  // Without related elements known yet, a reference inside stays by name; one that cannot be found shows as stored.
+  const alone = relatedFormulaContext(null, "Frame", frame.attributes, "type-total");
+  assert.equal(storeRelatedFormula('sum([mass] of "x")', alone), 'sum([mass] of "x")');
+  assert.equal(displayRelatedFormula('sum([attr:gone] of "x")', alone), 'sum([attr:gone] of "x")');
+  // Not readable yet: stored as written.
+  assert.equal(storeRelatedFormula("[weight] + sum(", renamed), "[weight] + sum(");
+
+  // Copied with new ids, its own references follow; the related elements' keep theirs.
+  assert.equal(
+    remapOwnReferences(stored, new Map([["type-mass", "copy-mass"], ["type-total", "copy-total"]])),
+    '[attr:copy-mass] + sum([attr:type-total] of "consists of" where [status] = "released")',
+  );
+});
+
+test("in a metamodel, a type related to itself links a roll-up's reference to its own attribute", async () => {
+  const { relatedFormulaContext, storeRelatedFormula } = await import("./related-formula");
+  const part: GraphElement = {
+    id: "Part",
+    name: "Part",
+    type: "Object",
+    attributes: [
+      { id: "mass", name: "mass", type: "number", value: "" },
+      { id: "total", name: "total mass", type: "related", formula: "" },
+    ],
+  };
+  const context = relatedFormulaContext(
+    { elements: [part], relationships: [link("Part", "Part")] },
+    "Part",
+    part.attributes,
+    "total",
+  );
+  assert.equal(
+    storeRelatedFormula('[mass] + sum([total mass] of "consists of")', context),
+    '[attr:mass] + sum([attr:total] of "consists of")',
+  );
+});
