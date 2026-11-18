@@ -1,5 +1,7 @@
 import type { Edge, Node } from "@xyflow/react";
-import { compareValue } from "@shared/value-comparison";
+import { graphElementOf, graphRelationshipOf, isOfTargetType, RelatedCalculator, type RelatedGraph } from "@shared/related-formula";
+import { ruleConditionOf, ruleHolds } from "@shared/rule-evaluation";
+import { remapRuleIds, type RuleCondition } from "@shared/rule-text";
 import type {
   ModelRule,
   ModelRuleCondition,
@@ -50,12 +52,11 @@ export const canonicalizeReferencedModelRule = (
   id: `mm:${projectId}:${viewId}:${rule.id}`,
   targetType: canonicalRuleTarget(rule.targetType, projectId) ?? "all",
   condition: rule.condition ? canonicalizeCondition(rule.condition, projectId) : undefined,
+  // The types its text names are the metamodel's: as a model refers to them.
+  ...(rule.expression !== undefined
+    ? { expression: remapRuleIds(rule.expression, { type: (target) => canonicalRuleTarget(target, projectId) ?? target }) }
+    : {}),
 });
-
-const getTargetNodeId = (targetType: string) =>
-  targetType.startsWith(NODE_TARGET_PREFIX)
-    ? targetType.slice(NODE_TARGET_PREFIX.length)
-    : null;
 
 export const getModelRuleTargetOptions = (nodes: Node[]) => {
   const builtInTypes = Array.from(
@@ -84,83 +85,10 @@ export const getModelRuleTargetOptions = (nodes: Node[]) => {
   return { builtInTypes, viewTypes };
 };
 
-export const getModelRuleAttributeOptions = (nodes: Node[]) =>
-  Array.from(
-    new Set(
-      nodes.flatMap((node) =>
-        ((node.data as NodeData | undefined)?.attributes ?? [])
-          .map((attribute) => attribute.name.trim())
-          .filter(Boolean),
-      ),
-    ),
-  ).sort((a, b) => a.localeCompare(b));
-
-const nodeMatchesTarget = (node: Node, targetType?: string) => {
-  if (!targetType || targetType === "all") return true;
-  const targetNodeId = getTargetNodeId(targetType);
-  if (targetNodeId !== null) {
-    const data = node.data as NodeData | undefined;
-    return node.id === targetNodeId || data?.typeId === targetNodeId;
-  }
+/** Whether an element of the diagram is of the type a rule looks at (exactly that type). */
+export const nodeMatchesTarget = (node: Node, targetType?: string) => {
   const data = node.data as NodeData | undefined;
-  return data?.type === targetType || data?.typeId === targetType;
-};
-
-const getAttribute = (data: NodeData | undefined, name?: string) => {
-  const key = name?.trim().toLocaleLowerCase();
-  if (!key) return undefined;
-  return (data?.attributes ?? []).find(
-    (attribute) =>
-      attribute.id.toLocaleLowerCase() === key ||
-      attribute.name.trim().toLocaleLowerCase() === key,
-  );
-};
-
-const getFieldValue = (node: Node, condition: Extract<ModelRuleCondition, { kind: "comparison" }>) => {
-  const data = node.data as NodeData | undefined;
-  if (condition.field === "name") return data?.label;
-  if (condition.field === "description") return data?.description;
-  if (condition.field === "type") return data?.typeId || data?.type || node.type;
-  return getAttribute(data, condition.attribute)?.value;
-};
-
-const compareField = (node: Node, condition: Extract<ModelRuleCondition, { kind: "comparison" }>) => {
-  if (condition.field === "attribute" && !condition.attribute?.trim()) return false;
-  const attributeType =
-    condition.field === "attribute" ? getAttribute(node.data as NodeData | undefined, condition.attribute)?.type : undefined;
-  return compareValue(getFieldValue(node, condition), condition.operator, condition.value, attributeType);
-};
-
-type EvaluationContext = { nodes: Node[]; edges: Edge[]; nodeById: Map<string, Node> };
-
-const connectedNodes = (
-  node: Node,
-  condition: Extract<ModelRuleCondition, { kind: "comparison" }>,
-  context: EvaluationContext,
-) => {
-  const ids = new Set<string>();
-  context.edges.forEach((edge) => {
-    if ((condition.direction ?? "any") !== "incoming" && edge.source === node.id) ids.add(edge.target);
-    if ((condition.direction ?? "any") !== "outgoing" && edge.target === node.id) ids.add(edge.source);
-  });
-  return Array.from(ids)
-    .map((id) => context.nodeById.get(id))
-    .filter((candidate): candidate is Node => !!candidate && nodeMatchesTarget(candidate, condition.targetType));
-};
-
-const evaluateCondition = (condition: ModelRuleCondition, node: Node, context: EvaluationContext): boolean => {
-  if (condition.kind === "group") {
-    if (condition.conditions.length === 0) return false;
-    return condition.combinator === "all"
-      ? condition.conditions.every((child) => evaluateCondition(child, node, context))
-      : condition.conditions.some((child) => evaluateCondition(child, node, context));
-  }
-  if (condition.source === "self") return compareField(node, condition);
-  const candidates = connectedNodes(node, condition, context);
-  const matches = candidates.filter((candidate) => compareField(candidate, condition));
-  if ((condition.quantifier ?? "any") === "none") return matches.length === 0;
-  if (condition.quantifier === "all") return candidates.length > 0 && matches.length === candidates.length;
-  return matches.length > 0;
+  return isOfTargetType({ id: node.id, type: data?.type ?? "", typeId: data?.typeId }, targetType ?? "all");
 };
 
 const evaluateLegacyRule = (rule: ModelRule, nodes: Node[], edges: Edge[]): ModelRuleResult[] => {
@@ -195,12 +123,53 @@ const evaluateLegacyRule = (rule: ModelRule, nodes: Node[], edges: Edge[]): Mode
   });
 };
 
-export function evaluateModelRuleResults(rules: ModelRule[], nodes: Node[], edges: Edge[]): ModelRuleResult[] {
-  const context: EvaluationContext = { nodes, edges, nodeById: new Map(nodes.map((node) => [node.id, node])) };
+/** The graph of the open diagram alone, for when the project's is not known. */
+export const diagramGraph = (nodes: Node[], edges: Edge[]): RelatedGraph => ({
+  elements: nodes.map(graphElementOf),
+  relationships: edges.map((edge) => graphRelationshipOf({ ...edge, edgeType: edge.type })),
+});
+
+// One calculator per graph: the views that show rule results evaluate the same graph.
+const calculators = new WeakMap<RelatedGraph, RelatedCalculator>();
+const calculatorFor = (graph: RelatedGraph) => {
+  let calculator = calculators.get(graph);
+  if (!calculator) {
+    calculator = new RelatedCalculator(graph);
+    calculators.set(graph, calculator);
+  }
+  return calculator;
+};
+
+/** A rule's condition, or an Error when its text cannot be read. */
+const readRuleCondition = (rule: ModelRule): RuleCondition | null | Error => {
+  try {
+    return ruleConditionOf(rule);
+  } catch (error) {
+    return error as Error;
+  }
+};
+
+/**
+ * What the rules give for the open diagram's elements. Their relationships
+ * are the project's (`graph`: the saved project with the open diagram as it
+ * is now), as Related Formulas see them; without it, the open diagram's.
+ */
+export function evaluateModelRuleResults(
+  rules: ModelRule[],
+  nodes: Node[],
+  edges: Edge[],
+  graph?: RelatedGraph | null,
+): ModelRuleResult[] {
+  let calculator: RelatedCalculator | null = null;
+  const calculate = () => (calculator ??= calculatorFor(graph ?? diagramGraph(nodes, edges)));
   return rules.filter((rule) => rule.enabled).flatMap((rule) => {
-    if (!rule.condition || !rule.outcome) return evaluateLegacyRule(rule, nodes, edges);
+    if (rule.check || !rule.outcome) return evaluateLegacyRule(rule, nodes, edges);
+    const condition = readRuleCondition(rule);
+    // A rule whose text cannot be read gives nothing (the panel says why).
+    if (condition instanceof Error) return [];
     return nodes.filter((node) => nodeMatchesTarget(node, rule.targetType)).flatMap((node) => {
-      if (!evaluateCondition(rule.condition!, node, context)) return [];
+      const element = calculate().element(node.id) ?? graphElementOf(node);
+      if (!ruleHolds(condition, element, calculate())) return [];
       const data = node.data as NodeData | undefined;
       const nodeLabel = data?.label?.trim() || "Unnamed node";
       const message = rule.outcome!.kind === "tag"
@@ -213,8 +182,13 @@ export function evaluateModelRuleResults(rules: ModelRule[], nodes: Node[], edge
   });
 }
 
-export function evaluateModelRules(rules: ModelRule[], nodes: Node[], edges: Edge[]): ModelRuleViolation[] {
-  return evaluateModelRuleResults(rules, nodes, edges).flatMap((result) =>
+export function evaluateModelRules(
+  rules: ModelRule[],
+  nodes: Node[],
+  edges: Edge[],
+  graph?: RelatedGraph | null,
+): ModelRuleViolation[] {
+  return evaluateModelRuleResults(rules, nodes, edges, graph).flatMap((result) =>
     result.outcome.kind === "issue"
       ? [{ ...result, severity: result.outcome.severity }]
       : [],
@@ -240,24 +214,4 @@ export const MODEL_RULE_OPERATOR_LABELS: Record<Extract<ModelRuleCondition, { ki
   "less-than-or-equal": "is at most",
   "is-true": "is true",
   "is-false": "is false",
-};
-
-const describeComparison = (condition: Extract<ModelRuleCondition, { kind: "comparison" }>) => {
-  const field = condition.field === "attribute" ? condition.attribute || "an attribute" : condition.field;
-  const comparison = `${field} ${MODEL_RULE_OPERATOR_LABELS[condition.operator]}${condition.value?.trim() ? ` “${condition.value.trim()}”` : ""}`;
-  if (condition.source === "self") return `this object's ${comparison}`;
-  const quantifier = condition.quantifier === "all" ? "every" : condition.quantifier === "none" ? "no" : "at least one";
-  const direction = condition.direction === "incoming" ? "incoming" : condition.direction === "outgoing" ? "outgoing" : "connected";
-  return `${quantifier} ${direction} object has ${comparison}`;
-};
-
-export const describeModelRuleCondition = (condition: ModelRuleCondition): string => {
-  if (condition.kind === "comparison") return describeComparison(condition);
-  const joiner = condition.combinator === "all" ? " and " : " or ";
-  return condition.conditions.map((child) => `(${describeModelRuleCondition(child)})`).join(joiner);
-};
-
-export const describeModelRule = (rule: ModelRule) => {
-  if (rule.condition) return describeModelRuleCondition(rule.condition);
-  return rule.check ? MODEL_RULE_CHECK_LABELS[rule.check] : "Incomplete rule";
 };

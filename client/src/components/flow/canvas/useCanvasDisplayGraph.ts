@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { DiagramNode as Node } from "../types";
 import { type CustomEdgeData } from "../edges/CustomEdges";
 import { evaluateModelRuleResults, supportsModelRules } from "../rules/model-rules";
+import { useRelatedCalculation } from "../related/RelatedCalculationProvider";
 
 export interface UseCanvasDisplayGraphParams {
   connectingFromNodeId: string | null;
@@ -38,6 +39,7 @@ export function useCanvasDisplayGraph({
   const nodes = useDiagramStore((state) => state.nodes);
   const edges = useDiagramStore((state) => state.edges);
   const { isFlowMode, isExternalNode, projectType, activeModelRules, inheritedModelRuleIds } = useDiagramModel();
+  const { ruleGraph } = useRelatedCalculation();
   const baseDisplayNodes = useMemo(() => {
     const stripFlowTags = !isFlowMode;
     const selectedNodeCount = nodes.filter((node) => node.selected).length;
@@ -146,9 +148,9 @@ export function useCanvasDisplayGraph({
   const modelRuleResults = useMemo(
     () =>
       supportsModelRules(projectType)
-        ? evaluateModelRuleResults(activeModelRules, nodes, edges)
+        ? evaluateModelRuleResults(activeModelRules, nodes, edges, ruleGraph)
         : [],
-    [activeModelRules, edges, nodes, projectType],
+    [activeModelRules, edges, nodes, projectType, ruleGraph],
   );
   const modelRuleViolations = useMemo(
     () => modelRuleResults.flatMap((result) => result.outcome.kind === "issue" ? [{ ...result, severity: result.outcome.severity }] : []),

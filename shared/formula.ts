@@ -46,20 +46,37 @@ export interface RelatedSelector {
   end?: number;
 }
 
-/** What a `where` compares: an attribute of the related element, its type or its name. */
+/** What a `where` compares: an attribute of the related element, its type, name or description. */
 export type ConditionField =
   | { kind: "attribute"; name: string; start?: number; end?: number }
   | { kind: "type" }
-  | { kind: "name" };
+  | { kind: "name" }
+  | { kind: "description" };
+
+/** One of the model rules' operators (shared/value-comparison.ts). */
+export type ConditionOperator =
+  | "exists"
+  | "missing"
+  | "equals"
+  | "not-equals"
+  | "contains"
+  | "greater-than"
+  | "greater-than-or-equal"
+  | "less-than"
+  | "less-than-or-equal"
+  | "is-true"
+  | "is-false";
 
 export type ConditionNode =
   | { kind: "and" | "or"; left: ConditionNode; right: ConditionNode }
   | {
       kind: "compare";
       field: ConditionField;
-      /** One of the model rules' operators (shared/value-comparison.ts). */
-      operator: "exists" | "missing" | "equals" | "not-equals" | "contains" | "greater-than" | "greater-than-or-equal" | "less-than" | "less-than-or-equal";
+      operator: ConditionOperator;
       value: string;
+      /** Where the value stands in the text, when it is a text in quotes. */
+      valueStart?: number;
+      valueEnd?: number;
     };
 
 /**
@@ -192,16 +209,20 @@ const functionNamed = (name: string) => {
 };
 
 type Symbol = "+" | "-" | "*" | "/" | "(" | ")" | "," | "=" | "!=" | "<" | ">" | "<=" | ">=";
-type Token =
-  | { type: "number"; value: number }
-  | { type: "reference"; value: string; start: number; end: number }
-  | { type: "string"; value: string; start: number; end: number }
+/** A word, number, reference, quoted text or symbol of a formula, with where it stands in the text. */
+export type FormulaToken = { start: number; end: number } & (
+  | { type: "number"; value: number; raw: string }
+  | { type: "reference"; value: string }
+  | { type: "string"; value: string }
   | { type: "name"; value: string }
-  | { type: "symbol"; value: Symbol };
+  | { type: "symbol"; value: Symbol }
+);
+type Token = FormulaToken;
 
 const QUOTES: Record<string, string> = { '"': '"', "\u201c": "\u201d", "\u201e": "\u201c" };
 
-const tokenize = (formula: string): Token[] => {
+/** Splits a formula into its tokens. Throws an Error that says what is wrong. */
+export const tokenizeFormula = (formula: string): Token[] => {
   const tokens: Token[] = [];
   let index = 0;
   while (index < formula.length) {
@@ -229,12 +250,12 @@ const tokenize = (formula: string): Token[] => {
     }
     const two = formula.slice(index, index + 2);
     if (two === "!=" || two === "<=" || two === ">=") {
-      tokens.push({ type: "symbol", value: two });
+      tokens.push({ type: "symbol", value: two, start: index, end: index + 2 });
       index += 2;
       continue;
     }
     if ("+-*/(),=<>".includes(char)) {
-      tokens.push({ type: "symbol", value: char as Symbol });
+      tokens.push({ type: "symbol", value: char as Symbol, start: index, end: index + 1 });
       index += 1;
       continue;
     }
@@ -243,14 +264,14 @@ const tokenize = (formula: string): Token[] => {
       while (end < formula.length && /[0-9.]/.test(formula[end])) end += 1;
       const raw = formula.slice(index, end);
       if (!/^\d+(\.\d+)?$|^\.\d+$/.test(raw)) throw new Error(`Invalid number "${raw}".`);
-      tokens.push({ type: "number", value: Number(raw) });
+      tokens.push({ type: "number", value: Number(raw), raw, start: index, end });
       index = end;
       continue;
     }
     if (/[A-Za-z_]/.test(char)) {
       let end = index + 1;
       while (end < formula.length && /[A-Za-z0-9_]/.test(formula[end])) end += 1;
-      tokens.push({ type: "name", value: formula.slice(index, end) });
+      tokens.push({ type: "name", value: formula.slice(index, end), start: index, end });
       index = end;
       continue;
     }
@@ -259,7 +280,8 @@ const tokenize = (formula: string): Token[] => {
   return tokens;
 };
 
-const COMPARISON_SYMBOLS: Record<string, Extract<ConditionNode, { kind: "compare" }>["operator"]> = {
+/** The symbols a condition compares with, and the operator each stands for. */
+export const COMPARISON_SYMBOLS: Record<string, ConditionOperator> = {
   "=": "equals",
   "!=": "not-equals",
   "<": "less-than",
@@ -268,10 +290,29 @@ const COMPARISON_SYMBOLS: Record<string, Extract<ConditionNode, { kind: "compare
   ">=": "greater-than-or-equal",
 };
 
-/** Reads a formula into its structure. Throws an Error that says what is wrong. */
-export function parseFormula(formula: string, options: ParseOptions = {}): FormulaNode {
-  const tokens = tokenize(formula);
-  if (tokens.length === 0) throw new Error("Formula is required.");
+/**
+ * Reads formula tokens from a position on. A formula is read whole with
+ * parseFormula; a model rule's text reads its values and its conditions
+ * over related elements with the same reader, so the two cannot drift apart.
+ */
+export interface FormulaReader {
+  readonly tokens: FormulaToken[];
+  /** The next token to read. */
+  position: number;
+  peek(offset?: number): FormulaToken | undefined;
+  isSymbol(token: FormulaToken | undefined, value: string): boolean;
+  isWord(token: FormulaToken | undefined, word: string): boolean;
+  /** A value: numbers, references, + - * /, functions and (when allowed) aggregates. */
+  expression(): FormulaNode;
+  /** A condition on an element: what follows `where`. */
+  condition(): ConditionNode;
+  /** One comparison, or a condition in parentheses. */
+  conditionPart(): ConditionNode;
+  /** Which related elements: what follows `of`. */
+  selector(): RelatedSelector;
+}
+
+export function formulaReader(tokens: FormulaToken[], options: ParseOptions = {}): FormulaReader {
   let position = 0;
   const peek = (offset = 0) => tokens[position + offset];
   const isSymbol = (token: Token | undefined, value: string) => token?.type === "symbol" && token.value === value;
@@ -302,15 +343,15 @@ export function parseFormula(formula: string, options: ParseOptions = {}): Formu
     return { direction, relationship: name.value.trim(), start: name.start, end: name.end };
   };
 
-  const conditionValue = (): string => {
+  const conditionValue = (): { value: string; valueStart?: number; valueEnd?: number } => {
     const token = tokens[position++];
-    if (token?.type === "string") return token.value;
-    if (token?.type === "number") return String(token.value);
-    if (isSymbol(token, "-") && peek()?.type === "number") return String(-(tokens[position++] as { value: number }).value);
+    if (token?.type === "string") return { value: token.value, valueStart: token.start, valueEnd: token.end };
+    if (token?.type === "number") return { value: String(token.value) };
+    if (isSymbol(token, "-") && peek()?.type === "number") return { value: String(-(tokens[position++] as { value: number }).value) };
     if (token?.type === "name" && ["yes", "no", "true", "false"].includes(token.value.toLowerCase())) {
-      return token.value.toLowerCase();
+      return { value: token.value.toLowerCase() };
     }
-    throw new Error('A condition compares with a number, a text in quotes, or yes/no.');
+    throw new Error("A condition compares with a number, a text in quotes, or yes/no.");
   };
 
   const comparison = (): ConditionNode => {
@@ -319,22 +360,27 @@ export function parseFormula(formula: string, options: ParseOptions = {}): Formu
     if (token?.type === "reference") field = { kind: "attribute", name: token.value, start: token.start, end: token.end };
     else if (isWord(token, "type")) field = { kind: "type" };
     else if (isWord(token, "name")) field = { kind: "name" };
-    else throw new Error("A condition starts with an attribute in square brackets, type or name.");
+    else if (isWord(token, "description")) field = { kind: "description" };
+    else throw new Error("A condition starts with an attribute in square brackets, type, name or description.");
     if (isWord(peek(), "is")) {
       position += 1;
       const negated = isWord(peek(), "not");
       if (negated) position += 1;
-      if (!isWord(tokens[position++], "set")) throw new Error('Write "is set" or "is not set".');
-      return { kind: "compare", field, operator: negated ? "missing" : "exists", value: "" };
+      const word = tokens[position++];
+      if (isWord(word, "set")) return { kind: "compare", field, operator: negated ? "missing" : "exists", value: "" };
+      if (!negated && (isWord(word, "true") || isWord(word, "false"))) {
+        return { kind: "compare", field, operator: isWord(word, "true") ? "is-true" : "is-false", value: "" };
+      }
+      throw new Error('Write "is set", "is not set", "is true" or "is false".');
     }
     if (isWord(peek(), "contains")) {
       position += 1;
-      return { kind: "compare", field, operator: "contains", value: conditionValue() };
+      return { kind: "compare", field, operator: "contains", ...conditionValue() };
     }
     const symbol = tokens[position++];
     const operator = symbol?.type === "symbol" ? COMPARISON_SYMBOLS[symbol.value] : undefined;
-    if (!operator) throw new Error("A condition compares with =, !=, <, >, <=, >=, contains, or is set.");
-    return { kind: "compare", field, operator, value: conditionValue() };
+    if (!operator) throw new Error("A condition compares with =, !=, <, >, <=, >=, contains, is set or is true.");
+    return { kind: "compare", field, operator, ...conditionValue() };
   };
   const conditionAtom = (): ConditionNode => {
     if (isSymbol(peek(), "(")) {
@@ -469,15 +515,38 @@ export function parseFormula(formula: string, options: ParseOptions = {}): Formu
     return node;
   };
 
-  const node = sum();
-  const rest = peek();
+  return {
+    tokens,
+    get position() {
+      return position;
+    },
+    set position(value: number) {
+      position = value;
+    },
+    peek,
+    isSymbol,
+    isWord,
+    expression: sum,
+    condition,
+    conditionPart: conditionAtom,
+    selector,
+  };
+}
+
+/** Reads a formula into its structure. Throws an Error that says what is wrong. */
+export function parseFormula(formula: string, options: ParseOptions = {}): FormulaNode {
+  const tokens = tokenizeFormula(formula);
+  if (tokens.length === 0) throw new Error("Formula is required.");
+  const reader = formulaReader(tokens, options);
+  const node = reader.expression();
+  const rest = reader.peek();
   if (rest) {
-    if (isSymbol(rest, ")")) throw new Error("Mismatched parentheses.");
-    if (isSymbol(rest, ",")) throw new Error("A comma only separates the values of a function.");
+    if (reader.isSymbol(rest, ")")) throw new Error("Mismatched parentheses.");
+    if (reader.isSymbol(rest, ",")) throw new Error("A comma only separates the values of a function.");
     if (rest.type === "symbol" && rest.value in COMPARISON_SYMBOLS) {
       throw new Error(`"${rest.value}" compares values only in a condition after where.`);
     }
-    if (isWord(rest, "of") || isWord(rest, "where")) {
+    if (reader.isWord(rest, "of") || reader.isWord(rest, "where")) {
       throw new Error(options.aggregates ? `"${rest.value}" belongs inside an aggregate such as sum([attribute] of "relationship").` : RELATED_ONLY_MESSAGE);
     }
     throw new Error("Formula is incomplete.");
@@ -620,4 +689,89 @@ export function namedSelectors(node: FormulaNode): Array<RelatedSelector & { rel
         selector.relationship !== null && selector.start !== undefined && selector.end !== undefined,
     )
     .sort((a, b) => a.start - b.start);
+}
+
+/** A text in quotes, as a formula writes it: typographic quotes when it holds a straight one. */
+export const quoteText = (text: string) => (text.includes('"') ? `“${text}”` : `"${text}"`);
+
+const OPERATOR_TEXT: Record<ConditionOperator, string> = {
+  exists: "is set",
+  missing: "is not set",
+  equals: "=",
+  "not-equals": "!=",
+  contains: "contains",
+  "greater-than": ">",
+  "greater-than-or-equal": ">=",
+  "less-than": "<",
+  "less-than-or-equal": "<=",
+  "is-true": "is true",
+  "is-false": "is false",
+};
+
+/** How an operator is written in a condition. */
+export const conditionOperatorText = (operator: ConditionOperator) => OPERATOR_TEXT[operator];
+
+/** Whether a comparison's operator needs no value: is set, is not set, is true, is false. */
+export const operatorTakesNoValue = (operator: ConditionOperator) =>
+  operator === "exists" || operator === "missing" || operator === "is-true" || operator === "is-false";
+
+/** A value to compare with, as written: a number or yes/no bare, anything else in quotes. */
+export function printConditionValue(value: string): string {
+  const trimmed = value.trim();
+  // Bare only when it reads back as the same text: 0.50 and .5 stay in quotes.
+  if (/^-?\d+(\.\d+)?$/.test(trimmed) && String(Number(trimmed)) === trimmed) return trimmed;
+  if (["yes", "no", "true", "false"].includes(trimmed.toLowerCase())) return trimmed.toLowerCase();
+  return quoteText(value);
+}
+
+/** Which related elements, as written after "of". */
+export function printSelector(selector: RelatedSelector): string {
+  if (selector.relationship === null) return selector.direction === "both" ? "all" : `all ${selector.direction}`;
+  const name = quoteText(selector.relationship);
+  return selector.direction === "incoming" ? `incoming ${name}` : name;
+}
+
+const printField = (field: ConditionField) => (field.kind === "attribute" ? `[${field.name}]` : field.kind);
+
+/** A condition as written; `nested` puts an "or" in parentheses inside an "and". */
+export function printCondition(condition: ConditionNode, nested = false): string {
+  if (condition.kind === "compare") {
+    const operator = OPERATOR_TEXT[condition.operator];
+    return operatorTakesNoValue(condition.operator)
+      ? `${printField(condition.field)} ${operator}`
+      : `${printField(condition.field)} ${operator} ${printConditionValue(condition.value)}`;
+  }
+  if (condition.kind === "and") return `${printCondition(condition.left, true)} and ${printCondition(condition.right, true)}`;
+  const text = `${printCondition(condition.left)} or ${printCondition(condition.right)}`;
+  return nested ? `(${text})` : text;
+}
+
+const PRECEDENCE: Record<string, number> = { "+": 1, "-": 1, "*": 2, "/": 2 };
+
+/** A formula as written, from its structure. */
+export function printFormula(node: FormulaNode): string {
+  const print = (current: FormulaNode, context = 0, right = false): string => {
+    switch (current.kind) {
+      case "number":
+        return String(current.value);
+      case "reference":
+        return `[${current.name}]`;
+      case "negate":
+        return `-${print(current.operand, 3)}`;
+      case "binary": {
+        const own = PRECEDENCE[current.operator];
+        const text = `${print(current.left, own)} ${current.operator} ${print(current.right, own, true)}`;
+        // a - (b - c) and a / (b * c) keep their parentheses.
+        return own < context || (right && own === context) ? `(${text})` : text;
+      }
+      case "call":
+        return `${current.name}(${current.args.map((arg) => print(arg)).join(", ")})`;
+      case "aggregate": {
+        const value = current.value ? `${print(current.value)} ` : "";
+        const where = current.where ? ` where ${printCondition(current.where)}` : "";
+        return `${current.fn}(${value}of ${printSelector(current.selector)}${where})`;
+      }
+    }
+  };
+  return print(node);
 }

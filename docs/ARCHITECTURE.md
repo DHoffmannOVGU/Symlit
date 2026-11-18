@@ -83,6 +83,14 @@ end, and an object as `data`. Saving checks `data` with `relationshipDataSchema`
 have the right type, other fields are kept. Reading stays lenient (`flowEdgeSchema`) so unexpected
 stored data never stops a diagram from opening; migration 0005 cleaned existing data to this form.
 
+Model rules are stored per diagram (`views.model_rules`, `modelRuleSchema` in `shared/contracts.ts`). A
+rule's condition is text (`expression`) in the rule language of `shared/rule-text.ts`, which builds on the
+formula language of `shared/formula.ts` (one `formulaReader` reads both): parsing, printing, the rules
+panel's lists (`builderFromRule` / `ruleFromBuilder`) and storing names as ids (`storeRuleCondition` /
+`displayRuleCondition`). `shared/rule-evaluation.ts` evaluates a condition over a `RelatedGraph` with the
+Related Formula calculator, so rules and formulas see the same relationships. Rules saved with the older
+`condition` structure are converted on reading.
+
 Metamodel vocabulary: built-in node types (Object, Behavior, Concern, Performer, Need,
 Event, Capability) and relation types (Association, Aggregation, Composition,
 Generalization, Dependency, Realization) live in `shared/metamodel-setup.ts`. Projects without
@@ -166,7 +174,8 @@ SQL migration to `migrations/`. Commit both. CI fails if the schema and migratio
 
 - A project file is the JSON export (`shared/project-file.ts`): a main project, the metamodels it
   references and their patterns. `server/services/project-import.ts` imports one with fresh ids,
-  rewiring references, types, rules and pattern origins.
+  rewiring references, types, rules (also the types and relationships their text names), pattern
+  origins, and the relationship ids that formulas and recorded metamodel relationships point at.
 - Built-in project templates are project files in `server/templates/` (bundled into the server
   build). `GET /api/project-templates` lists them, `POST /api/project-templates/:id/projects`
   creates their projects. See `docs/decisions/project-templates.md`.

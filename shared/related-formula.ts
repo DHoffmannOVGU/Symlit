@@ -8,7 +8,7 @@
  * the editor (with unsaved changes) and the server (exports) calculate alike.
  */
 import { metaRelationIdOf } from "./relationships";
-import { compareValue } from "./value-comparison";
+import { compareValue, type ComparisonOperator } from "./value-comparison";
 import {
   evaluateFormula,
   FormulaPendingError,
@@ -35,11 +35,53 @@ export interface GraphAttribute {
 export interface GraphElement {
   id: string;
   name: string;
+  description?: string;
   /** The name of the element's type, as a `where type = "…"` compares it. */
   type: string;
   /** The id of the element's type (in a model); a type in a metamodel is its own. */
   typeId?: string;
+  /** What kind of element it is on the canvas (part, port, …). */
+  kind?: string;
   attributes: GraphAttribute[];
+}
+
+/** Prefix of a type stored by id: `type = "type:<type>"`, the type as a rule's target names it. */
+export const TYPE_REFERENCE_PREFIX = "type:";
+
+/**
+ * Whether an element is of a type as a rule's target names it: `node:<id>`
+ * (a type of a metamodel, or the element itself), a type id, or a kind.
+ */
+export function isOfTargetType(element: Pick<GraphElement, "id" | "type" | "typeId" | "kind">, target: string): boolean {
+  if (!target || target === "all") return true;
+  if (target.startsWith("node:")) {
+    const id = target.slice("node:".length);
+    return element.id === id || element.typeId === id;
+  }
+  return element.type === target || element.typeId === target;
+}
+
+/**
+ * How `type` compares in a condition: with a type stored by id
+ * (`"type:<type>"`), or with a name, which is the type's name, its id or the
+ * element's kind.
+ */
+export function typeMatches(
+  element: Pick<GraphElement, "id" | "type" | "typeId" | "kind">,
+  operator: ComparisonOperator,
+  value: string,
+): boolean {
+  const trimmed = value.trim();
+  if (trimmed.startsWith(TYPE_REFERENCE_PREFIX)) {
+    const matches = isOfTargetType(element, trimmed.slice(TYPE_REFERENCE_PREFIX.length));
+    if (operator === "equals") return matches;
+    if (operator === "not-equals") return !matches;
+    return compareValue(element.type, operator, value);
+  }
+  const names = [element.type, element.typeId ?? "", element.kind ?? ""].filter(Boolean);
+  if (operator === "equals") return names.some((name) => compareValue(name, "equals", value));
+  if (operator === "not-equals") return !names.some((name) => compareValue(name, "equals", value));
+  return compareValue(element.type, operator, value);
 }
 
 export interface GraphRelationship {
@@ -385,16 +427,60 @@ export class RelatedCalculator {
     return { value: node.fn === "min" ? Math.min(...values) : Math.max(...values), explanation };
   }
 
+  /** An element of the graph. */
+  element(id: string): GraphElement | undefined {
+    return this.elements.get(id);
+  }
+
+  /**
+   * Calculates a formula's structure for an element: its references are the
+   * element's attributes, its aggregates go over the element's related
+   * elements. Throws as a formula does (FormulaPendingError when a value is missing).
+   */
+  evaluateFor(element: GraphElement, node: FormulaNode): number {
+    const references = new Map(
+      formulaReferenceNames(node).map((name) => [name, resolveAttributeReference(name, element.attributes)]),
+    );
+    return evaluateFormula(
+      node,
+      (name) => this.attributeValue(element, references.get(name)!),
+      (aggregate) => this.aggregate(element, aggregate).value,
+    );
+  }
+
+  /**
+   * An attribute's value as a rule compares it: entered, or calculated now
+   * ("" when it cannot be calculated).
+   */
+  currentValue(element: GraphElement, attribute: GraphAttribute): unknown {
+    if (!isCalculatedAttribute(attribute)) return attribute.value;
+    try {
+      return formatCalculatedValue(this.attributeValue(element, attribute));
+    } catch {
+      return "";
+    }
+  }
+
+  /**
+   * Whether an element meets a condition (what follows `where`). In a rule,
+   * an empty number reads as 0, as rules always have; in a formula's
+   * aggregate (`emptyIsPending`), it makes the result not calculated yet.
+   */
+  meets(element: GraphElement, condition: ConditionNode, emptyIsPending = false): boolean {
+    return this.holds(element, condition, emptyIsPending);
+  }
+
   /** Whether a related element meets a `where`. */
-  private holds(candidate: GraphElement, condition: ConditionNode): boolean {
+  private holds(candidate: GraphElement, condition: ConditionNode, emptyIsPending = true): boolean {
     if (condition.kind !== "compare") {
       return condition.kind === "and"
-        ? this.holds(candidate, condition.left) && this.holds(candidate, condition.right)
-        : this.holds(candidate, condition.left) || this.holds(candidate, condition.right);
+        ? this.holds(candidate, condition.left, emptyIsPending) && this.holds(candidate, condition.right, emptyIsPending)
+        : this.holds(candidate, condition.left, emptyIsPending) || this.holds(candidate, condition.right, emptyIsPending);
     }
     const { field, operator, value } = condition;
-    if (field.kind === "type") return compareValue(candidate.type, operator, value);
+    if (field.kind === "type") return typeMatches(candidate, operator, value);
     if (field.kind === "name") return compareValue(candidate.name, operator, value);
+    if (field.kind === "description") return compareValue(candidate.description ?? "", operator, value);
     let attribute: GraphAttribute;
     try {
       attribute = resolveAttributeReference(field.name, candidate.attributes);
@@ -404,8 +490,11 @@ export class RelatedCalculator {
     }
     let current: unknown = attribute.value;
     if (isCalculatedAttribute(attribute)) {
-      current = formatCalculatedValue(this.attributeValue(candidate, attribute));
+      current = emptyIsPending
+        ? formatCalculatedValue(this.attributeValue(candidate, attribute))
+        : this.currentValue(candidate, attribute);
     } else if (
+      emptyIsPending &&
       ["less-than", "less-than-or-equal", "greater-than", "greater-than-or-equal"].includes(operator) &&
       String(current ?? "").trim() === ""
     ) {
@@ -437,8 +526,10 @@ export function graphElementOf(node: { id: string; type?: string | null; data?: 
   return {
     id: node.id,
     name: typeof data.label === "string" ? data.label : "",
+    ...(typeof data.description === "string" && data.description ? { description: data.description } : {}),
     type: typeof data.type === "string" ? data.type : (node.type ?? ""),
     ...(typeof data.typeId === "string" && data.typeId ? { typeId: data.typeId } : {}),
+    ...(node.type ? { kind: node.type } : {}),
     attributes: Array.isArray(data.attributes) ? (data.attributes as GraphAttribute[]) : [],
   };
 }

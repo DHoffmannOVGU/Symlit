@@ -10,6 +10,7 @@ import type {
 import { validateInstanceModel, type ValidationIssue } from "@shared/model-validation";
 import type { ModelRule } from "@shared/schema";
 import { evaluateModelRules } from "../rules/model-rules";
+import { useRelatedCalculation } from "../related/RelatedCalculationProvider";
 
 export type { ValidationIssue };
 
@@ -27,6 +28,7 @@ export function useDiagramValidation({
   const setNodes = useDiagramStore((state) => state.setNodes);
   const setEdges = useDiagramStore((state) => state.setEdges);
   const { projectType, availablePartDefNodes, relationEdges, parentMap } = useDiagramModel();
+  const { ruleGraph } = useRelatedCalculation();
   const [validationOpen, setValidationOpen] = useState(false);
   const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>(
     [],
@@ -104,7 +106,7 @@ export function useDiagramValidation({
 
   const handleValidate = useCallback(() => {
     if (projectType === "metamodel") {
-      const issues: ValidationIssue[] = evaluateModelRules(modelRules, nodes, edges).map(
+      const issues: ValidationIssue[] = evaluateModelRules(modelRules, nodes, edges, ruleGraph).map(
         (violation) => ({
           type: "node",
           id: violation.nodeId,
@@ -117,7 +119,7 @@ export function useDiagramValidation({
 
     if (projectType !== "instance") return;
 
-    const issues: ValidationIssue[] = evaluateModelRules(modelRules, nodes, edges).map(
+    const issues: ValidationIssue[] = evaluateModelRules(modelRules, nodes, edges, ruleGraph).map(
       (violation) => ({
         type: "node",
         id: violation.nodeId,
@@ -163,6 +165,7 @@ export function useDiagramValidation({
     modelRules,
     inheritedModelRuleIds,
     relationEdges,
+    ruleGraph,
   ]);
 
   return {

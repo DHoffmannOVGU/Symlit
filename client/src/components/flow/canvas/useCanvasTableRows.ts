@@ -4,6 +4,7 @@ import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useMemo } from "react";
 import { type CustomEdgeData } from "../edges/CustomEdges";
 import { evaluateModelRuleResults } from "../rules/model-rules";
+import { useRelatedCalculation } from "../related/RelatedCalculationProvider";
 
 export interface UseCanvasTableRowsParams {
   nodeTableFilter: string;
@@ -17,10 +18,11 @@ export function useCanvasTableRows({
   const nodes = useDiagramStore((state) => state.nodes);
   const edges = useDiagramStore((state) => state.edges);
   const { isExternalNode, activeModelRules } = useDiagramModel();
+  const { ruleGraph } = useRelatedCalculation();
   // The tags model rules give each element right now, as the cards show them.
   const tagsById = useMemo(() => {
     const tags = new Map<string, Array<{ label: string; color?: string }>>();
-    for (const result of evaluateModelRuleResults(activeModelRules, nodes, edges)) {
+    for (const result of evaluateModelRuleResults(activeModelRules, nodes, edges, ruleGraph)) {
       if (result.outcome.kind !== "tag") continue;
       const label = result.outcome.label;
       const list = tags.get(result.nodeId) ?? [];
@@ -28,7 +30,7 @@ export function useCanvasTableRows({
       tags.set(result.nodeId, list);
     }
     return tags;
-  }, [activeModelRules, edges, nodes]);
+  }, [activeModelRules, edges, nodes, ruleGraph]);
   const nodeTableRows = useMemo(
     () =>
       nodes.map((node) => {

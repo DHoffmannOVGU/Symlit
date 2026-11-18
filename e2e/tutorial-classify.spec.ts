@@ -160,7 +160,7 @@ test("Classify and review: rules that tag, combined, for every model, reviewed i
   // The inherited rule is listed with the name of its type, and cannot be edited.
   const inherited = page.getByTestId("inherited-model-rules");
   await expect(inherited).toContainText("Meta rule");
-  await expect(inherited).toContainText("For Component:");
+  await expect(inherited.getByTestId("inherited-rule-text")).toHaveText('for Component where [single source] is true and [criticality] = "high"');
   // Opening the panel is not removing the copy.
   await expectNotDone(page, "remove-local");
   await rulesPanel(page).getByLabel("Delete Needs a second supplier").click();

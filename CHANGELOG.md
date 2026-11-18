@@ -45,6 +45,15 @@ DATABASE_URL. No account, no external requests.
   condition looks at each chosen option.
 - Rules that tag: tags have a column in the table, and the table filter
   finds them.
+- Rules as text: a rule reads for Drone where [range] < 15, and the rules
+  panel's lists edit the same line. Conditions can compare two values or
+  calculations ([price] < [total cost], count(of "consists of") < 2) and
+  check related elements (none of incoming "executes"). The lists offer
+  relationships by name, an "exists" for related elements, comparisons that
+  fit the attribute and a list's options. Rules look at the relationships of
+  all diagrams and follow renamed attributes, relationships and types.
+- Copies of projects (duplicate, import) keep naming the same relationships:
+  formulas, rules and recorded metamodel relationships follow the new ids.
 - Versioned database migrations applied on start; strict server-side
   validation of elements and relationships.
 - Projects: the list shows when a project was last edited and can be sorted;

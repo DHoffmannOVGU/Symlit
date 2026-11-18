@@ -17,6 +17,8 @@ import {
   type ProjectGraphRelationship,
   type RelatedGraph,
 } from "@shared/related-formula";
+import { ruleConditionOf } from "@shared/rule-evaluation";
+import { ruleUsesRelationships } from "@shared/rule-text";
 import { apiCall } from "@/lib/api-client";
 import { useDiagramModel } from "../state/DiagramModelProvider";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
@@ -44,12 +46,23 @@ interface RelatedCalculation {
    * attribute known by id (also the types of the metamodels a model uses).
    */
   formulaContext: (nodeId: string, attributes: NodeAttribute[], attributeId: string) => RelatedFormulaContext;
+  /**
+   * What model rules evaluate: the project's elements and relationships with
+   * the open diagram as it is now, each relationship linked to the metamodel
+   * relationship it stands for. Until the project's are loaded (or when no
+   * rule looks at related elements), the open diagram's.
+   */
+  ruleGraph: RelatedGraph | null;
+  /** Asks for the project's relationships (a rule being written looks at related elements). */
+  requestGraph: () => void;
 }
 
 const RelatedCalculationContext = createContext<RelatedCalculation>({
   preview: () => null,
   relationshipsOf: () => [],
   formulaContext: (nodeId, attributes, attributeId) => relatedFormulaContext(null, nodeId, attributes, attributeId),
+  ruleGraph: null,
+  requestGraph: () => undefined,
 });
 
 export const useRelatedCalculation = () => useContext(RelatedCalculationContext);
@@ -63,7 +76,7 @@ export const useRelatedCalculation = () => useContext(RelatedCalculationContext)
  * values are left out of the unsaved-changes signature).
  */
 export function RelatedCalculationProvider({ children }: { children: ReactNode }) {
-  const { projectId, viewId, projectType, availablePartDefNodes, relationEdges, parentMap } = useDiagramModel();
+  const { projectId, viewId, projectType, availablePartDefNodes, relationEdges, parentMap, activeModelRules } = useDiagramModel();
   // Types define the formula; their elements, in models, calculate it.
   const calculates = projectType === "instance";
   const nodes = useDiagramStore((state) => state.nodes);
@@ -76,8 +89,21 @@ export function RelatedCalculationProvider({ children }: { children: ReactNode }
   );
   // The editor asks for the project's relationships as soon as someone writes a Related Formula.
   const [wanted, setWanted] = useState(false);
+  // Rules that look at related elements see all of the project's relationships.
+  const rulesNeedGraph = useMemo(
+    () =>
+      activeModelRules.some((rule) => {
+        if (!rule.enabled || rule.check) return false;
+        try {
+          return ruleUsesRelationships(ruleConditionOf(rule));
+        } catch {
+          return false;
+        }
+      }),
+    [activeModelRules],
+  );
   // In a metamodel the graph only serves to link a formula's references to the types' attributes.
-  const enabled = (calculates && liveHasRelated) || wanted;
+  const enabled = (calculates && liveHasRelated) || wanted || rulesNeedGraph;
   const graphQuery = useQuery({
     queryKey: [api.projects.graph.path, projectId],
     queryFn: () => apiCall(api.projects.graph, { params: { id: projectId } }),
@@ -100,6 +126,17 @@ export function RelatedCalculationProvider({ children }: { children: ReactNode }
   }, [edges, graphQuery.data, nodes, parentMap, relationEdges, viewId]);
 
   const calculator = useMemo(() => (graph ? new RelatedCalculator(graph) : null), [graph]);
+
+  const ruleGraph = useMemo<RelatedGraph>(() => {
+    const base: RelatedGraph = graph ?? {
+      elements: nodes.map(graphElementOf),
+      relationships: edges.map((edge) => graphRelationshipOf({ ...edge, edgeType: edge.type })),
+    };
+    if (calculates) return graph ?? linkRelationships(base, relationEdges, parentMap);
+    // In a metamodel, a relationship between types is itself the metamodel relationship.
+    const own = metamodelRelationsOf(base);
+    return linkRelationships(base, own.relations, own.parentMap);
+  }, [calculates, edges, graph, nodes, parentMap, relationEdges]);
 
   // Write the calculated values into the open diagram's elements that have Related Formulas.
   useEffect(() => {
@@ -192,9 +229,10 @@ export function RelatedCalculationProvider({ children }: { children: ReactNode }
     [calculates, graph, knownAttributes, nodes, parentMap, relationEdges, wanted],
   );
 
+  const requestGraph = useCallback(() => setWanted(true), []);
   const value = useMemo(
-    () => ({ preview, relationshipsOf, formulaContext }),
-    [formulaContext, preview, relationshipsOf],
+    () => ({ preview, relationshipsOf, formulaContext, ruleGraph, requestGraph }),
+    [formulaContext, preview, relationshipsOf, requestGraph, ruleGraph],
   );
   return <RelatedCalculationContext.Provider value={value}>{children}</RelatedCalculationContext.Provider>;
 }

@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useRef } from "react";
 import { displayRelatedFormula, relatedFormulaContext } from "@shared/related-formula";
-import type { ModelRule, ModelRuleCondition } from "@shared/schema";
+import type { ModelRule } from "@shared/schema";
+import type { ConditionField, ConditionNode } from "@shared/formula";
+import {
+  displayRuleCondition,
+  literalValue,
+  parseRuleCondition,
+  printOperand,
+  printRuleCondition,
+  ruleFromModelCondition,
+  type RuleCondition,
+  type RuleTextContext,
+} from "@shared/rule-text";
 import type {
   TutorialAttribute,
   TutorialModelState,
@@ -14,6 +25,7 @@ import { useView, useViews } from "@/hooks/use-views";
 import { useDiagramModel } from "@/components/flow/state/DiagramModelProvider";
 import { useDiagramStore } from "@/components/flow/state/DiagramStoreProvider";
 import { evaluateModelRuleResults } from "@/components/flow/rules/model-rules";
+import { useRuleTextContext } from "@/components/flow/rules/useRuleTextContext";
 import type { NodeAttribute, NodeData } from "@/components/flow/types";
 import {
   evaluateDerivedAttribute,
@@ -21,42 +33,87 @@ import {
   getDisplayFormula,
   recalculateDerivedAttributes,
 } from "@/components/flow/utils/attribute-formula";
+import { useRelatedCalculation } from "@/components/flow/related/RelatedCalculationProvider";
 
 type TypeName = (typeId: string | undefined) => string;
 
-const flattenConditions = (condition: ModelRuleCondition | undefined, typeName: TypeName): TutorialRuleCondition[] => {
+const fieldOf = (field: ConditionField) => ({
+  field: field.kind,
+  attribute: field.kind === "attribute" ? field.name : "",
+});
+
+/** A rule's comparisons, as the tutorial checks them: groups flattened, by names. */
+const describeConditions = (condition: RuleCondition | null, typeName: TypeName): TutorialRuleCondition[] => {
   if (!condition) return [];
-  if (condition.kind === "group") {
-    return condition.conditions.flatMap((child) => flattenConditions(child as ModelRuleCondition, typeName));
+  switch (condition.kind) {
+    case "and":
+    case "or":
+      return [...describeConditions(condition.left, typeName), ...describeConditions(condition.right, typeName)];
+    case "not":
+      return describeConditions(condition.operand, typeName);
+    case "compare": {
+      const { left, right } = condition;
+      // A calculation on the left is reported as its text, with the field "value".
+      const field =
+        left.kind === "field"
+          ? { field: left.field, attribute: "" }
+          : left.kind === "value" && left.node.kind === "reference"
+            ? { field: "attribute", attribute: left.node.name }
+            : { field: "value", attribute: printOperand(left) };
+      const value = right ? (literalValue(right) ?? printOperand(right)) : "";
+      return [{ about: "self", direction: "", quantifier: "", type: "", ...field, operator: condition.operator, value }];
+    }
+    case "related": {
+      const { selector, where, has } = condition;
+      const type =
+        where?.kind === "compare" && where.field.kind === "type" && where.operator === "equals"
+          ? typeName(where.value.startsWith("type:") ? where.value.slice("type:".length) : where.value)
+          : "";
+      const base = {
+        about: "connected" as const,
+        direction: selector.direction === "both" ? "any" : selector.direction,
+        quantifier: condition.quantifier,
+        type,
+      };
+      if (!has) return [{ ...base, field: "", attribute: "", operator: "exists", value: "" }];
+      const comparisons: Extract<ConditionNode, { kind: "compare" }>[] = [];
+      const collect = (node: ConditionNode) => {
+        if (node.kind === "compare") comparisons.push(node);
+        else {
+          collect(node.left);
+          collect(node.right);
+        }
+      };
+      collect(has);
+      return comparisons.map((comparison) => ({ ...base, ...fieldOf(comparison.field), operator: comparison.operator, value: comparison.value }));
+    }
   }
-  const connected = condition.source === "connected";
-  return [
-    {
-      about: connected ? "connected" : "self",
-      direction: connected ? (condition.direction ?? "any") : "",
-      quantifier: connected ? (condition.quantifier ?? "any") : "",
-      type: connected ? typeName(condition.targetType) : "",
-      field: condition.field,
-      attribute: condition.field === "attribute" ? (condition.attribute ?? "") : "",
-      operator: condition.operator,
-      value: condition.value ?? "",
-    },
-  ];
 };
 
-const describeRule = (rule: ModelRule, typeName: TypeName): TutorialRule => {
-  const conditions = flattenConditions(rule.condition, typeName);
+const describeRule = (rule: ModelRule, typeName: TypeName, context: RuleTextContext): TutorialRule => {
+  let condition: RuleCondition | null = null;
+  try {
+    // By names, as the steps name attributes.
+    condition = parseRuleCondition(displayRuleCondition(ruleConditionText(rule), context, { keepTypes: true }));
+  } catch {
+    condition = null;
+  }
+  const conditions = describeConditions(condition, typeName);
   const active = rule.enabled !== false;
   return {
     reportsIssue: active && (rule.outcome ? rule.outcome.kind === "issue" : !!rule.check),
     tag: active && rule.outcome?.kind === "tag" ? rule.outcome.label : "",
     target: typeName(rule.targetType),
-    attributes: conditions.map((condition) => condition.attribute).filter(Boolean),
-    connected: conditions.some((condition) => condition.about === "connected"),
+    attributes: conditions.map((item) => item.attribute).filter(Boolean),
+    connected: conditions.some((item) => item.about === "connected"),
     conditions,
-    combinator: rule.condition?.kind === "group" ? rule.condition.combinator : "all",
+    combinator: condition?.kind === "or" ? "any" : "all",
   };
 };
+
+/** A rule's condition as stored text: its text, or its lists for a rule saved before rules had text. */
+const ruleConditionText = (rule: ModelRule) =>
+  rule.expression ?? (rule.condition ? printRuleCondition(ruleFromModelCondition(rule.condition)) : "");
 
 const describeRelationship = (edge: {
   source: string;
@@ -121,6 +178,8 @@ export function useTutorialModelReporter(enabled: boolean, isDirty: boolean) {
   const edgePanelOpen = useDiagramStore((state) => state.edgePanelOpen);
   const { viewId, projectId, projectType, localModelRules, activeModelRules, typeMetaById, referencedMetamodels } =
     useDiagramModel();
+  const { ruleGraph } = useRelatedCalculation();
+  const ruleContextFor = useRuleTextContext();
   const { data: view } = useView(enabled ? viewId : 0);
   const { data: views } = useViews(enabled ? projectId : 0);
   // As text, so that the state below only changes when the names do: the list
@@ -155,7 +214,7 @@ export function useTutorialModelReporter(enabled: boolean, isDirty: boolean) {
     };
     // The tags rules give right now, as the cards show them.
     const tagsByElement = new Map<string, string[]>();
-    for (const result of evaluateModelRuleResults(activeModelRules, nodes, edges)) {
+    for (const result of evaluateModelRuleResults(activeModelRules, nodes, edges, ruleGraph)) {
       if (result.outcome.kind !== "tag") continue;
       const tags = tagsByElement.get(result.nodeId) ?? [];
       if (!tags.includes(result.outcome.label)) tags.push(result.outcome.label);
@@ -187,7 +246,7 @@ export function useTutorialModelReporter(enabled: boolean, isDirty: boolean) {
       editingRelationship:
         (edgePanelOpen && edges.filter((edge) => edge.id === selectedEdgeId).map(describeRelationship)[0]) || null,
       tableFilter: nodeTableFilter.trim(),
-      rules: localModelRules.map((rule) => describeRule(rule, typeName)),
+      rules: localModelRules.map((rule) => describeRule(rule, typeName, ruleContextFor(rule.targetType))),
       dirty: isDirty,
     };
   }, [
@@ -203,6 +262,8 @@ export function useTutorialModelReporter(enabled: boolean, isDirty: boolean) {
     diagramNames,
     metamodelNames,
     projectType,
+    ruleContextFor,
+    ruleGraph,
     selectedEdgeId,
     selectedNodeId,
     typeMetaById,
