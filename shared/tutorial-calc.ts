@@ -335,7 +335,7 @@ const LESSONS: TutorialLesson[] = [
     title: "Let the model answer",
     goal: "write a rule on a calculated value and use it to find and correct a problem",
     why:
-      `The margins are in the table now, and one of them should worry the print shop. But nobody reads a table every morning. A model rule compares an attribute with a fixed number, and the margin is a number that says everything: below zero, the job costs more than it brings in. That is how the model answers the question: ${QUESTION}`,
+      `The margins are in the table now, and one of them should worry the print shop. But nobody reads a table every morning. A model rule can test the margin, a number that says everything: below zero, the job costs more than it brings in. That is how the model answers the question: ${QUESTION}`,
     steps: [
       {
         id: "read-margins",
@@ -352,7 +352,7 @@ const LESSONS: TutorialLesson[] = [
         instruction:
           "Switch back to Diagram and open Model rules. Add a rule named No job below cost. In the list next to its name, which says All object types, choose Print job (under Built-in types). Condition: margin · is less than · 0. Then: report an issue, with a message such as Costs more than it brings in. Save the rules.",
         hint: "In the condition row, the second list picks the attribute and the third the comparison. In the Then row, switch from add descriptor tag to report an issue. The rules panel has its own Save.",
-        done: "The rule does not calculate anything. It reads the result of your formulas, which is why the margin had to be an attribute.",
+        done: "The text above the lists shows the same rule: for Print job where [margin] < 0. It does not calculate anything; it reads the result of your formulas.",
         scope: "instance",
         check: marginRule,
         highlight: ['[data-testid="button-add-rule"]', '[data-testid="button-model-rules"]'],
@@ -394,15 +394,15 @@ const LESSONS: TutorialLesson[] = [
       },
     ],
     question: {
-      prompt: "A rule compares an attribute with a fixed number. How do you check that the price covers the cost, which are two attributes?",
+      prompt: "A rule's text could also compare two attributes: for Print job where [price] < [total cost]. Why is the margin still worth an attribute of its own?",
       options: [
-        { text: "With a rule: price is less than total cost", feedback: "A rule cannot compare two attributes with each other, only one attribute with a number." },
         {
-          text: "Calculate the difference as an attribute and compare it with 0",
+          text: "Because a rule only says yes or no, while the margin is a number everyone sees",
           correct: true,
-          feedback: "Right. The formula does the comparing (margin = price - total cost), and the rule reads the result.",
+          feedback: "Right. The rule [price] < [total cost] would find the same job, but only the margin shows by how much, on every card and in the table, for every job, and other formulas and rules can use it.",
         },
-        { text: "It cannot be checked", feedback: "It can: let a formula calculate the difference and a rule test it." },
+        { text: "Because rules cannot compare two attributes", feedback: "In their text they can: for Print job where [price] < [total cost]. Only the lists compare an attribute with a fixed value." },
+        { text: "Because a formula is checked on every validation", feedback: "Formulas are calculated, not checked. Rules are what validation checks." },
       ],
     },
   },

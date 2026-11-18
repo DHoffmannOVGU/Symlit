@@ -87,7 +87,8 @@ const processRule = (state: TutorialModelState) =>
           same(condition.type, "Resource") &&
           // "is not set" would match every resource, and so report every process.
           condition.operator === "exists" &&
-          (condition.field === "name" || condition.field === "type"),
+          // "exists", or a field every element has.
+          (condition.field === "" || condition.field === "name" || condition.field === "type"),
       ),
   );
 
@@ -296,9 +297,9 @@ const LESSONS: TutorialLesson[] = [
         id: "add-rule",
         title: "Write the rule for processes",
         instruction:
-          "Add a rule named Every process has a resource. For: Process. Condition: Incoming from · none · Resource · Name · is set. Then: report an issue, with a message such as No resource executes this process. Save the rules.",
-        hint: "In the list next to the rule name that shows All object types, choose Process. In the condition row, change This object to Incoming from; two more lists appear. Set them to none and Resource, set Choose attribute… to Name and the comparison to is set. In the Then row, switch to report an issue. The panel has its own Save.",
-        done: "Your rule reads: a process that no Resource points at is reported. The Live results on the right already show which process that is.",
+          "Add a rule named Every process has a resource. For: Process. Condition: Incoming from · none · Resource · exists. Then: report an issue, with a message such as No resource executes this process. Save the rules.",
+        hint: "In the list next to the rule name that shows All object types, choose Process. In the condition row, change This object to Incoming from; two more lists appear. Set them to none and Resource, and leave exists. In the Then row, switch to report an issue. The panel has its own Save.",
+        done: 'Your rule reads: a process that no Resource points at is reported. The text above the lists says the same: for Process where none of all incoming where type = "Resource". The Live results on the right already show which process that is.',
         scope: "instance",
         check: processRule,
         highlight: ['[data-testid="button-add-rule"]', '[data-testid="button-model-rules"]'],
@@ -307,7 +308,7 @@ const LESSONS: TutorialLesson[] = [
         id: "validate-rule",
         title: "Validate with your rule",
         instruction: "Close the rules panel and validate again.",
-        hint: "If Laser cutting is reported as well, or Bending is not, compare your rule with: Incoming from · none · Resource · Name · is set.",
+        hint: "If Laser cutting is reported as well, or Bending is not, compare your rule with: Incoming from · none · Resource · exists.",
         done: "Bending is reported: no resource executes it. The bracket is planned, but nobody can bend it yet. Laser cutting passes, because the Laser cutter executes it.",
         signal: "validation-run",
         scope: "instance",

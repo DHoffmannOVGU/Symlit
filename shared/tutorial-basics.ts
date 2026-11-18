@@ -272,7 +272,7 @@ const LESSONS: TutorialLesson[] = [
         instruction:
           "The city route is 15 km long. Open Model rules at the bottom of the sidebar: the rule that fired is there, Every battery needs a capacity. Below it, press Add rule and set it up: name Range covers the city route; in the list next to the name, change All object types to Drone; condition range · is less than · 15; then report an issue. Press Save in the rules panel.",
         hint: "The tutorial looks for exactly this rule: for Drone, range · is less than · 15, report an issue. In the condition row, the second list picks the attribute (range) and the third the comparison. In the Then row, switch from add descriptor tag to report an issue. The panel's Save stores the rules; it is separate from the diagram's Save.",
-        done: "A rule has three parts: which elements it looks at, a condition, and what happens when the condition holds. Yours is stored with the diagram and checked on every validation.",
+        done: "A rule has three parts: which elements it looks at, a condition, and what happens when the condition holds. The text above the lists says the first two in one line: for Drone where [range] < 15. You can write rules there, too. Yours is stored with the diagram and checked on every validation.",
         scope: "instance",
         check: rangeRule,
         highlight: ['[data-testid="button-add-rule"]', '[data-testid="button-model-rules"]'],

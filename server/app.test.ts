@@ -1007,6 +1007,84 @@ describe("project import", () => {
     }
     assert.equal((await request("GET", "/api/projects")).json.length, before);
   });
+  test("an imported copy keeps naming the same relationships and types: ids follow the copy", async () => {
+    const metamodel = await createProject({ name: "Ids types", projectType: "metamodel" });
+    const typesView = await createView(metamodel.id, "Types");
+    const node = (suffix: string) => `ids${metamodel.id}-${suffix}`;
+    await request("POST", `/api/views/${typesView.id}/sync`, {
+      nodes: [
+        { id: node("drone"), type: "partdef", position: { x: 0, y: 0 }, data: { label: "Drone", type: "Object" } },
+        { id: node("battery"), type: "partdef", position: { x: 300, y: 0 }, data: { label: "Battery", type: "Object" } },
+      ],
+      edges: [
+        {
+          id: node("has"),
+          source: node("drone"),
+          target: node("battery"),
+          edgeType: "association",
+          sourceHandle: null,
+          targetHandle: null,
+          data: { label: "has", edgeType: "association" },
+        },
+      ],
+    });
+    const typeId = (suffix: string) => `mm:${metamodel.id}:${node(suffix)}`;
+    const relationId = node("has");
+    const model = await createProject({ name: "Ids model", projectType: "instance", referencedMetamodels: [metamodel.id] });
+    const view = await createView(model.id, "Fleet");
+    const element = (id: string, type: string, attributes: unknown[] = []) => ({
+      id: `ids${model.id}-${id}`,
+      type: "part",
+      position: { x: 0, y: 0 },
+      data: { label: id, type, typeId: typeId(type.toLowerCase()), attributes },
+    });
+    const batteries = { id: "batteries", name: "batteries", type: "related", formula: `count(of "rel:${relationId}")`, value: "" };
+    await request("POST", `/api/views/${view.id}/sync`, {
+      nodes: [element("D1", "Drone", [batteries]), element("B1", "Battery")],
+      edges: [
+        {
+          id: `ids${model.id}-h1`,
+          source: `ids${model.id}-D1`,
+          target: `ids${model.id}-B1`,
+          edgeType: "association",
+          sourceHandle: null,
+          targetHandle: null,
+          data: { label: "has", edgeType: "association", relationId },
+        },
+      ],
+    });
+    const rule = {
+      id: "rule-battery",
+      name: "Every drone has a battery",
+      enabled: true,
+      targetType: typeId("drone"),
+      expression: `none of "rel:${relationId}" where type = "type:${typeId("battery")}"`,
+      outcome: { kind: "issue", severity: "warning" },
+    };
+    assert.equal((await request("PATCH", `/api/views/${view.id}`, { modelRules: [rule] })).status, 200);
+
+    const exported = await request("POST", `/api/projects/${model.id}/export`, { format: "json", includeReferencedMetamodels: true });
+    const imported = await request("POST", "/api/projects/import", exported.json);
+    assert.equal(imported.status, 201, imported.text);
+    const newMetamodel = imported.json.project.referencedMetamodels[0] as number;
+    const newTypes = (
+      await request("GET", `/api/views/${((await request("GET", `/api/projects/${newMetamodel}/views`)).json as Array<{ id: number }>)[0].id}/flow`)
+    ).json as { nodes: Array<{ id: string; data: { label: string } }>; edges: Array<{ id: string }> };
+    const newRelationId = newTypes.edges[0].id;
+    assert.notEqual(newRelationId, relationId);
+    const newTypeId = (label: string) => `mm:${newMetamodel}:${newTypes.nodes.find((type) => type.data.label === label)!.id}`;
+
+    const copy = (await request("GET", `/api/views/${imported.json.firstViewId}/flow`)).json as {
+      nodes: Array<{ data: { label: string; attributes?: Array<{ formula?: string }> } }>;
+      edges: Array<{ data: { relationId?: string } }>;
+    };
+    assert.equal(copy.edges[0].data.relationId, newRelationId);
+    assert.equal(copy.nodes.find((item) => item.data.label === "D1")!.data.attributes![0].formula, `count(of "rel:${newRelationId}")`);
+    const copiedRule = ((await request("GET", `/api/projects/${imported.json.project.id}/views`)).json as Array<{ modelRules: Array<typeof rule> }>)[0]
+      .modelRules[0];
+    assert.equal(copiedRule.targetType, newTypeId("Drone"));
+    assert.equal(copiedRule.expression, `none of "rel:${newRelationId}" where type = "type:${newTypeId("Battery")}"`);
+  });
 });
 
 describe("saving over changes made elsewhere", () => {

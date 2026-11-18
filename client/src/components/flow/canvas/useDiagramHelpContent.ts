@@ -37,6 +37,10 @@ const FORMULAS: string[] = [
   "Model rules can test a calculated value like any other, for example margin is less than 0.",
 ];
 
+/** How model rules are written: the same in metamodels and models. */
+const RULES =
+  'A model rule is a line of text, or the same built with the lists of the rules panel: for a type where a condition, for example for Drone where [range] < 15. Both sides of a comparison can be values or calculations, also over related elements: [price] < [total cost], count(of "consists of") < 2. Related elements are checked with any of, all of or none of: none of incoming "executes", all of "consists of" have [status] = "released". Relationships count from all diagrams of the project, and rules follow renamed attributes, relationships and types.';
+
 export function useDiagramHelpContent(
   projectType: ProjectType,
   isFlowMode: boolean,
@@ -65,6 +69,7 @@ export function useDiagramHelpContent(
           "Double-click a type to give it attributes and a style; elements of that type start from both.",
           "Relationships between types define which relationships are allowed between their elements.",
           "Model rules tag elements or report issues when a condition holds; Validate runs them.",
+          RULES,
         ],
         formulas: FORMULAS,
       };
@@ -90,6 +95,7 @@ export function useDiagramHelpContent(
         "Add elements tab: click a type to place an element of it, or drag it to where you want it. Search finds types across all referenced metamodels.",
         "Double-click an element to set its attribute values; the definition of an attribute opens in its own editor.",
         "Validate checks elements and relationships against the metamodel and your model rules, and lists what to fix.",
+        RULES,
         "Select two or more elements to align them or to save them as a reusable pattern.",
       ],
       formulas: FORMULAS,

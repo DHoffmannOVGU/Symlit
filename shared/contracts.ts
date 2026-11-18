@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { metamodelSetupSchema } from "./metamodel-setup";
+import { parseRuleCondition } from "./rule-text";
 
 /*
  * Validation shared by the client and server that must not depend on the
@@ -109,9 +110,26 @@ export const modelRuleSchema = z.object({
   check: z.enum(modelRuleCheckEnum).optional(),
   severity: z.enum(modelRuleSeverityEnum).optional(),
   condition: modelRuleConditionSchema.optional(),
+  /**
+   * The condition as text (shared/rule-text.ts), with attributes,
+   * relationships and types by id where a name stands for one: what the
+   * rules panel writes. Empty: the rule applies to every element it looks
+   * at. A rule with text has no `condition`; `condition` is how rules were
+   * stored before, and is still read.
+   */
+  expression: z.string().optional(),
   outcome: modelRuleOutcomeSchema.optional(),
 }).superRefine((rule, context) => {
   if (rule.check !== undefined) return;
+  if (rule.expression !== undefined) {
+    if (!rule.outcome) context.addIssue({ code: z.ZodIssueCode.custom, message: "A model rule needs an outcome" });
+    try {
+      parseRuleCondition(rule.expression);
+    } catch (error) {
+      context.addIssue({ code: z.ZodIssueCode.custom, message: `The rule's condition cannot be read: ${(error as Error).message}` });
+    }
+    return;
+  }
   if (!rule.condition || !rule.outcome) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "A model rule needs a condition and outcome" });
     return;

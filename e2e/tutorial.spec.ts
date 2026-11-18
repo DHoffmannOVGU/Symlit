@@ -337,16 +337,16 @@ test("the PPR tutorial leads from a requirement to product, process and resource
   };
   await choose(0, "Process");
   await choose(2, "Incoming from");
-  await choose(3, "none");
+  // A related element only has to be there: the row asks no more ("exists").
   await choose(4, "Resource");
-  await choose(5, "Name");
-  await choose(7, "report an issue");
-  // "is not set" would match every resource and report every process.
-  await choose(6, "is not set");
+  await choose(6, "report an issue");
+  // "at least one" would report the processes a resource executes.
   await page.getByTestId("button-save-rules").click();
   await expect(page.getByText("Model rules saved").first()).toBeVisible();
   await expectStays(page, "add-rule", "current");
-  await choose(6, "is set");
+  await choose(3, "none");
+  // The rule's text says the same as the lists.
+  await expect(rules.getByTestId("rule-text").last()).toHaveValue('for Process where none of all incoming where type = "Resource"');
   await page.getByTestId("button-save-rules").click();
   await expectDone(page, "add-rule");
   await rules.getByLabel("Close model rules").click();

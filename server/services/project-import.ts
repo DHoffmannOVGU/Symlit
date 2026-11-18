@@ -5,6 +5,7 @@ import { projectFileSchema, type ProjectFile } from "@shared/project-file";
 import { normalizeRelationship } from "@shared/relationships";
 import { edges, nodes, nodeViews, projects, views, type Project } from "@shared/schema";
 import type { ModelRule } from "@shared/contracts";
+import { remapRuleIds } from "@shared/rule-text";
 import { db } from "../db";
 
 /*
@@ -132,6 +133,28 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
     }
   }
 
+  // Relationships get new ids too. What names one by its id (a Related
+  // Formula's or a rule's `"rel:<id>"`, the metamodel relationship a model's
+  // relationship records) follows it; an id outside the file stays.
+  const relationshipIds = new Map<string, string>();
+  for (const entry of bundle) {
+    for (const view of diagramsOf(entry)) {
+      for (const edge of view.edges) if (edge.id) relationshipIds.set(edge.id, `edge_${randomUUID()}`);
+    }
+  }
+  const remapRelationship = (id: string) => relationshipIds.get(id) ?? id;
+  const remapFormulas = (data: Record<string, unknown>): Record<string, unknown> =>
+    Array.isArray(data.attributes)
+      ? {
+          ...data,
+          attributes: data.attributes.map((attribute: Record<string, unknown>) =>
+            typeof attribute?.formula === "string" && attribute.formula.includes('"rel:')
+              ? { ...attribute, formula: remapRuleIds(attribute.formula, { relationship: remapRelationship }) }
+              : attribute,
+          ),
+        }
+      : data;
+
   return db.transaction(async (tx) => {
     const created = new Map<number, Project>();
     // Chosen in the transaction, so that a failure leaves nothing behind, renamed or not.
@@ -194,7 +217,11 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
       }
       return elementIds.get(value) ?? value;
     };
-    /** Rule targets (`targetType`, also inside conditions) are type references too. */
+    /**
+     * Rule targets (`targetType`, also inside conditions) are type
+     * references too, and so are the types a rule's text names; its
+     * relationships are relationships of the file.
+     */
     const remapRule = (rule: ModelRule): ModelRule => {
       const walk = (value: unknown): unknown => {
         if (Array.isArray(value)) return value.map(walk);
@@ -203,7 +230,15 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
           Object.entries(value).map(([key, inner]) => [key, key === "targetType" ? remapType(inner) : walk(inner)]),
         );
       };
-      return walk(rule) as ModelRule;
+      const remapped = walk(rule) as ModelRule;
+      if (typeof rule.expression !== "string") return remapped;
+      return {
+        ...remapped,
+        expression: remapRuleIds(rule.expression, {
+          type: (target) => String(remapType(target)),
+          relationship: remapRelationship,
+        }),
+      };
     };
 
     // Elements, once each, in the project that owns them.
@@ -215,7 +250,7 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
         id: newId,
         projectId: newProjectId(elementOwner.get(fileId)!),
         type: record.type,
-        data: { ...data, ...(typeId !== undefined ? { typeId: remapType(typeId) } : {}) },
+        data: { ...remapFormulas(data), ...(typeId !== undefined ? { typeId: remapType(typeId) } : {}) },
       });
     }
 
@@ -263,10 +298,12 @@ export async function importProjectFile(raw: unknown, options: ImportOptions): P
                 `Relationship ${edge.id ?? ""} in "${view.name}" connects elements outside the diagram`.replace("  ", " "),
               );
             }
-            const { pattern: _origin, ...data } = (edge.data ?? {}) as Record<string, unknown>;
+            const { pattern: _origin, ...stored } = (edge.data ?? {}) as Record<string, unknown>;
+            const data =
+              typeof stored.relationId === "string" ? { ...stored, relationId: remapRelationship(stored.relationId) } : stored;
             return {
               ...normalizeRelationship({ ...edge, edgeType: edge.edgeType ?? undefined, data }),
-              id: `edge_${randomUUID()}`,
+              id: (edge.id && relationshipIds.get(edge.id)) || `edge_${randomUUID()}`,
               viewId: createdView.id,
               source: elementIds.get(edge.source)!,
               target: elementIds.get(edge.target)!,

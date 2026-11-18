@@ -42,8 +42,12 @@ commit that fixed them.
 - **Guided tutorials, still open** (`docs/ux/TUTORIAL_ROADMAP.md`): none of the six has been tried with
   learners; a single lesson cannot be reset on its own; per-step records (time, hints, Show me) stay in the
   browser and have no export.
-- **Related Formulas, next steps.** Model rules' conditions on connected elements still look only at the open
-  diagram, while Related Formulas look at the whole project. `where type = "…"` matches the type's name, not
+- **Model rules, next steps.** `for <type>` and `type = "…"` match exactly that type, not the types that
+  specialize it. Issue messages cannot name values yet (`report "{name} weighs {[mass]} kg"`). The legacy
+  checks (missing name, duplicate name, …) are not written as text; `duplicate-name` compares elements with
+  each other, which the language cannot say. The lists show one group level and one comparison per related
+  phrase.
+- **Related Formulas, next steps.** `where type = "…"` matches the type's name, not
   its specializations. A reference inside an aggregate whose related elements have separate attributes of that
   name stays matched by name (it is linked when they share one, from a type). Changing a metamodel relationship's
   kind does not change the model relationships made from it (validation then reports them). Paths of more
@@ -99,6 +103,16 @@ commit that fixed them.
 - Showing an existing element in a diagram stored its placement at once, so the editor's revision was outdated and the next save was refused as a conflict. The insert returns the new revision (`server/routes/flow.ts`, `useCanvasInsertion.ts`; `e2e/local-workspace.spec.ts`).
 - Saving a diagram with an element created since it was opened reset the undo history: the signature compared after the save depended on key order, which the database does not keep (`diagram-serialization.ts`). Found by a browser test that failed on CI only.
 - The canvas reported its state to the tutorial coach on every render, and the page rendered again on each report; it reports changes only now.
+- Model rules are text (`shared/rule-text.ts`): `for <type> where <condition>`, on the formula language
+  (`formulaReader` in `shared/formula.ts` is shared), with comparisons of two values, `not`, and phrases over
+  related elements (`any of` / `all of` / `none of` … `where` … `has`). A rule stores its condition as
+  `expression` (attributes `[attr:<id>]`, relationships `"rel:<id>"`, types `"type:<target>"` where a name stands
+  for one; `storeRuleCondition` / `displayRuleCondition`); `targetType` stays a field. Rules saved with the old
+  `condition` structure are read through `ruleFromModelCondition`. The rules panel keeps text and lists in step:
+  the lists are derived from the text (`builderFromRule`) and write it back (`ruleFromBuilder`); what they cannot
+  show is edited as text. Rules are evaluated over the project's graph (`shared/rule-evaluation.ts`, the
+  `ruleGraph` of `RelatedCalculationProvider`), so connected conditions see all diagrams. Project import gives
+  relationships new ids and rewrites the `"rel:<id>"` of formulas and rules and the recorded `relationId`.
 - The importer rewires rules that target one type of a metamodel (`node:<id>`), and an element shown in several diagrams of a template keeps its data.
 - The table shows the tags rules give and can be filtered by them.
 - A second guided tutorial, Production with PPR (`shared/tutorial-ppr.ts`, `server/templates/tutorial-ppr.json`): product, process and resource with requirements traced to what satisfies them. Tutorials are now a list (`shared/tutorial.ts`): each has its own template, lessons, question and project names; the coach, the progress logic, the start cards and the API (`/api/tutorial/:tutorial`) take the tutorial as a parameter. The coach stays on the right and gets shorter while validation results are open, so the sidebar stays usable; on the left it stays above the sidebar's bottom buttons.
