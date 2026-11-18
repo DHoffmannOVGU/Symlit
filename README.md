@@ -43,6 +43,14 @@ AI assistant.
   ends with one question, and the last lesson of each is done without step-by-step instructions.
 - **Optional AI metamodel assistant** (Google Gemini, bring your own API key).
 
+## Download
+
+Ready-to-run files for Windows, macOS and Linux are attached to each
+[release](https://github.com/DHoffmannOVGU/Symlit/releases/latest): download, start, and Symlit
+opens in your browser. No installation and no Node.js needed. See
+[Getting started](https://github.com/DHoffmannOVGU/Symlit/wiki/Getting-Started) for the
+first-start warnings on unsigned files and where your data is stored.
+
 ## Quick start
 
 Requirements: **Node.js 20.19 or newer** and npm.
@@ -109,6 +117,7 @@ Database migrations run automatically on startup. To run them on their own, use 
 | `npm test` | Unit, database and API tests against an in-memory PGlite |
 | `npm run test:postgres` | The same tests against a real PostgreSQL (`TEST_DATABASE_URL`, default: the Compose database) |
 | `npm run test:e2e` | Playwright browser tests (run `npx playwright install chromium` once first) |
+| `npm run build:exe` | Single-file executable for this platform, in `release/` |
 | `npm run db:generate` | Create a migration after changing `shared/schema.ts` |
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)

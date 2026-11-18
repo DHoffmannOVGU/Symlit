@@ -1,11 +1,36 @@
 # Getting started
 
-## Requirements
+### Download and run (no installation)
+
+Download the file for your system from the
+[latest release](https://github.com/DHoffmannOVGU/Symlit/releases/latest) and start it.
+Symlit opens in your browser at http://127.0.0.1:5000; close the window to stop it.
+
+| System | File |
+| --- | --- |
+| Windows | `symlit-<version>-windows-x64.exe` |
+| macOS (Apple Silicon / Intel) | `symlit-<version>-macos-arm64` / `-macos-x64` |
+| Linux | `symlit-<version>-linux-x64` |
+
+The files are not code-signed yet, so your system warns on first start:
+
+- **Windows:** "Windows protected your PC" → *More info* → *Run anyway*.
+- **macOS:** in Terminal, `xattr -d com.apple.quarantine symlit-*` and `chmod +x symlit-*`,
+  then run `./symlit-…`. (Or right-click → *Open* in Finder.)
+- **Linux:** `chmod +x symlit-*`, then `./symlit-…`.
+
+Your projects are stored per user, not next to the file: `%APPDATA%\Symlit` (Windows),
+`~/Library/Application Support/Symlit` (macOS), `~/.local/share/symlit` (Linux). Settings from
+[Configuration](Configuration) can go in a `.env` file in that folder.
+
+## Run from source
+
+### Requirements
 
 **Node.js 20.19 or newer** and npm. Nothing else: with no configuration Symlit keeps its data
 in an embedded PostgreSQL database ([PGlite](https://pglite.dev)) under `./data/`.
 
-## Install and run
+### Install and run
 
 ```bash
 git clone https://github.com/DHoffmannOVGU/Symlit.git

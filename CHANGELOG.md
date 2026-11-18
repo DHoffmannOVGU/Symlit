@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Single-file executables for Windows, macOS and Linux, built and attached to every
+  release (`npm run build:exe` locally). Data is stored in the per-user data folder.
 - Pluggable sign-in: `server/auth-provider.ts` returns an `AuthProvider`, so a hosted
   deployment can add its own login without changing the rest of the server. The local
   edition is unchanged.
