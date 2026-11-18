@@ -378,6 +378,9 @@ test("renaming a relationship: in the metamodel the formula follows it, in the m
   await expect(dialog.locator('[data-testid^="input-attr-formula-"]')).toHaveValue('sum([mass] of "contains")');
   await page.getByTestId("button-attribute-cancel").click();
   await page.getByTestId("button-cancel-attributes").click();
+  // Validation knows the relationships with the old label are the renamed one.
+  await page.getByTestId("button-toolbar-validate").click();
+  await expect(page.getByText("No issues found", { exact: true })).toBeVisible();
 
   // A part related now gets the new name, "contains". Old and new relationships count together:
   // matched by the old name or by the new one, either would be left out.

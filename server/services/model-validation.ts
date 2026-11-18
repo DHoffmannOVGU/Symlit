@@ -55,6 +55,7 @@ function localRelationEdges(
   return edges
     .filter((e) => partDefNodeIds.has(e.source) && partDefNodeIds.has(e.target))
     .map((e) => ({
+      id: e.id,
       sourceTypeId: e.source,
       targetTypeId: e.target,
       edgeType: e.edgeType || "association",
@@ -160,6 +161,7 @@ export async function resolveMetamodel(
           const sourceProjectId = nodeProjectIdByRawId.get(e.source) ?? mmId;
           const targetProjectId = nodeProjectIdByRawId.get(e.target) ?? mmId;
           return {
+            id: e.id,
             sourceTypeId: `mm:${sourceProjectId}:${e.source}`,
             targetTypeId: `mm:${targetProjectId}:${e.target}`,
             edgeType: e.edgeType || "association",

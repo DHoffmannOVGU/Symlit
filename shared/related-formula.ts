@@ -7,6 +7,7 @@
  * Everything here works on a plain graph of elements and relationships, so
  * the editor (with unsaved changes) and the server (exports) calculate alike.
  */
+import { metaRelationIdOf } from "./relationships";
 import { compareValue } from "./value-comparison";
 import {
   evaluateFormula,
@@ -70,8 +71,7 @@ export interface MetaRelation {
 /** Prefix of a selector stored by the metamodel relationship's id: `of "rel:<id>"`. */
 export const RELATIONSHIP_REFERENCE_PREFIX = "rel:";
 
-/** The id that stays the same wherever the relationship is shown: the metamodel edge's own id. */
-export const metaRelationIdOf = (id: string) => /^mm:\d+:\d+:(.+)$/.exec(id)?.[1] ?? id;
+export { metaRelationIdOf };
 
 const storedRelationId = (relationship: string | null) =>
   relationship?.trim().startsWith(RELATIONSHIP_REFERENCE_PREFIX)

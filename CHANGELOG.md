@@ -37,7 +37,9 @@ DATABASE_URL. No account, no external requests.
   The editor shows what was counted and calculates live; exports carry the
   calculated values. References are stored by id, as in a Derived Formula,
   so renamed attributes and relationships keep working. A model's
-  relationships record which metamodel relationship they were made from.
+  relationships record which metamodel relationship they were made from,
+  and validation accepts them by it, so renaming a metamodel relationship
+  does not make the relationships drawn before invalid.
 - Multiselect attributes: any number of choices from a type's options, picked
   in the editor or in the table; the table filter finds them, and a rule's
   condition looks at each chosen option.

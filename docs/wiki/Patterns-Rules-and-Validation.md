@@ -33,6 +33,10 @@ diagram.
 - that every relationship is allowed between the types of its two ends,
 - your model rules.
 
+A relationship drawn with Symlit's suggestion records which metamodel relationship it is. When that
+relationship is renamed in the metamodel, the model's relationships drawn before keep their old label
+and stay valid.
+
 The results appear in a panel beside the canvas, so you can fix things while the list stays open.
 
 The server applies the same checks when saving: elements and relationships that do not fit

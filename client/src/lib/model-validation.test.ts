@@ -137,3 +137,28 @@ test("builds a usable parent map from type nodes", () => {
   assert.deepEqual(parentMap.get("device"), new Set(["component"]));
   assert.equal(parentMap.has("component"), false);
 });
+test("a relationship that records its metamodel relationship passes with the label it had before a rename", () => {
+  // "observes" was renamed to "watches" in the metamodel.
+  const renamed = {
+    ...metamodel,
+    relationEdges: [{ ...metamodel.relationEdges[0], id: "mm:3:7:observes-edge", label: "watches" }],
+  };
+  const model = (data: { label: string; relationId?: string }, edgeType = "association") => ({
+    nodes: [
+      { id: "c", type: "part", data: { label: "Controller", typeId: "component" } },
+      { id: "s", type: "part", data: { label: "Thermometer", typeId: "sensor" } },
+    ],
+    edges: [{ id: "e", source: "c", target: "s", edgeType, data }],
+  });
+  // Drawn before the rename, recording which relationship it is: valid.
+  assert.deepEqual(validateInstanceModel(model({ label: "observes", relationId: "observes-edge" }), renamed), []);
+  // Without the record, the old label no longer fits.
+  assert.match(validateInstanceModel(model({ label: "observes" }), renamed)[0].message, /invalid label. Allowed: watches/);
+  // A record of another relationship does not make it valid.
+  assert.equal(validateInstanceModel(model({ label: "observes", relationId: "other-edge" }), renamed).length, 1);
+  // The kind and the types are still checked.
+  assert.match(
+    validateInstanceModel(model({ label: "observes", relationId: "observes-edge" }, "composition"), renamed)[0].message,
+    /not allowed/,
+  );
+});

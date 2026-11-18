@@ -373,6 +373,10 @@ describe("views and diagrams", () => {
     const exported = (await request("POST", `/api/projects/${model.id}/export`, { format: "json" })).json;
     const machine = exported.views[0].nodes.find((node: { data: { label: string } }) => node.data.label === "E1");
     assert.equal(machine.data.attributes[0].value, "2");
+    // Validation knows it too: still labelled "consists of", the relationship is the renamed one.
+    const validated = await request("POST", `/api/views/${view.id}/validate`);
+    assert.equal(validated.status, 200, validated.text);
+    assert.deepEqual(validated.json.issues, []);
   });
 
   test("rejects edges whose endpoints are missing", async () => {

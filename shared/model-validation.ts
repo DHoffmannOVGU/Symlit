@@ -1,4 +1,5 @@
 import { getTypeAncestors } from "./metamodel-inheritance";
+import { metaRelationIdOf } from "./relationships";
 
 export interface ValidationIssue {
   type: "node" | "edge";
@@ -18,7 +19,8 @@ export interface ValidationModelEdge {
   source: string;
   target: string;
   edgeType?: string | null;
-  data?: { label?: string } | null;
+  /** `relationId`: the metamodel relationship it was made from (recorded by the editor). */
+  data?: { label?: string; relationId?: string } | null;
 }
 
 export interface ValidationTypeNode {
@@ -27,6 +29,8 @@ export interface ValidationTypeNode {
 }
 
 export interface ValidationRelationEdge {
+  /** The metamodel edge's id (or `mm:<metamodel>:<diagram>:<edge id>`). */
+  id?: string;
   sourceTypeId?: string;
   targetTypeId?: string;
   edgeType?: string;
@@ -136,8 +140,13 @@ export function validateInstanceModel(
       return;
     }
 
+    // Its label, or the metamodel relationship it records: a relationship drawn before
+    // its metamodel relationship was renamed keeps its old label and is still that relationship.
+    const relationId = typeof edgeData?.relationId === "string" ? edgeData.relationId : "";
     const labelMatch = matchingMetaEdges.some(
-      (meta) => meta.edgeType === edgeType && (meta.label || "").trim() === edgeLabel,
+      (meta) =>
+        meta.edgeType === edgeType &&
+        ((meta.label || "").trim() === edgeLabel || (!!relationId && !!meta.id && metaRelationIdOf(meta.id) === relationId)),
     );
     if (!labelMatch) {
       const allowedLabels = matchingMetaEdges
