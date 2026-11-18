@@ -2,7 +2,7 @@
 
 What to build next for the guided tutorials: which tutorials, which concepts each has to cover,
 what the app has to be able to do first, and the checklists a step, a lesson and a whole tutorial
-have to pass. The reasoning behind the two existing tutorials is in `TUTORIAL_DIDACTICS.md`.
+have to pass. The didactic reasoning behind them is in `TUTORIAL_DIDACTICS.md`.
 
 ## Status
 

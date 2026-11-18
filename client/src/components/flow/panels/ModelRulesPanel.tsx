@@ -206,7 +206,8 @@ function ConditionEditor({ condition, onChange, onDelete, targetOptions, attribu
     });
   };
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-2">
+    <div className="flex items-start gap-2 rounded-md border bg-card p-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
       <Select value={sourceValue} onValueChange={changeSource}>
         <SelectTrigger className={`h-8 ${condition.relationship ? "w-[210px]" : "w-[140px]"}`}><SelectValue /></SelectTrigger>
         <SelectContent>
@@ -247,10 +248,11 @@ function ConditionEditor({ condition, onChange, onDelete, targetOptions, attribu
         <SelectContent>{operators.map((operator) => <SelectItem key={operator} value={operator}>{MODEL_RULE_OPERATOR_LABELS[operator]}</SelectItem>)}</SelectContent>
       </Select>}
       {!exists && needsValue(condition.operator) ? <>
-        <Input className="h-8 min-w-[100px] flex-1" value={condition.value ?? ""} placeholder="value" list={suggestions.length ? listId : undefined} onChange={(event) => onChange({ ...condition, value: event.target.value })} />
+        <Input className="h-8 min-w-[80px] flex-1" value={condition.value ?? ""} placeholder="value" list={suggestions.length ? listId : undefined} onChange={(event) => onChange({ ...condition, value: event.target.value })} />
         {suggestions.length ? <datalist id={listId}>{suggestions.map((option) => <option key={option} value={option} />)}</datalist> : null}
-      </> : <div className="flex-1" />}
-      <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={onDelete} aria-label="Remove this row"><Trash2 className="h-3.5 w-3.5" /></Button>
+      </> : null}
+      </div>
+      <Button type="button" size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={onDelete} aria-label="Remove this row"><Trash2 className="h-3.5 w-3.5" /></Button>
     </div>
   );
 }

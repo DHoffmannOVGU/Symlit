@@ -1,46 +1,64 @@
 # Symlit
 
 Symlit is a lightweight modeling workspace for systems engineering (MBSE) that runs in your
-browser. Instead of a fixed notation, you first define a **metamodel**: the types of things
-you care about and the relationships allowed between them. Then you build **models** from
-elements of those types on a diagram canvas, and Symlit checks them against the metamodel.
+browser. Instead of a fixed notation, you first define a **metamodel**: the types of things you
+care about and the relationships allowed between them. Then you build **models** from elements of
+those types, calculate with their attributes, and let **rules** tag elements and check the model.
 
-![Symlit diagram canvas](docs/images/symlit-quickstart-canvas.jpg)
+![A model of an espresso machine in Symlit: typed elements, relationships, and tags given by rules](docs/images/symlit-model.png)
 
-Symlit runs entirely on your own machine: one Node.js process with an embedded database,
-no account, no cloud service, and no external requests unless you turn on the optional
-AI assistant.
+Symlit runs entirely on your own machine: one Node.js process with an embedded database, no
+account, no cloud service, and no external requests unless you turn on the optional AI assistant.
 
 ## Features
 
-- **Metamodels:** define types of seven kinds (Object, Behavior, Concern, Performer, Need,
-  Event, Capability) and connect them with six relationships (Association, Aggregation,
-  Composition, Generalization, Dependency, Realization). Types have attributes of six kinds
-  (text, number with a unit, yes/no, date, list, and calculated by a formula), a style (icon,
-  colour, shape, border), and inherit attributes and allowed relationships through Generalization.
-- **Models** that use one or more metamodels: a searchable palette of all their types, and
-  only the relationships the metamodel allows.
-- **Several diagrams per project:** an element is stored once and can appear in several diagrams.
-- **Diagram editor** with auto layout, table view, undo/redo, rename on the card (F2),
-  screenshots and optional auto-save. A diagram changed elsewhere is never overwritten
-  unnoticed; you choose which version to keep.
-- **Validation and model rules:** Validate lists what does not fit the metamodel or your own
-  rules in a panel beside the canvas. Rules can also tag elements; tags show on the cards and
-  in the table. Damaged diagrams open in a guided recovery dialog.
-- **Patterns:** save a selection as a reusable pattern and insert it elsewhere; metamodels can
-  ship pattern libraries.
-- **Projects:** start empty, from a metamodel, or from a template (templates can bring their
-  metamodel along); duplicate a project; see when each was last edited.
-- **Import and export:** JSON project files (export, and import as a new project) and CSV
-  tables of elements and relationships.
-- **Six guided tutorials,** each built around one question and its own example: *Symlit basics*
-  (a delivery drone: the tool), *Production with PPR* (a shelf bracket: product, process,
-  resource and requirements tracing), *Calculate with attributes* (3D-printing quotes: attribute
-  types and formulas), *Classify and review* (a control cabinet: rules that tag, reviewed in the
-  table), *Structure and views* (an espresso machine: relationship kinds, Generalization, one
-  element in two diagrams) and *Reuse and variants* (sensor nodes: copies, pattern libraries, a
-  second metamodel, project files). Steps tick off when the model shows their result, each lesson
-  ends with one question, and the last lesson of each is done without step-by-step instructions.
+- **Your own metamodel.**
+  - Types come in seven kinds: Object, Behavior, Concern, Performer, Need, Event and Capability.
+  - Six relationship kinds connect them: Association, Aggregation, Composition, Generalization,
+    Dependency and Realization.
+  - Attributes come in eight kinds: text, number with a unit, yes/no, date, list, multiselect,
+    Derived Formula and Related Formula.
+  - Each type has a style: icon, colour, shape and border.
+  - Types inherit attributes and allowed relationships through Generalization.
+- **Models typed by one or more metamodels.** The palette lists all their types. Only the
+  relationships the metamodel allows are offered, and **Validate** shows what does not fit.
+- **Calculations.**
+  - A Derived Formula calculates from its own element:
+    `[price] - [total cost]`, with min, max, sum, avg, round, floor, ceil, abs and sqrt.
+  - A Related Formula calculates over the related elements, across all diagrams of the project:
+    `sum([mass] of "consists of" where [status] = "released")`.
+  - Totals over several levels come from formulas that read the related elements' own.
+  - Formulas follow renamed attributes and relationships.
+- **Model rules.** A rule is one line of text, or the same rule built with lists:
+  `for Machine where any of "consists of" has [lead time] > 30`.
+  - A rule either tags elements (on the cards and in the table) or reports an issue when you validate.
+  - Conditions can compare two values or calculations (`[total mass] > [max mass]`) and check
+    related elements.
+
+  ![The rules panel: each rule as text, the same rule in lists, and the live results](docs/images/symlit-rules.png)
+
+- **Diagrams.** A project can have several diagrams. An element is stored once and can appear in
+  several of them.
+- **Editing.**
+  - The editor has auto layout, undo/redo and rename on the card (F2).
+  - The table view shows attribute values, which can be edited there, and can be filtered by name or tag.
+  - You can take screenshots and turn on auto-save.
+  - A diagram changed elsewhere is never overwritten unnoticed: you choose which version to keep.
+  - Damaged diagrams open in a guided recovery dialog.
+- **Patterns.** Save a selection as a reusable pattern and insert it elsewhere. Metamodels can ship
+  pattern libraries.
+- **Projects.** Start empty, from a metamodel, or from a template (a template can bring its
+  metamodel along). Projects can be duplicated, exported and imported as JSON files, and exported
+  as CSV tables.
+- **Six guided tutorials.** Each is built around one question and its own example:
+  - *Symlit basics*: a delivery drone.
+  - *Production with PPR*: a shelf bracket.
+  - *Calculate with attributes*: 3D-printing quotes.
+  - *Classify and review*: a control cabinet.
+  - *Structure and views*: an espresso machine.
+  - *Reuse and variants*: sensor nodes.
+
+  Steps tick off when the model shows their result, and each lesson ends with a question.
 - **Optional AI metamodel assistant** (Google Gemini, bring your own API key).
 
 ## Quick start
@@ -54,9 +72,9 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5000. That's it: with no configuration, Symlit stores its data in an
-embedded PostgreSQL database ([PGlite](https://pglite.dev)) under `./data/`, and creates a
-demo project on first start. New to Symlit? Start the **Symlit basics** tutorial on the project list.
+Open http://localhost:5000. With no configuration, Symlit stores its data in an embedded
+PostgreSQL database ([PGlite](https://pglite.dev)) under `./data/` and creates a demo project on
+first start. New to Symlit? Start the **Symlit basics** tutorial on the project list.
 
 ### With a dedicated PostgreSQL server (Docker)
 
@@ -124,10 +142,6 @@ kept in [`docs/wiki/`](docs/wiki/Home.md) and published with `bash script/publis
 Version 0.1.0 is the first **local edition**: single-user and complete for everyday modeling.
 The [changelog](CHANGELOG.md) lists what changed, and the [backlog](docs/BACKLOG.md) what is
 known and planned (among others: saving your own templates and a SysML v2 textual export).
-
-Symlit began as a hosted app on Replit. The hosted features (accounts, team members and
-invitations, public share links) are deliberately not part of this repository; see
-[docs/MIGRATION_PLAN.md](docs/MIGRATION_PLAN.md) for the background.
 
 ## License
 

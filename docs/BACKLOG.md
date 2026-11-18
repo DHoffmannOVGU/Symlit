@@ -1,8 +1,7 @@
-# Backlog: findings to tackle later
+# Backlog
 
-Things noticed while moving Symlit off Replit that are not fixed yet. Each entry says
-where it is and why it matters. Fixed items move to the "Done" list at the bottom with the
-commit that fixed them.
+Known issues and planned work. Each entry says where it is and why it matters. What has been
+done is in the [changelog](../CHANGELOG.md) and the git history.
 
 ## Open
 
@@ -34,7 +33,7 @@ commit that fixed them.
   only exist to map known errors to 4xx. They could become error classes with a `status`. Express 5 would make
   the wrapper unnecessary.
 - **The save conflict check is not atomic.** The revision is compared just before the transaction, which is fine
-  for one user; a hosted edition should compare inside it (or lock the view row).
+  for one user; with several users it should compare inside it (or lock the view row).
 - **`updated_at` misses some writes.** Saving a pattern and inserting an element through
   `POST /api/views/:viewId/nodes/:nodeId/insert` do not mark the project as edited.
 
@@ -72,134 +71,8 @@ commit that fixed them.
   offers it. A slow second click on the name is the usual pointer gesture; it was left out because a click on a
   selected element followed by Delete would then edit the name instead of deleting the element.
 - **Project card actions appear on hover only** (edit, delete), and sit next to each other.
-- **Toolbar labels disappear below 1280 px**, leaving icon-only buttons (UX review O2 fixed this for wide screens only).
+- **Toolbar labels disappear below 1280 px**, leaving icon-only buttons.
 - **Sidebar header.** "Local user" with a green dot carries no information in a single-user app, and the project
   name is cut off there while the breadcrumb beside it shows it.
 - **No whole-workspace backup.** Export and import are per project; backing up everything means one export per
   project or copying the data directory.
-
-## Done
-- Four more guided tutorials, each with its own example (`docs/ux/TUTORIAL_ROADMAP.md`): Calculate with attributes (print jobs: attribute types, formulas, a rule on a calculated value), Classify and review (a control cabinet: tags, combined conditions, rules in a metamodel, the table), Structure and views (an espresso machine: relationship kinds, Generalization, one element in two diagrams) and Reuse and variants (sensor nodes: type styles, copies, pattern libraries, a second metamodel, project files). The tutorial system grew with them: steps can check attribute types and formulas, relationship kinds and names, tags, rules' conditions, the table filter, the open diagram and the project list; steps can happen in a named diagram, on the project list or in a copy of the tutorial's model; a tutorial can bring more than two projects; a save step completes however the save was started; finished tutorials are remembered. The project list offers the tutorials as compact cards.
-- Related Formulas: attributes calculated over related elements, `sum([mass] of "consists of" where [status] =
-  "released")`, one step along the relationships of all the project's diagrams (`shared/related-formula.ts`). The
-  editor calculates them live over the saved project and the open diagram (`RelatedCalculationProvider`), the
-  server for exports and `GET /api/projects/:id/graph`; calculated values are left out of the unsaved-changes
-  signature and of the diagram revision, so they never count as an edit or a conflict. `where` compares as model
-  rules do (`shared/value-comparison.ts`, now used by both). References are stored by id like a Derived Formula's
-  (`storeRelatedFormula`/`displayRelatedFormula`): own attributes always, related elements' attributes when they
-  share one id (copied from one type), otherwise by name. Relationship names are stored as `of "rel:<id>"` and
-  matched by the metamodel relationship a model relationship records (`data.relationId`, set from Symlit's
-  suggestion, kept until its name or kind is changed or it is reversed); older relationships get it recorded at
-  start (`server/services/relationship-links.ts`), and exports link the rest the way validation matches.
-  Validation accepts a relationship by the metamodel relationship it records as well as by its label. Saving a
-  renamed metamodel relationship renames the model relationships that record it, in the same transaction
-  (`syncFlow`); relationships that do not record it yet are linked first, while the old name still fits them.
-- Multiselect attributes: several of a type's options per element, stored as a JSON array of strings
-  (`shared/attribute-values.ts`), editable in the element editor and the table; rules compare each chosen option.
-  Enter in a list's "Add option" field no longer closes the attribute editor.
-- Formula functions: `min`, `max`, `sum`, `avg`, `round` (to decimals), `floor`, `ceil`, `abs`, `sqrt`. The
-  language is parsed and calculated in one place (`shared/formula.ts`), for the editor and the tutorial checks.
-- Formulas: a minus sign after `*` or `/` was applied wrongly; an empty input made a formula count it as zero or blocked the editor, and now means "not calculated yet"; calculated values follow their inputs in the table and for new elements (they were refreshed only by the editor); the syntax is in the help. Elements inherit the attributes of the types their type specializes (`client/src/lib/type-attributes.ts`), as the wiki said they did.
-- Showing an existing element in a diagram stored its placement at once, so the editor's revision was outdated and the next save was refused as a conflict. The insert returns the new revision (`server/routes/flow.ts`, `useCanvasInsertion.ts`; `e2e/local-workspace.spec.ts`).
-- Saving a diagram with an element created since it was opened reset the undo history: the signature compared after the save depended on key order, which the database does not keep (`diagram-serialization.ts`). Found by a browser test that failed on CI only.
-- The canvas reported its state to the tutorial coach on every render, and the page rendered again on each report; it reports changes only now.
-- Model rules are text (`shared/rule-text.ts`): `for <type> where <condition>`, on the formula language
-  (`formulaReader` in `shared/formula.ts` is shared), with comparisons of two values, `not`, and phrases over
-  related elements (`any of` / `all of` / `none of` … `where` … `has`). A rule stores its condition as
-  `expression` (attributes `[attr:<id>]`, relationships `"rel:<id>"`, types `"type:<target>"` where a name stands
-  for one; `storeRuleCondition` / `displayRuleCondition`); `targetType` stays a field. Rules saved with the old
-  `condition` structure are read through `ruleFromModelCondition`. The rules panel keeps text and lists in step:
-  the lists are derived from the text (`builderFromRule`) and write it back (`ruleFromBuilder`); what they cannot
-  show is edited as text. Rules are evaluated over the project's graph (`shared/rule-evaluation.ts`, the
-  `ruleGraph` of `RelatedCalculationProvider`), so connected conditions see all diagrams. Project import gives
-  relationships new ids and rewrites the `"rel:<id>"` of formulas and rules and the recorded `relationId`.
-- The importer rewires rules that target one type of a metamodel (`node:<id>`), and an element shown in several diagrams of a template keeps its data.
-- The table shows the tags rules give and can be filtered by them.
-- A second guided tutorial, Production with PPR (`shared/tutorial-ppr.ts`, `server/templates/tutorial-ppr.json`): product, process and resource with requirements traced to what satisfies them. Tutorials are now a list (`shared/tutorial.ts`): each has its own template, lessons, question and project names; the coach, the progress logic, the start cards and the API (`/api/tutorial/:tutorial`) take the tutorial as a parameter. The coach stays on the right and gets shorter while validation results are open, so the sidebar stays usable; on the left it stays above the sidebar's bottom buttons.
-- The guided tutorial was redesigned as a lesson rather than a feature tour (`docs/ux/TUTORIAL_DIDACTICS.md`): six lessons around one question, steps that complete when the model shows their result (the canvas reports the open diagram to the coach), a model that starts with one gap and the rule that finds it, an explanation after every step, one question per lesson, skipped steps counted apart, a last lesson without step-by-step instructions, and "start over" with fresh projects. The coach moves aside while an editor, the rules panel, the validation results or the table is open, and stays usable next to an open dialog. Rule issues now name their element.
-- Project creation: two steps (start from an empty metamodel, an empty model or a template; then only the choices that apply), an empty model can be based on a metamodel (also from the metamodel's card), empty projects get a first diagram and open on it, the confirmation names metamodels a template brings, and projects can be duplicated (the copy keeps using the same metamodels).
-- Saving a diagram that contained a relationship id already used in another diagram failed with a 500 that showed the database's constraint error. It answers 400 with what to do; unexpected save errors no longer pass database messages to the browser.
-- In narrow windows the header pushed the save state and the Save button out of view. The names on the left and the metamodel selector give way now; the save state keeps its mark and drops its words.
-- Renaming an element needed the editor sheet and Apply. F2 renames the selected element on its card (Enter confirms, Escape cancels, one undo step).
-- Diagrams and patterns were listed without a defined order; they come in creation order.
-- The project list remembers its sort choice.
-- A request with an id that is not a number (`GET /api/projects/abc`) ended the server process: Express 4 does not catch errors from async handlers, and the id went to the database unchecked. Async route errors now reach the error handler and impossible ids answer 404 before any query (`server/http-guards.ts`).
-- Any website could write to the workspace: form posts need no CORS preflight and the server read them, and nothing checked `Origin` or `Host` (DNS rebinding gave read access too). Form bodies are no longer read, writes must come from the app's own origin, and only `localhost`, IP addresses and `SYMLIT_ALLOWED_HOSTS` are served.
-- Export was one-way. `POST /api/projects/import` and an Import button on the project list open a JSON export as a new project (with the metamodels it brings).
-- Saving a diagram overwrote whatever was stored, so a second tab, or a shared element edited in another diagram, was silently reverted. Diagrams have a revision; an outdated save answers 409 and the editor asks which version to keep (`e2e/save-conflict.spec.ts`).
-- Cached diagrams were never refreshed after a save: switching to another diagram and back within 30 s showed the diagram from before the save.
-- Deleting a metamodel that other projects use gave no warning; the dialog now names them and says what they lose.
-- `/project/1/view/3` showed project 1's sidebar around a diagram of another project. Such addresses, and missing projects, now redirect with a notice.
-- Project cards were `div role="link"`; they are real links now (new tab, middle click). Projects record `updated_at` (migration 0007); the list shows "Edited …", sorts by it (or name, or creation) and the API returns a defined order. The three count tiles that repeated the filter counts are gone.
-- No error boundary: a render error left a blank page. There is a page-level one now with Reload and All projects.
-- The canvas toolbar's width was measured against the window, not the canvas, so it ran over undo/redo in narrow windows; the tutorial coach starts minimised in small windows.
-- The message for a damaged diagram told users to "contact support".
-- Project templates (`docs/decisions/project-templates.md`): templates are project files in the export format, shipped in `server/templates/`, and can be bundles (a model with its metamodels and patterns). The browser used to send each template's whole content to `POST /api/projects/starter`; it now picks a template by id. A new importer creates a file's projects with fresh ids and rewires references, so the tutorial is an ordinary template and its special id-preserving code is gone. Templates can show one element in several diagrams (previously refused). Every project created from a template records it; migration 0006 merges the two tutorial template ids into `tutorial`. The JSON export now also includes the referenced metamodels' patterns.
-- Patterns follow the decisions in `docs/decisions/patterns.md` (tested in `server/patterns.test.ts`, `e2e/patterns.spec.ts`): single-element patterns; relationships and nesting must stay inside the pattern; types must be known when saving and inserting; copies record their origin; patterns of every referenced metamodel (whole chain) are offered insert-only. Inserting a pattern used to save on the server and reload the diagram, which dropped unsaved edits and the undo history; the server now only builds the copy and the editor adds it as one undo step. Pattern route errors no longer hang requests.
-- Element ids were `node_${Date.now()}`, and template ids were fixed strings: creating a template
-  twice failed with a 500, and two elements created in the same millisecond collided.
-- Elements were never deleted when removed from diagrams; they now are once they are in no
-  diagram, and a migration removes existing leftovers.
-- No foreign keys; deletes were hand-written. Foreign keys with cascades, indexes on lookup
-  columns, and a cleanup of rows that would violate them were added (migration 0002).
-- Timestamps were stored without a time zone; they are `timestamptz` now (existing values read as UTC).
-- The project list lived at `/api/users/:userId/projects` although the server knows the user;
-  it is `GET /api/projects` now, and project creation no longer requires a `userId`.
-- Unknown API routes answered `{error}` while everything else used `{message}`; all errors use `{message}` now.
-- Gemini model names were hard-coded; `GEMINI_MODEL` now accepts a comma-separated fallback list.
-- `server/routes.ts` (1,155 lines on Replit) is split into one module per area under `server/routes/`.
-- Project export logic lived in the route handler; it is `server/services/project-export.ts` now, with tests.
-- CSV export did not neutralise spreadsheet formulas (`=`, `+`, `-`, `@` at the start of a cell).
-- Exporting with referenced metamodels failed with "Project not found" when a referenced metamodel had been deleted.
-- `referencedMetamodels` was not validated: a project could reference itself, instance projects,
-  missing projects or another user's metamodel. New references are now checked.
-- `PATCH /api/projects/:id` accepted `userId`, so an update could change a project's owner.
-- `tsconfig.json` had no `target`, so type checking assumed ES3.
-- No linter: ESLint (TypeScript and React hook rules) now runs in CI. 78 unused imports, variables and props were removed.
-- 16 unused shadcn/ui components and 16 dependencies only they (or nothing) used were removed.
-- `client/index.html` loaded 25 Google font families and `index.css` loaded Inter and JetBrains Mono
-  from Google, so the "local" app called a third party on every page load. Fonts are bundled now,
-  and an e2e test checks that no request leaves the machine. The page also had no `<title>`.
-- Everything was one 1.76 MB JavaScript bundle; pages are lazy-loaded, so the project list needs about 510 kB.
-- The server stored any element `data`; it now requires an object with string text fields and a list of attributes (other fields stay open).
-- The built server only found its migrations when started from the repository root; it now also looks next to the entry point.
-- `DiagramCanvas.tsx` (2,813 lines) and `Sidebar.tsx` (2,015 lines) were split into hooks and components (1,378 and 640 lines now).
-- Method projects and internal views were removed (decision D5), including their data (migration 0003).
-- Resized elements lost their size on reload: the size was saved but only restored for internal-view containers. It is restored for every element now.
-- The product name was spelled "MBSE Lite", "SymLit" and "Symlit"; it is "Symlit" everywhere now.
-- The toolbar received `onAddNode`/`onAutoLayout` without buttons; there is now an Auto Layout button (undoable), and the unused add-node wiring is gone.
-- Export with referenced metamodels now follows references recursively (a metamodel building on another one).
-- Projects store the template they were created from (`template_id`); the old name-based quickstart detection is gone.
-- Page zoom is allowed again; gestures on the canvas still pan/zoom the diagram only.
-- The demo project's relationship connects proper side handles.
-- Every diagram containing a relationship counted as changed right after opening (the saved baseline ignored load-time defaults), which triggered needless "unsaved changes" prompts. Fixed.
-- Switching directly between an instance model and a metamodel left the sidebar blank (the tab state was reused with values the other project type does not have). Fixed.
-- The old single-project quickstart was replaced by the guided tutorial.
-- Auto layout multiplied all coordinates by 6 and assumed 200x100 cards, so diagrams spread out far; it now uses dagre with the real element sizes, keeps side-connected elements in one row, and stays where the diagram was. `entitree-flex` was removed.
-- The export dialog now closes after a successful download (and stays open on errors).
-- All React hook dependency warnings are fixed; `npm run lint` reports none.
-- `useDiagramCanvas` computed per-element debug info that was never shown; it now only keeps the owning project per element (used to mark elements from referenced projects).
-- Sidebar components spelled out long inferred types; they are named in `sidebar-parts/types.ts` now (`FlowQuery`, `PaletteItem`, `NodeMeta`, …).
-- Drawing relationships was unreliable, especially with connections in several directions: each side had a source and a target handle stacked on the same spot, hidden until hover and shifted by CSS, so drags started on the wrong handle or dropped on none (4–5 of 8 test connections registered). Elements now have one handle per side (`top`/`right`/`bottom`/`left`) in React Flow's loose connection mode; old handle ids are mapped on load (`normalizeHandleId`). `e2e/edge-handles.spec.ts` draws all directions both ways.
-- New metamodel relationships got React Flow's generated id instead of a UUID.
-- `DiagramCanvas.tsx` was ~1,300 lines of wiring (about 290 values passed by hand between 20 hooks). Editor state moved into a per-diagram Zustand store and a model context; hooks and connected components read them directly. It is ~500 lines now.
-- Undo history was shared across diagrams: undo right after switching diagrams could bring back the previous diagram's elements. History now resets when a diagram loads.
-- On an empty diagram, React Flow's fit-to-view zoomed onto the first element dropped in, so a second element dropped quickly could land off-screen. The canvas now only fits on mount when the diagram already has elements.
-- Undo after creating an element from the "drag a relationship onto empty canvas" menu brought back the temporary placeholder element.
-- The tutorial browser test failed locally in the full suite (CI's retries hid it): skipping a step that navigates briefly hid the skip button and ended the loop early.
-- The diagram editor chunk was 1,155 kB: `import * as Icons from "lucide-react"` (to look icons up by name) bundled every icon. A registry (`client/src/lib/node-icons.ts`) holds the names elements can use, with a test; the attribute panels, model rules panel, AI assistant, edit-view dialog and screenshot library load on first use. It is 542 kB now.
-- ELK was evaluated for Auto Layout and not adopted; see the decision record.
-- The browser bundled the ORM (`drizzle-orm`, `drizzle-zod`) because the shared API contract used table-generated input schemas. Those, the model-rule schemas and the enums now live in `shared/contracts.ts` without database imports, checked against the tables by `contracts.test.ts`. First load: 258 → 221 kB.
-- Auto Layout's engine (dagre) loads on first use (42 kB); the editor chunk is 498 kB.
-- The model rules panel and AI assistant read the diagram store and model instead of receiving the graph as props.
-- Relationship data was unchecked (`z.any()`). It now has one shared definition (`shared/relationships.ts`): saving requires a known type, side handles and correctly typed known fields; the server stores the canonical form on every write path (diagram save, starter/tutorial projects, patterns). Migration 0005 normalised stored relationships (unknown types → association, old handle ids → sides, `data.edgeType` mirrors the column, wrongly typed fields dropped) and a test checks every cleaned row passes the save checks.
-- Saved patterns lost their relationship types: the client did not send them and the server stored every pattern relationship as an association. Fixed, with a test.
-- Pattern elements' data was accepted unchecked; it uses the same schema as diagram elements now.
-- Relationships read model-rule style fields (`ruleStrokeWidth` etc.) that nothing ever wrote; removed.
-- `useDiagramCanvas` (585 lines) was split into pure load/save conversion (`diagram-serialization.ts`, with a round-trip test) and `useDiagramLoading`, `useDiagramSaving`, `useLayoutActions`, `useAddElement`; three unused exports were removed.
-- `useEdgeCreation` (509 lines) was split into pure helpers (`relationship-defaults.ts`, tested), `useConnectElements` and `useDropOnCanvas`. Two unused parameters were removed.
-- Drawing a relationship in a metamodel recorded no undo step, so it could not be undone. Fixed; the relationship browser test now undoes and redoes one.
-- `no-explicit-any` was off. It is on now (tests excepted). The 18 remaining `any`s were replaced with real types, and 20 `node.data as unknown as NodeData` double casts were removed by typing the attribute panel and metamodel parts with `DiagramNode`. The Gemini response is parsed with a schema (an unreadable response now gives a clear error instead of a 500).
-- Project create/update/starter accepted `templateId` from clients, so any project could be marked as a tutorial project (and then deleted by "Remove tutorial"); updates could also switch a project between metamodel and instance. Both are server-controlled now.
-- Starter projects skipped the referenced-metamodel check that normal project creation does, so they could reference another user's project or an instance model. They are checked now.
-- Auto Layout now also re-attaches every relationship to the sides of its elements that face each other (decided: tidying connections is part of Auto Layout, the one-click way to a clean diagram). On the sample diagrams every relationship's handles face each other afterwards, with shorter lines and fewer crossings; the quality test enforces it.
