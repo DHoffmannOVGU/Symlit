@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createProjectWithViews } from "./support/create-project";
-import { addElementOfType, confirmSuggestion, connect } from "./support/tutorial";
+import { addElementOfType, confirmSuggestion, connect, openRelationship, saveRelationship } from "./support/tutorial";
 
 // Full-stack: a Related Formula calculates over the elements an element is
 // related to, across all diagrams of the project, and follows unsaved changes.
@@ -265,4 +265,143 @@ test("defined on a type, a Related Formula is checked there and calculated by ea
   const modelFlow = await (await request.get(`/api/views/${instViewId}/flow`)).json();
   const drawn = modelFlow.edges.find((edge: { data: { relationId?: string; label?: string } }) => edge.data.label === "contains");
   expect(drawn?.data.relationId).toBe(typeFlow.edges[0].id);
+});
+
+test("renaming a relationship: in the metamodel the formula follows it, in the model it leaves the formula", async ({ page, request }) => {
+  const type = (id: string, x: number, attributes: ReturnType<typeof attribute>[] = []) => ({
+    id,
+    type: "partdef",
+    position: { x, y: 80 },
+    data: { label: id, type: "Object", attributes },
+  });
+  const metamodel = await createProjectWithViews(request, {
+    name: "Machine types for renames",
+    projectType: "metamodel",
+    views: [
+      {
+        name: "Types",
+        nodes: [type("Machine", 0), type("Part", 400, [attribute("mass", "")])],
+        edges: [consistsOf("machine-part", "Machine", "Part")],
+      },
+    ],
+  });
+  const { project: meta, firstViewId: metaViewId } = await metamodel.json();
+  const typesFlow = await (await request.get(`/api/views/${metaViewId}/flow`)).json();
+  const typeIdOf = (label: string) =>
+    `mm:${meta.id}:${typesFlow.nodes.find((node: { data: { label: string } }) => node.data.label === label).id}`;
+  const element = (id: string, typeLabel: string, x: number, y: number, attributes: ReturnType<typeof attribute>[] = []) => ({
+    id,
+    type: "part",
+    position: { x, y },
+    data: { label: id, type: typeLabel, typeId: typeIdOf(typeLabel), attributes },
+  });
+  const model = await createProjectWithViews(request, {
+    name: "Machine M1 for renames",
+    projectType: "instance",
+    referencedMetamodels: [meta.id],
+    views: [
+      {
+        name: "Structure",
+        nodes: [
+          element("M1", "Machine", 0, 120),
+          element("P1", "Part", 420, -60, [attribute("mass", "2")]),
+          element("P2", "Part", 420, 300, [attribute("mass", "3")]),
+          element("P3", "Part", 0, 520, [attribute("mass", "4")]),
+        ],
+        edges: [],
+      },
+    ],
+  });
+  const { project: inst, firstViewId: instViewId } = await model.json();
+
+  // The parts are related through the editor, with Symlit's suggestion.
+  await page.goto(`/project/${inst.id}/view/${instViewId}`);
+  await connect(page, "M1", "right", "P1", "left");
+  await confirmSuggestion(page, "consists of");
+  await connect(page, "M1", "bottom", "P2", "left");
+  await confirmSuggestion(page, "consists of");
+
+  // Two Related Formulas on the machine, written in the editor.
+  await openElement(page, "M1");
+  const dialog = page.getByTestId("attribute-editor-dialog");
+  const addRelated = async (name: string, formula: string, expected: string) => {
+    await page.getByTestId("button-add-attribute").click();
+    await dialog.locator('[data-testid^="input-attr-name-"]').fill(name);
+    await dialog.locator('[data-testid^="select-attr-type-"]').click();
+    await page.getByRole("option", { name: "Related Formula", exact: true }).click();
+    await dialog.locator('[data-testid^="input-attr-formula-"]').fill(formula);
+    await expect(dialog.locator('[data-testid^="related-formula-result-"]')).toContainText(`Calculated value: ${expected}`);
+    // Linked: nothing in it is matched by name.
+    await expect(dialog.locator('[data-testid^="related-formula-by-name-"]')).toHaveCount(0);
+    await page.getByTestId("button-attribute-done").click();
+  };
+  await addRelated("parts", 'count(of "consists of")', "2");
+  await addRelated("parts mass", 'sum([mass] of "consists of")', "5");
+  await page.getByTestId("button-save-attributes").click();
+  await page.getByTestId("button-save-diagram-header").click();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+
+  // Stored by the metamodel relationship's id, which the drawn relationships record too.
+  const relationId = typesFlow.edges[0].id;
+  const saved = await (await request.get(`/api/views/${instViewId}/flow`)).json();
+  const machineData = saved.nodes.find((node: { data: { label: string } }) => node.data.label === "M1").data;
+  expect(machineData.attributes.map((item: { formula: string }) => item.formula)).toEqual([
+    `count(of "rel:${relationId}")`,
+    `sum([attr:mass] of "rel:${relationId}")`,
+  ]);
+  expect(saved.edges.map((edge: { data: { relationId?: string } }) => edge.data.relationId)).toEqual([relationId, relationId]);
+
+  // The metamodel relationship is renamed in the metamodel's editor.
+  await page.goto(`/project/${meta.id}/view/${metaViewId}`);
+  await openRelationship(page);
+  await expect(page.getByTestId("input-edge-label")).toHaveValue("consists of");
+  await page.getByTestId("input-edge-label").fill("contains");
+  await saveRelationship(page);
+  await page.getByTestId("button-save-diagram-header").click();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+
+  // In the model, the formulas show the new name and keep counting both parts,
+  // although the relationships drawn before still say "consists of".
+  await page.goto(`/project/${inst.id}/view/${instViewId}`);
+  await page.getByTestId("button-toolbar-table").click();
+  const machineCell = (name: string) =>
+    page.locator('[data-testid="table-element-row"][data-element-name="M1"]').getByTestId(`table-attribute-${name}`);
+  await expect(machineCell("parts")).toContainText("2");
+  await expect(machineCell("parts mass")).toContainText("5");
+  await page.getByTestId("button-toolbar-graph").click();
+  await openElement(page, "M1");
+  const panel = page.getByTestId("node-attribute-panel");
+  await panel.getByTestId("button-attr-open-0").click();
+  await expect(dialog.locator('[data-testid^="input-attr-formula-"]')).toHaveValue('count(of "contains")');
+  await page.getByTestId("button-attribute-cancel").click();
+  await panel.getByTestId("button-attr-open-1").click();
+  await expect(dialog.locator('[data-testid^="input-attr-formula-"]')).toHaveValue('sum([mass] of "contains")');
+  await page.getByTestId("button-attribute-cancel").click();
+  await page.getByTestId("button-cancel-attributes").click();
+
+  // A part related now gets the new name, "contains". Old and new relationships count together:
+  // matched by the old name or by the new one, either would be left out.
+  await connect(page, "M1", "bottom", "P3", "top");
+  await confirmSuggestion(page, "contains");
+  await page.getByTestId("button-toolbar-table").click();
+  await expect(machineCell("parts")).toContainText("3");
+  await expect(machineCell("parts mass")).toContainText("9");
+
+  // Renamed in the model, a relationship is no longer the metamodel's: it leaves the formulas.
+  await page.getByTestId("button-toolbar-graph").click();
+  await openRelationship(page);
+  await expect(page.getByTestId("input-edge-label")).toHaveValue("contains");
+  await page.getByTestId("input-edge-label").fill("holds");
+  await saveRelationship(page);
+  await page.getByTestId("button-toolbar-table").click();
+  await expect(machineCell("parts")).toContainText("2");
+  await expect(machineCell("parts mass")).toContainText("5");
+  // Named as the metamodel names it now, it is that relationship again and counts.
+  await page.getByTestId("button-toolbar-graph").click();
+  await openRelationship(page);
+  await page.getByTestId("input-edge-label").fill("contains");
+  await saveRelationship(page);
+  await page.getByTestId("button-toolbar-table").click();
+  await expect(machineCell("parts")).toContainText("3");
+  await expect(machineCell("parts mass")).toContainText("9");
 });
