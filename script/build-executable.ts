@@ -47,9 +47,11 @@ async function main() {
     minify: true,
     define: {
       __SYMLIT_VERSION__: JSON.stringify(pkg.version),
-      // PGlite asks for its own location; the executable hands it the files instead.
-      "import.meta.url": '"file:///symlit/"',
+      // ESM-only code asks for its own location; give it the executable's
+      // real path (absolute on every platform). PGlite gets its files handed over.
+      "import.meta.url": "__symlitModuleUrl",
     },
+    banner: { js: 'var __symlitModuleUrl=require("node:url").pathToFileURL(__filename).href;' },
     // Optional native addon of `pg`, and the dev-only Vite middleware.
     external: ["pg-native", "./vite"],
     logLevel: "warning",
