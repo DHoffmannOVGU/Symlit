@@ -39,6 +39,8 @@ export let db: Database = uninitialised;
  */
 export function resolveMigrationsDir(
   candidates: string[] = [
+    // The executable unpacks its migrations and says where.
+    ...(process.env.SYMLIT_MIGRATIONS_DIR ? [process.env.SYMLIT_MIGRATIONS_DIR] : []),
     path.resolve(process.cwd(), "migrations"),
     ...(process.argv[1]
       ? [path.resolve(path.dirname(process.argv[1]), "..", "migrations")]
@@ -53,11 +55,25 @@ export function resolveMigrationsDir(
 
 export const MIGRATIONS_DIR = resolveMigrationsDir();
 
+/**
+ * PGlite normally loads its WebAssembly files from its own package folder.
+ * The executable has no package folder and hands them over instead.
+ */
+export interface PgliteAssets {
+  wasmModule: WebAssembly.Module;
+  fsBundle: Blob;
+}
+let pgliteAssets: PgliteAssets | undefined;
+export function setPgliteAssets(assets: PgliteAssets) {
+  pgliteAssets = assets;
+}
+
 export async function openDatabase(
   config: DatabaseConfig,
   options: { migrationsDir?: string; runMigrations?: boolean } = {},
 ): Promise<DatabaseHandle> {
-  const migrationsFolder = options.migrationsDir ?? MIGRATIONS_DIR;
+  // Resolved per call: the executable sets SYMLIT_MIGRATIONS_DIR after this module loads.
+  const migrationsFolder = options.migrationsDir ?? resolveMigrationsDir();
   const runMigrations = options.runMigrations ?? true;
 
   if (config.driver === "postgres") {
@@ -71,7 +87,7 @@ export async function openDatabase(
   const { drizzle: drizzlePglite } = await import("drizzle-orm/pglite");
   const { migrate: migratePglite } = await import("drizzle-orm/pglite/migrator");
   if (config.dataDir) await mkdir(config.dataDir, { recursive: true });
-  const client = config.dataDir ? new PGlite(config.dataDir) : new PGlite();
+  const client = new PGlite(config.dataDir ?? undefined, { ...pgliteAssets });
   const database = drizzlePglite(client, { schema });
   if (runMigrations) await migratePglite(database, { migrationsFolder });
   return {

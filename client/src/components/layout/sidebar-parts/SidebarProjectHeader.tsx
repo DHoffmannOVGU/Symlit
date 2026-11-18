@@ -8,6 +8,7 @@ export interface SidebarProjectHeaderProps {
   projectName: string | undefined;
   username: string | undefined;
   visibleRole: string | null;
+  signOutUrl?: string | null;
 }
 
 export function SidebarProjectHeader({
@@ -15,6 +16,7 @@ export function SidebarProjectHeader({
   projectName,
   username,
   visibleRole,
+  signOutUrl,
 }: SidebarProjectHeaderProps) {
   return (
     <SidebarHeader className="p-4 border-b border-white/10 bg-[#1e293b]">
@@ -45,6 +47,11 @@ export function SidebarProjectHeader({
                   <span className="ml-auto rounded border border-white/10 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-white/60">
                     {visibleRole}
                   </span>
+                ) : null}
+                {signOutUrl ? (
+                  <a href={signOutUrl} className="ml-auto text-[10px] text-white/60 hover:text-white">
+                    Sign out
+                  </a>
                 ) : null}
               </div>
             </SidebarHeader>

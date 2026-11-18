@@ -13,7 +13,8 @@
     "test:postgres": "TEST_DATABASE_URL=${TEST_DATABASE_URL:-postgres://symlit:symlit@localhost:5432/postgres} npm test",
     "test:e2e": "playwright test",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx script/migrate.ts"
+    "db:migrate": "tsx script/migrate.ts",
+    "build:exe": "tsx script/build-executable.ts"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.8",
@@ -79,6 +80,7 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^15.15.0",
     "postcss": "^8.4.47",
+    "postject": "^1.0.0-alpha.6",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.20.5",
     "typescript": "5.6.3",

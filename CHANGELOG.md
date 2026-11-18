@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Single-file executables for Windows, macOS and Linux, built and attached to every
+  release (`npm run build:exe` locally). Data is stored in the per-user data folder.
+- Pluggable sign-in: `server/auth-provider.ts` returns an `AuthProvider`, so a hosted
+  deployment can add its own login without changing the rest of the server. The local
+  edition is unchanged.
+
 ## v0.1.0 – first local edition
 
 Symlit runs entirely on your machine: one Node.js process serves the app and

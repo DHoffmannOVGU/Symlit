@@ -3,7 +3,8 @@ import fs from "fs";
 import path from "path";
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  // The executable unpacks the client elsewhere and says where.
+  const distPath = process.env.SYMLIT_STATIC_DIR ?? path.resolve(__dirname, "public");
   if (!fs.existsSync(distPath)) {
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`,

@@ -1,0 +1,66 @@
+name: Release executables
+
+# Builds a single-file executable per platform and attaches it to the
+# GitHub release. Runs when a release is published, or by hand.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+  # Checks the packaging on all platforms when it changes (nothing is published).
+  pull_request:
+    paths:
+      - script/build-executable.ts
+      - server/executable/**
+      - server/start.ts
+      - .github/workflows/release.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Executable (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: windows-x64, os: windows-latest }
+          - { name: macos-arm64, os: macos-latest }
+          - { name: macos-x64, os: macos-15-intel }
+          - { name: linux-x64, os: ubuntu-latest }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Node 22 is embedded in the executable.
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build:exe
+      - name: Smoke test
+        shell: bash
+        env:
+          SYMLIT_NO_BROWSER: "1"
+          SYMLIT_DATA_DIR: ${{ runner.temp }}/symlit-data
+          PORT: "5077"
+        run: |
+          exe=$(ls release/symlit-*)
+          "./$exe" > smoke.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:5077/api/config; then ok=1; break; fi
+            sleep 2
+          done
+          cat smoke.log
+          test "$ok" = 1
+          curl -sf http://127.0.0.1:5077/ | grep -q "<title>Symlit</title>"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: symlit-${{ matrix.name }}
+          path: release/symlit-*
+      - name: Attach to the release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ github.event.release.tag_name }}" release/symlit-* --clobber

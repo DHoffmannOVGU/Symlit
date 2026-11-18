@@ -72,7 +72,7 @@ export function Sidebar({
   onRemoveReferencedMetamodel,
   metamodelSetup,
 }: SidebarProps) {
-  const { username, role, capabilities, authKind } = useAuth();
+  const { username, role, capabilities, authKind, signOutUrl } = useAuth();
   const visibleRole = workspaceRole ?? role;
   const canEditMetamodels =
     capabilities.canEditMetamodels || visibleRole === "admin" || visibleRole === "architect";
@@ -451,6 +451,7 @@ export function Sidebar({
           username={username}
           // Roles mean nothing in the single-user local edition; don't show one there.
           visibleRole={authKind === "local" ? null : visibleRole}
+          signOutUrl={signOutUrl}
         />
 
         <SidebarTabsContent

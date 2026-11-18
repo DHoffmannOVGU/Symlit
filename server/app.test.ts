@@ -27,11 +27,11 @@ let localUserId: number;
 
 before(async () => {
   database = await createTestDatabase();
-  const { httpServer, resolveLocalUser } = await createApp(config, { requestLogging: false });
+  const { httpServer, auth } = await createApp(config, { requestLogging: false });
   await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", resolve));
   baseUrl = `http://127.0.0.1:${(httpServer.address() as AddressInfo).port}`;
   closeServer = () => new Promise((resolve) => httpServer.close(() => resolve()));
-  localUserId = (await resolveLocalUser()).id;
+  localUserId = (await auth.resolveSeedOwner!()).id;
 });
 
 after(async () => {
