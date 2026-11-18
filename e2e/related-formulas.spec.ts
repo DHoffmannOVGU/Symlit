@@ -359,10 +359,14 @@ test("renaming a relationship: in the metamodel the formula follows it, in the m
   await saveRelationship(page);
   await page.getByTestId("button-save-diagram-header").click();
   await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+  // The model's relationships made from it take the new name, and saving says so.
+  await expect(page.getByText("2 relationships in models now carry the new name.").first()).toBeVisible();
+  const relabeled = (await (await request.get(`/api/views/${instViewId}/flow`)).json()).edges;
+  expect(relabeled.map((edge: { data: { label: string } }) => edge.data.label)).toEqual(["contains", "contains"]);
 
-  // In the model, the formulas show the new name and keep counting both parts,
-  // although the relationships drawn before still say "consists of".
+  // In the model, the relationships and the formulas show the new name and count both parts.
   await page.goto(`/project/${inst.id}/view/${instViewId}`);
+  await expect(page.locator(".react-flow__edgelabel-renderer").getByText("contains", { exact: true })).toHaveCount(2);
   await page.getByTestId("button-toolbar-table").click();
   const machineCell = (name: string) =>
     page.locator('[data-testid="table-element-row"][data-element-name="M1"]').getByTestId(`table-attribute-${name}`);

@@ -579,7 +579,12 @@ export const api = {
       path: '/api/views/:viewId/sync',
       input: flowSyncInputSchema,
       responses: {
-        200: z.object({ success: z.boolean(), revision: z.string().nullable().optional() }),
+        200: z.object({
+          success: z.boolean(),
+          revision: z.string().nullable().optional(),
+          /** Model relationships that took the new name of a metamodel relationship this save renamed. */
+          relabeled: z.number().optional(),
+        }),
         400: errorSchemas.validation,
         404: errorSchemas.notFound,
         409: errorSchemas.validation,

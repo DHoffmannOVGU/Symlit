@@ -45,9 +45,8 @@ commit that fixed them.
 - **Related Formulas, next steps.** Model rules' conditions on connected elements still look only at the open
   diagram, while Related Formulas look at the whole project. `where type = "…"` matches the type's name, not
   its specializations. A reference inside an aggregate whose related elements have separate attributes of that
-  name stays matched by name (it is linked when they share one, from a type). After a metamodel relationship is
-  renamed, a model's older relationships keep their old label on the canvas (they are valid and count, but read
-  differently); relabelling them is not done. Paths of more
+  name stays matched by name (it is linked when they share one, from a type). Changing a metamodel relationship's
+  kind does not change the model relationships made from it (validation then reports them). Paths of more
   than one step, filters that compare with this element's own values, and a shortcut such as `of parts` for
   compositions are left out on purpose until it is clear how people write these.
 - **Flow mode is not reachable.** The canvas has a flow mode (start and end elements, ticks, playback), but
@@ -88,8 +87,9 @@ commit that fixed them.
   matched by the metamodel relationship a model relationship records (`data.relationId`, set from Symlit's
   suggestion, kept until its name or kind is changed or it is reversed); older relationships get it recorded at
   start (`server/services/relationship-links.ts`), and exports link the rest the way validation matches.
-  Validation accepts a relationship by the metamodel relationship it records as well as by its label, so a
-  rename in the metamodel does not make the model's older relationships invalid.
+  Validation accepts a relationship by the metamodel relationship it records as well as by its label. Saving a
+  renamed metamodel relationship renames the model relationships that record it, in the same transaction
+  (`syncFlow`); relationships that do not record it yet are linked first, while the old name still fits them.
 - Multiselect attributes: several of a type's options per element, stored as a JSON array of strings
   (`shared/attribute-values.ts`), editable in the element editor and the table; rules compare each chosen option.
   Enter in a list's "Add option" field no longer closes the attribute editor.

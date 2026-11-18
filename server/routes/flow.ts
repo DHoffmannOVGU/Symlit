@@ -2,7 +2,14 @@ import type { Express } from "express";
 import { z } from "zod";
 import { api } from "@shared/routes";
 import { storage } from "../storage";
-import { currentRevision, FlowConflictError, flowRevision, RelationshipIdTakenError } from "../services/flow-mutations";
+import {
+  currentRevision,
+  FlowConflictError,
+  flowRevision,
+  RelationshipIdTakenError,
+  renamedRelationships,
+} from "../services/flow-mutations";
+import { recordRelationshipLinks } from "../services/relationship-links";
 import { validateView } from "../services/model-validation";
 
 export function registerFlowRoutes(app: Express) {
@@ -46,10 +53,18 @@ export function registerFlowRoutes(app: Express) {
       const view = await storage.getView(viewId);
       if (!view) return res.status(404).json({ message: "View not found" });
       const input = api.flow.sync.input.parse(req.body);
-      const { revision } = await storage.syncFlow(viewId, input.nodes, input.edges, {
+      // Renaming a metamodel relationship renames the model relationships made from it. Those
+      // that do not record it yet (imported since the server started) are linked first, while
+      // the old name still fits them.
+      const project = await storage.getProject(view.projectId);
+      if (project?.projectType === "metamodel") {
+        const stored = await storage.getFlow(viewId);
+        if (renamedRelationships(stored.edges, input.edges).size > 0) await recordRelationshipLinks();
+      }
+      const { revision, relabeled } = await storage.syncFlow(viewId, input.nodes, input.edges, {
         baseRevision: input.baseRevision,
       });
-      res.json({ success: true, revision });
+      res.json({ success: true, revision, relabeled });
     } catch (err) {
       if (err instanceof z.ZodError) {
         res.status(400).json({ message: err.errors[0].message });

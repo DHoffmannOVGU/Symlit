@@ -62,7 +62,7 @@ export function useSyncFlow() {
         params: { viewId },
         body: { nodes, edges, ...(baseRevision ? { baseRevision } : {}) },
       }),
-    onSuccess: (_result, variables) => {
+    onSuccess: (result, variables) => {
       // Elements are shared between diagrams, and cached diagrams never go
       // stale on their own: without this, switching away and back showed the
       // diagram as it was before the save.
@@ -71,11 +71,15 @@ export function useSyncFlow() {
       void queryClient.invalidateQueries({ queryKey: [api.projects.graph.path] });
       // The project list shows and sorts by when a project was last edited.
       void queryClient.invalidateQueries({ queryKey: [api.projects.list.path] });
-      if (variables.quiet) return;
+      const relabeled = result?.relabeled ?? 0;
+      if (variables.quiet && relabeled === 0) return;
       toast({
         title: "Saved",
-        description: "Your diagram has been saved successfully.",
-        duration: 2000,
+        description:
+          relabeled > 0
+            ? `Your diagram has been saved. ${relabeled === 1 ? "1 relationship in models now carries" : `${relabeled} relationships in models now carry`} the new name.`
+            : "Your diagram has been saved successfully.",
+        duration: relabeled > 0 ? 4000 : 2000,
       });
     },
     onError: (error) => {

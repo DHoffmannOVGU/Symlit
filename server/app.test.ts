@@ -367,16 +367,52 @@ describe("views and diagrams", () => {
     assert.equal((await request("GET", `/api/views/${view.id}/flow`)).json.edges[0].data.relationId, relationId);
     assert.ok(again >= 0);
 
-    // The metamodel relationship is renamed; the model's relationship keeps its old label.
+    // Since the server started, a relationship was added that does not record its metamodel
+    // relationship yet (as an import would), and one with a name of its own.
+    const current = (await request("GET", `/api/views/${view.id}/flow`)).json;
+    const part = (id: string) => element(id, "Part", [{ id: "mass", name: "mass", type: "number", value: "1", unit: "" }]);
+    const relationship = (id: string, target: string, label: string) => ({
+      id: `lm${model.id}-${id}`,
+      source: `lm${model.id}-E1`,
+      target: `lm${model.id}-${target}`,
+      edgeType: "composition",
+      sourceHandle: null,
+      targetHandle: null,
+      data: { label, edgeType: "composition" },
+    });
+    const resaved = await request("POST", `/api/views/${view.id}/sync`, {
+      nodes: [...current.nodes, part("P2"), part("P3")],
+      edges: [...current.edges, relationship("e2", "P2", "consists of"), relationship("e3", "P3", "holds")],
+    });
+    assert.equal(resaved.status, 200, resaved.text);
+    assert.equal(resaved.json.relabeled, 0, "saving a model renames nothing");
+
+    // The metamodel relationship is renamed: the model's relationships made from it take the new
+    // name, the one added since included; the one with a name of its own keeps it.
     types.edges[0].data.label = "contains";
-    assert.equal((await request("POST", `/api/views/${typesView.id}/sync`, types)).status, 200);
+    const renamed = await request("POST", `/api/views/${typesView.id}/sync`, types);
+    assert.equal(renamed.status, 200, renamed.text);
+    assert.equal(renamed.json.relabeled, 2);
+    const labels = Object.fromEntries(
+      (await request("GET", `/api/views/${view.id}/flow`)).json.edges.map((edge: { id: string; data: { label: string } }) => [
+        edge.id.replace(`lm${model.id}-`, ""),
+        edge.data.label,
+      ]),
+    );
+    assert.deepEqual(labels, { e: "contains", e2: "contains", e3: "holds" });
+    // Saving the metamodel again without a rename relabels nothing.
+    assert.equal((await request("POST", `/api/views/${typesView.id}/sync`, types)).json.relabeled, 0);
     const exported = (await request("POST", `/api/projects/${model.id}/export`, { format: "json" })).json;
     const machine = exported.views[0].nodes.find((node: { data: { label: string } }) => node.data.label === "E1");
-    assert.equal(machine.data.attributes[0].value, "2");
-    // Validation knows it too: still labelled "consists of", the relationship is the renamed one.
+    // P1 and P2: the relationship named "holds" is not the metamodel's.
+    assert.equal(machine.data.attributes[0].value, "3");
+    // Validation finds the renamed relationships valid; only the one named "holds" is reported.
     const validated = await request("POST", `/api/views/${view.id}/validate`);
     assert.equal(validated.status, 200, validated.text);
-    assert.deepEqual(validated.json.issues, []);
+    assert.deepEqual(
+      validated.json.issues.map((issue: { id: string }) => issue.id),
+      [`lm${model.id}-e3`],
+    );
   });
 
   test("rejects edges whose endpoints are missing", async () => {
