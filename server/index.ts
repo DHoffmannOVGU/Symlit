@@ -1,4 +1,5 @@
 import { createApp } from "./app";
+import { recordRelationshipLinks } from "./services/relationship-links";
 import { loadConfig } from "./config";
 import { loadDotEnv } from "./env";
 import { initDatabase } from "./db";
@@ -20,6 +21,13 @@ async function main() {
   );
 
   const { app, httpServer, resolveLocalUser } = await createApp(config);
+  // Model relationships drawn before they recorded their metamodel relationship get it recorded once.
+  try {
+    const recorded = await recordRelationshipLinks();
+    if (recorded > 0) log(`linked ${recorded} relationships to their metamodel relationships`, "db");
+  } catch (error) {
+    console.error("Could not link relationships to their metamodel relationships:", error);
+  }
 
   if (config.seedDemo) {
     const owner = await resolveLocalUser();

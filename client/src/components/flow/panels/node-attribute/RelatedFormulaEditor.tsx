@@ -64,7 +64,7 @@ export function RelatedFormulaEditor({
   const context = formulaContext(nodeId ?? "", attributes, attr.id);
   // Shown by the attributes' names now, so a rename shows here.
   const formula = draft ?? displayRelatedFormula(attr.formula ?? "", context);
-  const unlinked = unlinkedRelatedReferences(attr.formula ?? "");
+  const unlinked = unlinkedRelatedReferences(attr.formula ?? "", context);
   const change = (text: string) => {
     onDraftChange(text);
     onStoredChange(storeRelatedFormula(text, context));
@@ -122,9 +122,9 @@ export function RelatedFormulaEditor({
       </div>
       {unlinked.length > 0 ? (
         <p className="text-[11px] leading-4 text-muted-foreground" data-testid={`related-formula-by-name-${index}`}>
-          By name: {unlinked.map((name) => `[${name}]`).join(", ")}. The related elements have separate attributes of
-          this name (or none are related yet), so it is matched by name and does not follow a rename. References to
-          attributes the related elements share, because they got them from one type, follow renames.
+          Matched by name, so a rename is not followed: {unlinked.join(", ")}. An attribute is linked when the related
+          elements share it (they got it from one type); a relationship when its name stands for one relationship of
+          the metamodel.
         </p>
       ) : null}
       <div className="rounded-md border bg-muted/20 px-3 py-2 text-sm" data-testid={`related-formula-result-${index}`}>

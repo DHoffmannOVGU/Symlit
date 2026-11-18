@@ -6,8 +6,10 @@ import {
   hasRelatedFormulas,
   isCalculatedAttribute,
   RelatedCalculator,
+  graphRelationshipOf,
+  linkRelationships,
+  metamodelRelationsOf,
   relatedFormulaContext,
-  relationshipNameOf,
   type CalculationResult,
   type RelatedFormulaContext,
   type GraphAttribute,
@@ -61,7 +63,7 @@ export const useRelatedCalculation = () => useContext(RelatedCalculationContext)
  * values are left out of the unsaved-changes signature).
  */
 export function RelatedCalculationProvider({ children }: { children: ReactNode }) {
-  const { projectId, viewId, projectType, availablePartDefNodes } = useDiagramModel();
+  const { projectId, viewId, projectType, availablePartDefNodes, relationEdges, parentMap } = useDiagramModel();
   // Types define the formula; their elements, in models, calculate it.
   const calculates = projectType === "instance";
   const nodes = useDiagramStore((state) => state.nodes);
@@ -91,10 +93,11 @@ export function RelatedCalculationProvider({ children }: { children: ReactNode }
     for (const node of nodes) elements.set(node.id, graphElementOf(node));
     const relationships: ProjectGraphRelationship[] = [
       ...graphQuery.data.relationships.filter((relationship) => relationship.viewId !== viewId),
-      ...edges.map((edge) => ({ source: edge.source, target: edge.target, name: relationshipNameOf(edge.data) })),
+      ...edges.map((edge) => graphRelationshipOf({ ...edge, edgeType: edge.type })),
     ];
-    return { elements: Array.from(elements.values()), relationships };
-  }, [edges, graphQuery.data, nodes, viewId]);
+    // Which metamodel relationship each one is, where it does not say: worked out as validation does.
+    return linkRelationships({ elements: Array.from(elements.values()), relationships }, relationEdges, parentMap);
+  }, [edges, graphQuery.data, nodes, parentMap, relationEdges, viewId]);
 
   const calculator = useMemo(() => (graph ? new RelatedCalculator(graph) : null), [graph]);
 
@@ -177,9 +180,16 @@ export function RelatedCalculationProvider({ children }: { children: ReactNode }
   const formulaContext = useCallback(
     (nodeId: string, attributes: NodeAttribute[], attributeId: string) => {
       if (!wanted) queueMicrotask(() => setWanted(true));
-      return relatedFormulaContext(graph, nodeId, attributes as GraphAttribute[], attributeId, knownAttributes);
+      const typeId = calculates ? nodes.find((node) => node.id === nodeId)?.data?.typeId : nodeId;
+      // In a metamodel the graph is the metamodel: its relationships are the ones a type's formula names.
+      const own = !calculates && graph ? metamodelRelationsOf(graph) : null;
+      return relatedFormulaContext(graph, nodeId, attributes as GraphAttribute[], attributeId, knownAttributes, {
+        relations: own?.relations ?? relationEdges,
+        parentMap: own?.parentMap ?? parentMap,
+        typeId: typeof typeId === "string" ? typeId : undefined,
+      });
     },
-    [graph, knownAttributes, wanted],
+    [calculates, graph, knownAttributes, nodes, parentMap, relationEdges, wanted],
   );
 
   const value = useMemo(

@@ -12,6 +12,12 @@ export interface UseCanvasElementActionsParams {
   selectedNodes: Node[];
 }
 
+
+/** Whether an edit gives a relationship another name or kind than it had. */
+const relationshipIdentityChanged = (before: CustomEdgeData, after: Partial<CustomEdgeData>) =>
+  ("label" in after && (after.label ?? "").trim() !== (before.label ?? "").trim()) ||
+  (!!after.edgeType && after.edgeType !== before.edgeType);
+
 export function useCanvasElementActions({
   selectedNodes,
 }: UseCanvasElementActionsParams) {
@@ -114,6 +120,8 @@ export function useCanvasElementActions({
                   ? getEdgeSemanticDefaults(data.edgeType)
                   : {}),
                 ...data,
+                // Another name or kind: no longer the metamodel relationship it was made from.
+                ...(relationshipIdentityChanged(existingData, data) ? { relationId: undefined } : {}),
               });
               return {
                 ...e,
@@ -351,6 +359,8 @@ export function useCanvasElementActions({
           };
           const swappedDataInput: CustomEdgeData = {
             ...existingData,
+            // The other way round, it is not the metamodel relationship it was made from.
+            relationId: undefined,
             sourceArrow: existingData.targetArrow,
             targetArrow: existingData.sourceArrow,
             sourceAnchor: existingData.targetAnchor,

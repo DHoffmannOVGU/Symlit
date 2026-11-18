@@ -1,4 +1,5 @@
 import type { Project } from "@shared/schema";
+import { metamodelKnowledge } from "./relationship-links";
 import type { ProjectExportOptions } from "@shared/routes";
 import { withCalculatedValues } from "@shared/related-formula";
 import { storage } from "../storage";
@@ -39,8 +40,19 @@ export async function buildProjectExport(
   canRead: (project: Project) => Promise<boolean>,
 ): Promise<ProjectExportFile> {
   const stored = await storage.getProjectExportData(projectId);
-  // Calculated values are worked out over the whole project, as the editor shows them.
-  const exportData = { ...stored, views: withCalculatedValues(stored.views) };
+  // A model's calculated values are worked out over the whole project, as the editor shows
+  // them, with its relationships linked to the metamodel relationships they stand for.
+  // A metamodel's types only define the formulas.
+  const exportData =
+    stored.project.projectType === "instance"
+      ? {
+          ...stored,
+          views: withCalculatedValues(
+            stored.views,
+            await metamodelKnowledge((stored.project.referencedMetamodels as number[] | null) ?? []),
+          ),
+        }
+      : stored;
   const safeName = exportData.project.name.replace(/[^a-z0-9-_]+/gi, "_");
   const selectedViewIds = options.viewIds
     ? new Set(options.viewIds)

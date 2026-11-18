@@ -178,7 +178,7 @@ test("references are stored by id where they name one attribute, and shown by th
   const stored = storeRelatedFormula(written, context);
   // Its own mass and the parts' total are one attribute each; the parts' status are separate ones.
   assert.equal(stored, '[attr:type-mass] + sum([attr:type-total] of "consists of" where [status] = "released")');
-  assert.deepEqual(unlinkedRelatedReferences(stored), ["status"]);
+  assert.deepEqual(unlinkedRelatedReferences(stored), ["[status]"]);
   assert.equal(displayRelatedFormula(stored, context), written);
 
   // Renamed on the elements: the formula shows the new names and still calculates.
@@ -229,4 +229,68 @@ test("in a metamodel, a type related to itself links a roll-up's reference to it
     storeRelatedFormula('[mass] + sum([total mass] of "consists of")', context),
     '[attr:mass] + sum([attr:total] of "consists of")',
   );
+});
+
+test("relationships are linked to the metamodel relationship they stand for, and follow its rename", async () => {
+  const { deriveRelationId, displayRelatedFormula, linkRelationships, relatedFormulaContext, storeRelatedFormula, unlinkedRelatedReferences } =
+    await import("./related-formula");
+  // The metamodel: a Machine consists of Components; a Pump is a Component.
+  const relations = [
+    { id: "mm:1:10:consists", label: "consists of", edgeType: "composition", sourceTypeId: "mm:1:Machine", targetTypeId: "mm:1:Component" },
+    { id: "mm:1:10:drives", label: "drives", edgeType: "association", sourceTypeId: "mm:1:Machine", targetTypeId: "mm:1:Component" },
+  ];
+  const parentMap = new Map([["mm:1:Pump", new Set(["mm:1:Component"])]]);
+  const typed = (id: string, typeId: string, mass: string): GraphElement => ({
+    id,
+    name: id,
+    type: typeId.split(":").pop()!,
+    typeId,
+    attributes: [{ id: "mass", name: "mass", type: "number", value: mass }],
+  });
+  const graph: RelatedGraph = {
+    elements: [typed("E1", "mm:1:Machine", "2"), typed("P1", "mm:1:Pump", "1.5"), typed("B1", "mm:1:Component", "3")],
+    relationships: [
+      // Drawn with Symlit's suggestion: it says which metamodel relationship it is.
+      { source: "E1", target: "P1", name: "consists of", kind: "composition", relationId: "consists" },
+      // Drawn before relationships recorded that: worked out from types, name and kind.
+      { source: "E1", target: "B1", name: "consists of", kind: "composition" },
+      { source: "E1", target: "B1", name: "drives", kind: "association" },
+    ],
+  };
+  assert.equal(deriveRelationId(graph.relationships[1], "mm:1:Machine", "mm:1:Component", relations, parentMap), "consists");
+  assert.equal(deriveRelationId(graph.relationships[1], "mm:1:Component", "mm:1:Machine", relations, parentMap), undefined, "the other way round");
+  const linked = linkRelationships(graph, relations, parentMap);
+  assert.deepEqual(linked.relationships.map((relationship) => relationship.relationId), ["consists", "consists", "drives"]);
+
+  const machine = graph.elements[0];
+  machine.attributes.push({ id: "parts", name: "parts mass", type: "related", formula: "" });
+  const knowledge = { relations, parentMap, typeId: "mm:1:Machine" };
+  const context = relatedFormulaContext(graph, "E1", machine.attributes, "parts", [], knowledge);
+  const stored = storeRelatedFormula('sum([mass] of "consists of")', context);
+  assert.equal(stored, 'sum([attr:mass] of "rel:consists")');
+  assert.deepEqual(unlinkedRelatedReferences(stored, context), []);
+  machine.attributes[1].formula = stored;
+  assert.equal(new RelatedCalculator(linked).value("E1", "parts"), 4.5);
+
+  // Renamed in the metamodel: the formula shows the new name, and the relationships drawn
+  // before (still labelled "consists of") keep counting.
+  const renamed = relations.map((relation) => (relation.id.endsWith("consists") ? { ...relation, label: "contains" } : relation));
+  const renamedContext = relatedFormulaContext(graph, "E1", machine.attributes, "parts", [], { ...knowledge, relations: renamed });
+  assert.equal(displayRelatedFormula(stored, renamedContext), 'sum([mass] of "contains")');
+  // Recorded relationships keep counting. One that never recorded its metamodel relationship can no
+  // longer be worked out from its old label: that is why the server records it once, at start.
+  assert.equal(new RelatedCalculator(linkRelationships(graph, renamed, parentMap)).value("E1", "parts"), 1.5);
+  assert.equal(new RelatedCalculator(linkRelationships(linked, renamed, parentMap)).value("E1", "parts"), 4.5);
+
+  // Without a metamodel there is nothing to link: by name, as before, and nothing to point out.
+  const unlinkedGraph: RelatedGraph = {
+    ...graph,
+    relationships: graph.relationships.map(({ relationId: _relationId, ...relationship }) => relationship),
+  };
+  const plain = relatedFormulaContext(unlinkedGraph, "E1", machine.attributes, "parts");
+  assert.equal(storeRelatedFormula('count(of "consists of")', plain), 'count(of "consists of")');
+  assert.deepEqual(unlinkedRelatedReferences('count(of "consists of")', plain), []);
+  // A name no relationship of the metamodel has stays by name, and is pointed out.
+  assert.equal(storeRelatedFormula('count(of "feeds")', context), 'count(of "feeds")');
+  assert.deepEqual(unlinkedRelatedReferences('count(of "feeds")', context), ['"feeds"']);
 });

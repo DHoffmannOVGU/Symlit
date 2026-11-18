@@ -75,10 +75,12 @@ max([lead time] of incoming "supplies" where [critical] = yes and [lead time] > 
 - Over no related elements, `count` and `sum` give 0 and `avg`, `min` and `max` are *not
   calculated yet*. Related elements without the attribute do not take part; one whose value is
   still empty makes the result not calculated yet.
-- References are linked, as in a Derived Formula: a renamed attribute keeps working and shows by its
-  new name. This element's own attributes are always linked. Inside an aggregate, a reference is linked
-  when the related elements share the attribute, because they got it from one type (or from a type it
-  specializes). When they have separate attributes of that name, or no element is related yet, it is
+- References are linked, as in a Derived Formula: a renamed attribute or relationship keeps working and
+  shows by its new name. This element's own attributes are always linked. Inside an aggregate, a
+  reference is linked when the related elements share the attribute, because they got it from one type
+  (or from a type it specializes). A relationship's name is linked when it stands for one relationship
+  of the metamodel: a model's relationship records which metamodel relationship it was made from when
+  Symlit's suggestion is used, and older ones are linked once when Symlit starts. Anything else is
   matched by name; the editor says so. On a type, the metamodel's relationships tell which types an
   aggregate reaches, including a type related to itself ("Part consists of Part").
 - The editor shows which related elements it used and how many a `where` left out, and offers this

@@ -359,7 +359,16 @@ export const api = {
             }),
           ),
           relationships: z.array(
-            z.object({ source: z.string(), target: z.string(), name: z.string(), viewId: z.number().optional() }),
+            z.object({
+              id: z.string().optional(),
+              source: z.string(),
+              target: z.string(),
+              name: z.string(),
+              kind: z.string().optional(),
+              /** The metamodel relationship it stands for, when it records one. */
+              relationId: z.string().optional(),
+              viewId: z.number().optional(),
+            }),
           ),
         }),
         404: errorSchemas.notFound,

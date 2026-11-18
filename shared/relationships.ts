@@ -61,6 +61,8 @@ export const relationshipDataSchema = z
     animated: z.boolean().optional(),
     sourceAnchor: anchorSchema.optional(),
     targetAnchor: anchorSchema.optional(),
+    /** In a model: the id of the metamodel relationship it was made from. */
+    relationId: z.string().min(1).optional(),
   })
   .passthrough();
 export type RelationshipData = z.infer<typeof relationshipDataSchema>;

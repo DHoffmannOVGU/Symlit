@@ -45,7 +45,10 @@ commit that fixed them.
 - **Related Formulas, next steps.** Model rules' conditions on connected elements still look only at the open
   diagram, while Related Formulas look at the whole project. `where type = "…"` matches the type's name, not
   its specializations. A reference inside an aggregate whose related elements have separate attributes of that
-  name stays matched by name (it is linked when they share one, from a type). Paths of more
+  name stays matched by name (it is linked when they share one, from a type). Validation still matches a model's
+  relationships to the metamodel by label, so after a metamodel relationship is renamed the older ones are
+  reported as having an invalid label, although they record which relationship they are (`data.relationId`).
+  Paths of more
   than one step, filters that compare with this element's own values, and a shortcut such as `of parts` for
   compositions are left out on purpose until it is clear how people write these.
 - **Flow mode is not reachable.** The canvas has a flow mode (start and end elements, ticks, playback), but
@@ -82,7 +85,10 @@ commit that fixed them.
   signature and of the diagram revision, so they never count as an edit or a conflict. `where` compares as model
   rules do (`shared/value-comparison.ts`, now used by both). References are stored by id like a Derived Formula's
   (`storeRelatedFormula`/`displayRelatedFormula`): own attributes always, related elements' attributes when they
-  share one id (copied from one type), otherwise by name.
+  share one id (copied from one type), otherwise by name. Relationship names are stored as `of "rel:<id>"` and
+  matched by the metamodel relationship a model relationship records (`data.relationId`, set from Symlit's
+  suggestion, kept until its name or kind is changed or it is reversed); older relationships get it recorded at
+  start (`server/services/relationship-links.ts`), and exports link the rest the way validation matches.
 - Multiselect attributes: several of a type's options per element, stored as a JSON array of strings
   (`shared/attribute-values.ts`), editable in the element editor and the table; rules compare each chosen option.
   Enter in a list's "Add option" field no longer closes the attribute editor.

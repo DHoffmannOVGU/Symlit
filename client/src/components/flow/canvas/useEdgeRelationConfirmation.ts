@@ -1,4 +1,5 @@
 import { useDiagramModel } from "../state/DiagramModelProvider";
+import { metaRelationIdOf } from "@shared/related-formula";
 import { useDiagramStore } from "../state/DiagramStoreProvider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getEdgeSemanticDefaults, getEdgeMarkers, type CustomEdgeData } from "../edges/CustomEdges";
@@ -42,6 +43,8 @@ export function useEdgeRelationConfirmation() {
             edgeType: relation.edgeType,
             flowType: relation.flowType,
             label: relation.label,
+            // Which metamodel relationship it is: a Related Formula follows it by this, even after a rename.
+            relationId: metaRelationIdOf(relation.id),
           });
           return {
             ...edge,
@@ -70,6 +73,7 @@ export function useEdgeRelationConfirmation() {
           const { data, markerStart, markerEnd } = getEdgeMarkers({
             ...existingData,
             label: undefined,
+            relationId: undefined,
           });
           return { ...edge, data, markerStart, markerEnd };
         }),

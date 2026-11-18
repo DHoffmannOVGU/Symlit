@@ -1,4 +1,5 @@
 import { getTypeAncestors } from "@shared/metamodel-inheritance";
+import { metaRelationIdOf } from "@shared/related-formula";
 import type { HandleSide } from "@shared/relationships";
 import { getEdgeMarkers, type CustomEdgeData } from "../edges/CustomEdges";
 import type { MetaRelationOption } from "../edges/EdgeRelationConfirmation";
@@ -64,11 +65,14 @@ export function newRelationshipEdge(input: {
   edgeType: CustomEdgeData["edgeType"];
   label?: string;
   flowType?: CustomEdgeData["flowType"];
+  /** The metamodel relationship it is made from (its id as the editor knows it). */
+  relationId?: string;
 }): DiagramEdge {
   const { data, markerStart, markerEnd } = getEdgeMarkers({
     edgeType: input.edgeType,
     label: input.label,
     flowType: input.flowType,
+    ...(input.relationId ? { relationId: metaRelationIdOf(input.relationId) } : {}),
   });
   return {
     id: input.id,

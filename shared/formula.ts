@@ -41,6 +41,9 @@ export interface RelatedSelector {
   direction: "outgoing" | "incoming" | "both";
   /** The relationship's name; null for any relationship. */
   relationship: string | null;
+  /** Where the relationship's name, quotes included, stands in the formula's text. */
+  start?: number;
+  end?: number;
 }
 
 /** What a `where` compares: an attribute of the related element, its type or its name. */
@@ -192,7 +195,7 @@ type Symbol = "+" | "-" | "*" | "/" | "(" | ")" | "," | "=" | "!=" | "<" | ">" |
 type Token =
   | { type: "number"; value: number }
   | { type: "reference"; value: string; start: number; end: number }
-  | { type: "string"; value: string }
+  | { type: "string"; value: string; start: number; end: number }
   | { type: "name"; value: string }
   | { type: "symbol"; value: Symbol };
 
@@ -220,7 +223,7 @@ const tokenize = (formula: string): Token[] => {
       // Text in quotes: a relationship's name, or a value to compare with. Typographic quotes count too.
       const close = formula.indexOf(QUOTES[char], index + 1);
       if (close === -1) throw new Error("Missing closing quote.");
-      tokens.push({ type: "string", value: formula.slice(index + 1, close) });
+      tokens.push({ type: "string", value: formula.slice(index + 1, close), start: index, end: close + 1 });
       index = close + 1;
       continue;
     }
@@ -296,7 +299,7 @@ export function parseFormula(formula: string, options: ParseOptions = {}): Formu
     if (name?.type !== "string" || !name.value.trim()) {
       throw new Error('After "of" comes a relationship\'s name in quotes, for example of "consists of", or all.');
     }
-    return { direction, relationship: name.value.trim() };
+    return { direction, relationship: name.value.trim(), start: name.start, end: name.end };
   };
 
   const conditionValue = (): string => {
@@ -606,4 +609,15 @@ export function scopedReferences(node: FormulaNode): ScopedReference[] {
   };
   visit(node, null);
   return found.sort((a, b) => a.start - b.start);
+}
+
+/** The aggregates of a parsed formula that name a relationship, with where its name stands. */
+export function namedSelectors(node: FormulaNode): Array<RelatedSelector & { relationship: string; start: number; end: number }> {
+  return formulaAggregates(node)
+    .map((aggregate) => aggregate.selector)
+    .filter(
+      (selector): selector is RelatedSelector & { relationship: string; start: number; end: number } =>
+        selector.relationship !== null && selector.start !== undefined && selector.end !== undefined,
+    )
+    .sort((a, b) => a.start - b.start);
 }

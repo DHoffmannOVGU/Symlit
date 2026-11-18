@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { recordRelationshipLinks } from "./services/relationship-links";
 import type { AddressInfo } from "node:net";
 import { after, before, describe, test } from "node:test";
 import { createApp } from "./app";
@@ -270,7 +271,14 @@ describe("views and diagrams", () => {
     const graph = (await request("GET", `/api/projects/${project.id}/graph`)).json;
     assert.deepEqual(graph.elements.map((element: { name: string }) => element.name).sort(), ["Frame", "Motor"]);
     assert.deepEqual(graph.relationships, [
-      { source: flow.nodes[0].id, target: flow.nodes[1].id, name: "drives", viewId: first.id },
+      {
+        id: flow.edges[0].id,
+        source: flow.nodes[0].id,
+        target: flow.nodes[1].id,
+        name: "drives",
+        kind: "association",
+        viewId: first.id,
+      },
     ]);
   });
 
@@ -288,6 +296,83 @@ describe("views and diagrams", () => {
     const recalculated = { ...flow, nodes: [{ ...flow.nodes[0], data: { ...flow.nodes[0].data, attributes: [{ ...total, value: "5" }] } }, flow.nodes[1]] };
     assert.equal((await request("POST", `/api/views/${first.id}/sync`, recalculated)).status, 200);
     assert.equal((await request("GET", `/api/views/${second.id}/flow`)).json.revision, opened);
+  });
+
+  test("an older relationship gets its metamodel relationship recorded, and a Related Formula follows it after a rename", async () => {
+    const metamodel = await createProject({ name: "Linked types", projectType: "metamodel" });
+    const typesView = await createView(metamodel.id, "Types");
+    const types = {
+      nodes: [
+        { id: `lt${metamodel.id}-machine`, type: "partdef", position: { x: 0, y: 0 }, data: { label: "Machine", type: "Object" } },
+        { id: `lt${metamodel.id}-part`, type: "partdef", position: { x: 300, y: 0 }, data: { label: "Part", type: "Object" } },
+      ],
+      edges: [
+        {
+          id: `lt${metamodel.id}-consists`,
+          source: `lt${metamodel.id}-machine`,
+          target: `lt${metamodel.id}-part`,
+          edgeType: "composition",
+          sourceHandle: null,
+          targetHandle: null,
+          data: { label: "consists of", edgeType: "composition" },
+        },
+      ],
+    };
+    assert.equal((await request("POST", `/api/views/${typesView.id}/sync`, types)).status, 200);
+    const typeId = (node: string) => `mm:${metamodel.id}:lt${metamodel.id}-${node}`;
+    const relationId = `lt${metamodel.id}-consists`;
+
+    const model = await createProject({ name: "Linked model", projectType: "instance" });
+    await request("PATCH", `/api/projects/${model.id}`, { referencedMetamodels: [metamodel.id] });
+    const view = await createView(model.id, "Structure");
+    const parts = {
+      id: "parts",
+      name: "parts mass",
+      type: "related",
+      formula: `sum([attr:mass] of "rel:${relationId}")`,
+      value: "",
+      unit: "",
+    };
+    const element = (id: string, type: string, attributes: unknown[]) => ({
+      id: `lm${model.id}-${id}`,
+      type: "part",
+      position: { x: 0, y: 0 },
+      data: { label: id, type, typeId: typeId(type.toLowerCase()), attributes },
+    });
+    const saved = await request("POST", `/api/views/${view.id}/sync`, {
+      nodes: [
+        element("E1", "Machine", [parts]),
+        element("P1", "Part", [{ id: "mass", name: "mass", type: "number", value: "2", unit: "" }]),
+      ],
+      edges: [
+        // Drawn before relationships recorded their metamodel relationship.
+        {
+          id: `lm${model.id}-e`,
+          source: `lm${model.id}-E1`,
+          target: `lm${model.id}-P1`,
+          edgeType: "composition",
+          sourceHandle: null,
+          targetHandle: null,
+          data: { label: "consists of", edgeType: "composition" },
+        },
+      ],
+    });
+    assert.equal(saved.status, 200, saved.text);
+
+    assert.ok((await recordRelationshipLinks()) >= 1);
+    const flow = (await request("GET", `/api/views/${view.id}/flow`)).json;
+    assert.equal(flow.edges[0].data.relationId, relationId);
+    // Once recorded, nothing is left to do for it.
+    const again = await recordRelationshipLinks();
+    assert.equal((await request("GET", `/api/views/${view.id}/flow`)).json.edges[0].data.relationId, relationId);
+    assert.ok(again >= 0);
+
+    // The metamodel relationship is renamed; the model's relationship keeps its old label.
+    types.edges[0].data.label = "contains";
+    assert.equal((await request("POST", `/api/views/${typesView.id}/sync`, types)).status, 200);
+    const exported = (await request("POST", `/api/projects/${model.id}/export`, { format: "json" })).json;
+    const machine = exported.views[0].nodes.find((node: { data: { label: string } }) => node.data.label === "E1");
+    assert.equal(machine.data.attributes[0].value, "2");
   });
 
   test("rejects edges whose endpoints are missing", async () => {

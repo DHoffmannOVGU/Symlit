@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createProjectWithViews } from "./support/create-project";
+import { addElementOfType, confirmSuggestion, connect } from "./support/tutorial";
 
 // Full-stack: a Related Formula calculates over the elements an element is
 // related to, across all diagrams of the project, and follows unsaved changes.
@@ -159,7 +160,11 @@ test("defined on a type, a Related Formula is checked there and calculated by ea
       {
         name: "Structure",
         nodes: [typed("Frame", "4", 0), typed("Arm", "1", 250), typed("Wrist", "0.5", 500)],
-        edges: [consistsOf("f-a", "Frame", "Arm"), consistsOf("a-w", "Arm", "Wrist")],
+        // Drawn with Symlit's suggestion: each records the metamodel relationship it is.
+        edges: [consistsOf("f-a", "Frame", "Arm"), consistsOf("a-w", "Arm", "Wrist")].map((edge) => ({
+          ...edge,
+          data: { ...edge.data, relationId: typeFlow.edges[0].id },
+        })),
       },
     ],
   });
@@ -200,11 +205,11 @@ test("defined on a type, a Related Formula is checked there and calculated by ea
   await expect(total("Arm")).toContainText("1.5");
   await expect(total("Frame")).toContainText("5.5");
 
-  // Stored by id, like a Derived Formula: its own mass and the parts' total.
+  // Stored by ids, like a Derived Formula: its own mass, the parts' total, and the relationship.
   const typeData = (await (await request.get(`/api/views/${metaViewId}/flow`)).json()).nodes[0].data;
   const ids = Object.fromEntries(typeData.attributes.map((item: { id: string; name: string }) => [item.name, item.id]));
   const stored = typeData.attributes.find((item: { name: string }) => item.name === "total mass").formula;
-  expect(stored).toBe(`[attr:${ids["mass"]}] + sum([attr:${ids["total mass"]}] of "consists of")`);
+  expect(stored).toBe(`[attr:${ids["mass"]}] + sum([attr:${ids["total mass"]}] of "rel:${typeFlow.edges[0].id}")`);
 
   // Renamed on one element, an attribute keeps working in every formula that uses it, and shows by its new name.
   await page.getByTestId("button-toolbar-graph").click();
@@ -228,4 +233,36 @@ test("defined on a type, a Related Formula is checked there and calculated by ea
   await openElement(page, "Arm");
   await panel.getByTestId("button-attr-open-1").click();
   await expect(dialog.locator('[data-testid^="input-attr-formula-"]')).toHaveValue('[mass] + sum([assembly weight] of "consists of")');
+  await page.getByTestId("button-attribute-cancel").click();
+  await page.getByTestId("button-cancel-attributes").click();
+  await page.getByTestId("button-save-diagram-header").click();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+
+  // Renamed in the metamodel, the relationship shows by its new name, and the relationships
+  // drawn before (still labelled "consists of") keep counting.
+  const metaFlow = await (await request.get(`/api/views/${metaViewId}/flow`)).json();
+  metaFlow.edges[0].data.label = "contains";
+  const renamed = await request.post(`/api/views/${metaViewId}/sync`, {
+    data: { nodes: metaFlow.nodes, edges: metaFlow.edges },
+  });
+  expect(renamed.ok()).toBe(true);
+  await page.reload();
+  await page.getByTestId("button-toolbar-table").click();
+  await expect(total("Frame")).toContainText("5.5");
+  await page.getByTestId("button-toolbar-graph").click();
+  await openElement(page, "Arm");
+  await panel.getByTestId("button-attr-open-1").click();
+  await expect(dialog.locator('[data-testid^="input-attr-formula-"]')).toHaveValue('[mass] + sum([assembly weight] of "contains")');
+  await page.getByTestId("button-attribute-cancel").click();
+  await page.getByTestId("button-cancel-attributes").click();
+
+  // A relationship drawn now records which metamodel relationship it is, and counts.
+  await addElementOfType(page, "Part");
+  await connect(page, "Frame", "bottom", "New Part", "top");
+  await confirmSuggestion(page);
+  await page.getByTestId("button-save-diagram-header").click();
+  await expect(page.getByTestId("button-save-diagram-header")).toBeDisabled();
+  const modelFlow = await (await request.get(`/api/views/${instViewId}/flow`)).json();
+  const drawn = modelFlow.edges.find((edge: { data: { relationId?: string; label?: string } }) => edge.data.label === "contains");
+  expect(drawn?.data.relationId).toBe(typeFlow.edges[0].id);
 });

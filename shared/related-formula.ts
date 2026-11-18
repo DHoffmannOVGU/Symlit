@@ -18,8 +18,10 @@ import {
   type FormulaNode,
   type RelatedSelector,
   scopedReferences,
+  namedSelectors,
   type ScopedReference,
 } from "./formula";
+import { buildParentMap, getTypeAncestors } from "./metamodel-inheritance";
 
 export interface GraphAttribute {
   id: string;
@@ -34,14 +36,111 @@ export interface GraphElement {
   name: string;
   /** The name of the element's type, as a `where type = "…"` compares it. */
   type: string;
+  /** The id of the element's type (in a model); a type in a metamodel is its own. */
+  typeId?: string;
   attributes: GraphAttribute[];
 }
 
 export interface GraphRelationship {
+  /** The relationship's own id. */
+  id?: string;
   source: string;
   target: string;
   /** The relationship's name (its label); empty when it has none. */
   name: string;
+  /** association, composition, generalization, … */
+  kind?: string;
+  /**
+   * The metamodel relationship it was made from (that relationship's id).
+   * Recorded when Symlit's suggestion is used; worked out for older ones.
+   */
+  relationId?: string;
+}
+
+/** A relationship a metamodel defines, between two types. */
+export interface MetaRelation {
+  /** As the editor knows it: the metamodel edge's id, or `mm:<metamodel>:<diagram>:<edge id>`. */
+  id: string;
+  label?: string;
+  edgeType: string;
+  sourceTypeId: string;
+  targetTypeId: string;
+}
+
+/** Prefix of a selector stored by the metamodel relationship's id: `of "rel:<id>"`. */
+export const RELATIONSHIP_REFERENCE_PREFIX = "rel:";
+
+/** The id that stays the same wherever the relationship is shown: the metamodel edge's own id. */
+export const metaRelationIdOf = (id: string) => /^mm:\d+:\d+:(.+)$/.exec(id)?.[1] ?? id;
+
+const storedRelationId = (relationship: string | null) =>
+  relationship?.trim().startsWith(RELATIONSHIP_REFERENCE_PREFIX)
+    ? relationship.trim().slice(RELATIONSHIP_REFERENCE_PREFIX.length)
+    : null;
+
+/** Whether a relationship is one a selector names: by its metamodel relationship's id, or by name. */
+export function selectorMatches(relationship: GraphRelationship, selected: string | null): boolean {
+  if (selected === null) return true;
+  const id = storedRelationId(selected);
+  if (id !== null) return relationship.relationId === id;
+  return relationship.name.trim().toLowerCase() === selected.trim().toLowerCase();
+}
+
+/**
+ * The metamodel relationship a model relationship stands for, worked out as
+ * validation does: same name and kind, between the relationship's types or
+ * types they specialize. Undefined when none or several fit.
+ */
+export function deriveRelationId(
+  relationship: GraphRelationship,
+  sourceTypeId: string | undefined,
+  targetTypeId: string | undefined,
+  relations: MetaRelation[],
+  parentMap: Map<string, Set<string>>,
+): string | undefined {
+  if (!sourceTypeId || !targetTypeId) return undefined;
+  const sources = getTypeAncestors(sourceTypeId, parentMap);
+  const targets = getTypeAncestors(targetTypeId, parentMap);
+  const fitting = relations.filter(
+    (relation) =>
+      relation.edgeType !== "generalization" &&
+      (relation.label ?? "").trim() === relationship.name.trim() &&
+      (!relationship.kind || relation.edgeType === relationship.kind) &&
+      sources.has(relation.sourceTypeId) &&
+      targets.has(relation.targetTypeId),
+  );
+  const ids = new Set(fitting.map((relation) => metaRelationIdOf(relation.id)));
+  return ids.size === 1 ? Array.from(ids)[0] : undefined;
+}
+
+/**
+ * The graph with every relationship's metamodel relationship filled in
+ * where it can be worked out. In a metamodel, a relationship between types is
+ * itself the metamodel relationship.
+ */
+export function linkRelationships<G extends RelatedGraph>(
+  graph: G,
+  relations: MetaRelation[],
+  parentMap: Map<string, Set<string>>,
+): G {
+  if (relations.length === 0) return graph;
+  const ownIds = new Set(relations.map((relation) => metaRelationIdOf(relation.id)));
+  const typeOf = new Map(graph.elements.map((element) => [element.id, element.typeId ?? element.id]));
+  return {
+    ...graph,
+    relationships: graph.relationships.map((relationship) => {
+      if (relationship.relationId) return relationship;
+      if (relationship.id && ownIds.has(relationship.id)) return { ...relationship, relationId: relationship.id };
+      const relationId = deriveRelationId(
+        relationship,
+        typeOf.get(relationship.source),
+        typeOf.get(relationship.target),
+        relations,
+        parentMap,
+      );
+      return relationId ? { ...relationship, relationId } : relationship;
+    }),
+  };
 }
 
 /** A project's elements and the relationships of all its diagrams. */
@@ -135,9 +234,7 @@ export class RelatedCalculator {
 
   /** The elements a selector reaches from an element, each once. */
   related(elementId: string, selector: RelatedSelector): GraphElement[] {
-    const wanted = selector.relationship?.trim().toLowerCase() ?? null;
-    const matches = (relationship: GraphRelationship) =>
-      wanted === null || relationship.name.trim().toLowerCase() === wanted;
+    const matches = (relationship: GraphRelationship) => selectorMatches(relationship, selector.relationship);
     const ids = new Set<string>();
     if (selector.direction !== "incoming") {
       for (const relationship of this.outgoing.get(elementId) ?? []) if (matches(relationship)) ids.add(relationship.target);
@@ -323,7 +420,7 @@ export class RelatedCalculator {
 export interface FlowLike {
   id?: number;
   nodes: Array<{ id: string; type?: string | null; data?: unknown }>;
-  edges: Array<{ source: string; target: string; data?: unknown }>;
+  edges: Array<{ id?: string; source: string; target: string; edgeType?: string | null; data?: unknown }>;
 }
 
 export interface ProjectGraphRelationship extends GraphRelationship {
@@ -341,7 +438,29 @@ export function graphElementOf(node: { id: string; type?: string | null; data?: 
     id: node.id,
     name: typeof data.label === "string" ? data.label : "",
     type: typeof data.type === "string" ? data.type : (node.type ?? ""),
+    ...(typeof data.typeId === "string" && data.typeId ? { typeId: data.typeId } : {}),
     attributes: Array.isArray(data.attributes) ? (data.attributes as GraphAttribute[]) : [],
+  };
+}
+
+/** A relationship as the calculator sees it, from its stored form. */
+export function graphRelationshipOf(edge: {
+  id?: string;
+  source: string;
+  target: string;
+  edgeType?: string | null;
+  type?: string | null;
+  data?: unknown;
+}): GraphRelationship {
+  const data = recordOf(edge.data);
+  const kind = (typeof data.edgeType === "string" && data.edgeType) || edge.edgeType || edge.type || undefined;
+  return {
+    ...(edge.id ? { id: edge.id } : {}),
+    source: edge.source,
+    target: edge.target,
+    name: relationshipNameOf(edge.data),
+    ...(kind ? { kind } : {}),
+    ...(typeof data.relationId === "string" && data.relationId ? { relationId: data.relationId } : {}),
   };
 }
 
@@ -358,7 +477,7 @@ export function graphFromFlows(flows: FlowLike[]): { elements: GraphElement[]; r
   for (const flow of flows) {
     for (const node of flow.nodes) if (!elements.has(node.id)) elements.set(node.id, graphElementOf(node));
     for (const edge of flow.edges) {
-      relationships.push({ source: edge.source, target: edge.target, name: relationshipNameOf(edge.data), viewId: flow.id });
+      relationships.push({ ...graphRelationshipOf(edge), viewId: flow.id });
     }
   }
   return { elements: Array.from(elements.values()), relationships };
@@ -392,10 +511,15 @@ export function withoutCalculatedValues(data: unknown): unknown {
  * whole project, for what leaves the editor (exports). Returns the same
  * flows when the project has no Related Formula.
  */
-export function withCalculatedValues<F extends FlowLike>(flows: F[]): F[] {
+export function withCalculatedValues<F extends FlowLike>(
+  flows: F[],
+  knowledge?: Pick<RelationKnowledge, "relations" | "parentMap">,
+): F[] {
   const graph = graphFromFlows(flows);
   if (!hasRelatedFormulas(graph.elements)) return flows;
-  const calculator = new RelatedCalculator(graph);
+  const calculator = new RelatedCalculator(
+    knowledge ? linkRelationships(graph, knowledge.relations, knowledge.parentMap) : graph,
+  );
   const valuesOf = new Map<string, Map<string, string>>();
   const calculated = (id: string) => {
     let values = valuesOf.get(id);
@@ -427,7 +551,7 @@ export function withCalculatedValues<F extends FlowLike>(flows: F[]): F[] {
 
 /**
  * What the editor knows to link a Related Formula's references to
- * attributes, and to show them by name again.
+ * attributes and relationships, and to show them by name again.
  */
 export interface RelatedFormulaContext {
   /** The element's attributes, as edited. */
@@ -438,26 +562,37 @@ export interface RelatedFormulaContext {
   relatedAttributes: (selector: RelatedSelector) => GraphAttribute[];
   /** An attribute by id anywhere known (other elements, types), to show its name. */
   attributeById: (id: string) => GraphAttribute | undefined;
+  /** The metamodel relationships a name may stand for here, in that direction (their ids). */
+  relationCandidates: (name: string, direction: RelatedSelector["direction"]) => string[];
+  /** A metamodel relationship's name now; undefined when it cannot be found. */
+  relationName: (id: string) => string | undefined;
+  /** Relationships can be linked here: a metamodel defines them. */
+  linksRelationships: boolean;
 }
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 const storedId = (name: string) =>
   name.trim().startsWith(ATTRIBUTE_REFERENCE_PREFIX) ? name.trim().slice(ATTRIBUTE_REFERENCE_PREFIX.length) : null;
 
-function referencesOf(formula: string): ScopedReference[] | null {
+interface FormulaParts {
+  references: ScopedReference[];
+  selectors: ReturnType<typeof namedSelectors>;
+}
+
+function partsOf(formula: string): FormulaParts | null {
   try {
-    return scopedReferences(parseFormula(formula, { aggregates: true }));
+    const parsed = parseFormula(formula, { aggregates: true });
+    return { references: scopedReferences(parsed), selectors: namedSelectors(parsed) };
   } catch {
     return null;
   }
 }
 
-/** Replaces references from the last to the first, so earlier positions stay valid. */
-function rewrite(formula: string, references: ScopedReference[], replace: (reference: ScopedReference) => string | null) {
+/** Replaces spans of the text from the last to the first, so earlier positions stay valid. */
+function rewrite(formula: string, spans: Array<{ start: number; end: number; replacement: string | null }>) {
   let next = formula;
-  for (const reference of [...references].sort((a, b) => b.start - a.start)) {
-    const replacement = replace(reference);
-    if (replacement !== null) next = `${next.slice(0, reference.start)}${replacement}${next.slice(reference.end)}`;
+  for (const span of [...spans].sort((a, b) => b.start - a.start)) {
+    if (span.replacement !== null) next = `${next.slice(0, span.start)}${span.replacement}${next.slice(span.end)}`;
   }
   return next;
 }
@@ -473,34 +608,52 @@ function linkedRelatedAttribute(name: string, related: GraphAttribute[]): GraphA
   return ids.size === 1 ? matching[0] : null;
 }
 
+/** A relationship's name as written in a formula, in quotes; null when it cannot be written so. */
+const quoted = (name: string) => (name.includes('"') ? null : `"${name}"`);
+
 /**
- * A Related Formula as written (attributes by name) in the form it is
- * stored: references by id where they name one attribute, as in a Derived
- * Formula, so that they follow renames. A reference inside an aggregate
- * whose related elements have separate attributes of that name stays by
- * name. Text that cannot be read yet is stored as it is.
+ * A Related Formula as written (by names) in the form it is stored: by ids
+ * where a name stands for one thing, as in a Derived Formula, so that it
+ * follows renames. An attribute is linked when it is this element's, or
+ * when the related elements share it; a relationship when it stands for one
+ * metamodel relationship. Anything else stays by name. Text that cannot be
+ * read yet is stored as it is.
  */
 export function storeRelatedFormula(text: string, context: RelatedFormulaContext): string {
-  const references = referencesOf(text);
-  if (!references) return text;
-  return rewrite(text, references, (reference) => {
-    if (storedId(reference.name)) return null;
-    if (!reference.aggregate) {
-      try {
-        return `[${ATTRIBUTE_REFERENCE_PREFIX}${resolveAttributeReference(reference.name, context.attributes, context.attributeId).id}]`;
-      } catch {
-        return null;
+  const parts = partsOf(text);
+  if (!parts) return text;
+  const references = parts.references.map((reference) => {
+    let replacement: string | null = null;
+    if (!storedId(reference.name)) {
+      if (!reference.aggregate) {
+        try {
+          replacement = `[${ATTRIBUTE_REFERENCE_PREFIX}${resolveAttributeReference(reference.name, context.attributes, context.attributeId).id}]`;
+        } catch {
+          replacement = null;
+        }
+      } else {
+        const linked = linkedRelatedAttribute(reference.name, context.relatedAttributes(reference.aggregate.selector));
+        replacement = linked ? `[${ATTRIBUTE_REFERENCE_PREFIX}${linked.id}]` : null;
       }
     }
-    const linked = linkedRelatedAttribute(reference.name, context.relatedAttributes(reference.aggregate.selector));
-    return linked ? `[${ATTRIBUTE_REFERENCE_PREFIX}${linked.id}]` : null;
+    return { start: reference.start, end: reference.end, replacement };
   });
+  const selectors = parts.selectors.map((selector) => {
+    if (storedRelationId(selector.relationship) !== null) return { start: selector.start, end: selector.end, replacement: null };
+    const candidates = new Set(context.relationCandidates(selector.relationship, selector.direction));
+    return {
+      start: selector.start,
+      end: selector.end,
+      replacement: candidates.size === 1 ? `"${RELATIONSHIP_REFERENCE_PREFIX}${Array.from(candidates)[0]}"` : null,
+    };
+  });
+  return rewrite(text, [...references, ...selectors]);
 }
 
 /**
- * A stored Related Formula as it is shown: references by the attributes'
- * names now. A reference to an attribute that cannot be found is shown as
- * stored, so that nothing is lost.
+ * A stored Related Formula as it is shown: attributes and relationships by
+ * their names now. One that cannot be found is shown as stored, so that
+ * nothing is lost.
  */
 export function displayRelatedFormula(stored: string, context: RelatedFormulaContext): string {
   const nameOf = (id: string, reference: ScopedReference | null) => {
@@ -511,28 +664,50 @@ export function displayRelatedFormula(stored: string, context: RelatedFormulaCon
       : undefined;
     return (related ?? own ?? context.attributeById(id))?.name ?? null;
   };
-  const references = referencesOf(stored);
-  if (!references) {
+  const parts = partsOf(stored);
+  if (!parts) {
     // Not readable: show what can be shown.
-    return stored.replace(/\[(attr:[^\]]+)\]/g, (match, raw: string) => {
-      const name = nameOf(raw.slice(ATTRIBUTE_REFERENCE_PREFIX.length), null);
-      return name ? `[${name}]` : match;
-    });
+    return stored
+      .replace(/\[(attr:[^\]]+)\]/g, (match, raw: string) => {
+        const name = nameOf(raw.slice(ATTRIBUTE_REFERENCE_PREFIX.length), null);
+        return name ? `[${name}]` : match;
+      })
+      .replace(/"rel:([^"]+)"/g, (match, id: string) => {
+        const name = context.relationName(id);
+        return (name && quoted(name)) || match;
+      });
   }
-  return rewrite(stored, references, (reference) => {
-    const id = storedId(reference.name);
-    if (!id) return null;
-    const name = nameOf(id, reference);
-    return name ? `[${name}]` : null;
-  });
+  return rewrite(stored, [
+    ...parts.references.map((reference) => {
+      const id = storedId(reference.name);
+      const name = id ? nameOf(id, reference) : null;
+      return { start: reference.start, end: reference.end, replacement: name ? `[${name}]` : null };
+    }),
+    ...parts.selectors.map((selector) => {
+      const id = storedRelationId(selector.relationship);
+      const name = id !== null ? context.relationName(id) : undefined;
+      return { start: selector.start, end: selector.end, replacement: name ? quoted(name) : null };
+    }),
+  ]);
 }
 
-/** The references inside aggregates that are by name (not linked), for the editor to point out. */
-export function unlinkedRelatedReferences(stored: string): string[] {
-  const references = referencesOf(stored) ?? [];
-  return Array.from(
-    new Set(references.filter((reference) => reference.aggregate && !storedId(reference.name)).map((reference) => reference.name)),
-  );
+/**
+ * What a stored formula matches by name, not by id, for the editor to point
+ * out: attributes as `[name]`, relationships as `"name"` (only where a
+ * metamodel defines relationships that could have been linked).
+ */
+export function unlinkedRelatedReferences(stored: string, context?: Pick<RelatedFormulaContext, "linksRelationships">): string[] {
+  const parts = partsOf(stored);
+  if (!parts) return [];
+  const attributes = parts.references
+    .filter((reference) => reference.aggregate && !storedId(reference.name))
+    .map((reference) => `[${reference.name}]`);
+  const relationships = context?.linksRelationships
+    ? parts.selectors
+        .filter((selector) => storedRelationId(selector.relationship) === null)
+        .map((selector) => `"${selector.relationship}"`)
+    : [];
+  return Array.from(new Set([...attributes, ...relationships]));
 }
 
 /**
@@ -541,24 +716,36 @@ export function unlinkedRelatedReferences(stored: string): string[] {
  * attributes and keep theirs.
  */
 export function remapOwnReferences(formula: string, ids: Map<string, string>): string {
-  const references = referencesOf(formula);
+  const references = partsOf(formula)?.references ?? null;
   if (!references) {
     return formula.replace(/\[(attr:[^\]]+)\]/g, (match, raw: string) => {
       const next = ids.get(raw.slice(ATTRIBUTE_REFERENCE_PREFIX.length));
       return next ? `[${ATTRIBUTE_REFERENCE_PREFIX}${next}]` : match;
     });
   }
-  return rewrite(formula, references, (reference) => {
-    const id = storedId(reference.name);
-    const next = !reference.aggregate && id ? ids.get(id) : undefined;
-    return next ? `[${ATTRIBUTE_REFERENCE_PREFIX}${next}]` : null;
-  });
+  return rewrite(
+    formula,
+    references.map((reference) => {
+      const id = storedId(reference.name);
+      const next = !reference.aggregate && id ? ids.get(id) : undefined;
+      return { start: reference.start, end: reference.end, replacement: next ? `[${ATTRIBUTE_REFERENCE_PREFIX}${next}]` : null };
+    }),
+  );
+}
+
+/** The metamodel's relationships, for linking a formula's relationship names. */
+export interface RelationKnowledge {
+  relations: MetaRelation[];
+  parentMap: Map<string, Set<string>>;
+  /** The element's type (a model's element); a metamodel's type is its own. */
+  typeId?: string;
 }
 
 /**
  * The context for an element of a graph, with its attributes as edited.
  * `knownAttributes` are attributes outside the graph that a reference may
- * name (the types of the metamodels a model uses).
+ * name (the types of the metamodels a model uses); `knowledge` the
+ * metamodel relationships a relationship's name may stand for.
  */
 export function relatedFormulaContext(
   graph: RelatedGraph | null,
@@ -566,17 +753,20 @@ export function relatedFormulaContext(
   attributes: GraphAttribute[],
   attributeId?: string,
   knownAttributes: GraphAttribute[] = [],
+  knowledge?: RelationKnowledge,
 ): RelatedFormulaContext {
+  const relations = knowledge?.relations ?? [];
+  const parentMap = knowledge?.parentMap ?? new Map<string, Set<string>>();
+  const linked = graph ? linkRelationships(graph, relations, parentMap) : null;
   // Which elements an aggregate reaches. Unlike in a calculation, an element
   // related to itself counts: in a metamodel, "Part consists of Part" is how a
   // roll-up is defined.
-  const elements = new Map((graph?.elements ?? []).map((element) => [element.id, element]));
+  const elements = new Map((linked?.elements ?? []).map((element) => [element.id, element]));
   elements.set(elementId, { id: elementId, name: "", type: "", attributes });
   const reached = (selector: RelatedSelector) => {
-    const wanted = selector.relationship?.trim().toLowerCase() ?? null;
     const ids = new Set<string>();
-    for (const relationship of graph?.relationships ?? []) {
-      if (wanted !== null && relationship.name.trim().toLowerCase() !== wanted) continue;
+    for (const relationship of linked?.relationships ?? []) {
+      if (!selectorMatches(relationship, selector.relationship)) continue;
       if (selector.direction !== "incoming" && relationship.source === elementId) ids.add(relationship.target);
       if (selector.direction !== "outgoing" && relationship.target === elementId) ids.add(relationship.source);
     }
@@ -584,13 +774,58 @@ export function relatedFormulaContext(
   };
   const everywhere = new Map<string, GraphAttribute>();
   for (const attribute of knownAttributes) everywhere.set(attribute.id, attribute);
-  for (const element of graph?.elements ?? []) {
+  for (const element of linked?.elements ?? []) {
     for (const attribute of element.attributes) if (!everywhere.has(attribute.id)) everywhere.set(attribute.id, attribute);
   }
+  const typeAncestors = getTypeAncestors(knowledge?.typeId ?? elementId, parentMap);
   return {
     attributes,
     attributeId,
     relatedAttributes: (selector) => reached(selector).flatMap((element) => element.attributes),
     attributeById: (id) => everywhere.get(id),
+    relationCandidates: (name, direction) => {
+      const ids = new Set<string>();
+      // The element's relationships of that name that stand for a metamodel relationship...
+      for (const relationship of linked?.relationships ?? []) {
+        if (!relationship.relationId || !sameName(relationship.name, name)) continue;
+        const outgoing = relationship.source === elementId;
+        const incoming = relationship.target === elementId;
+        if ((direction !== "incoming" && outgoing) || (direction !== "outgoing" && incoming)) ids.add(relationship.relationId);
+      }
+      // ...and those the metamodel defines for its type, in that direction.
+      for (const relation of relations) {
+        if (relation.edgeType === "generalization" || !sameName(relation.label ?? "", name)) continue;
+        const from = typeAncestors.has(relation.sourceTypeId);
+        const to = typeAncestors.has(relation.targetTypeId);
+        if ((direction !== "incoming" && from) || (direction !== "outgoing" && to)) ids.add(metaRelationIdOf(relation.id));
+      }
+      return Array.from(ids);
+    },
+    relationName: (id) => {
+      const relation = relations.find((candidate) => metaRelationIdOf(candidate.id) === id);
+      if (relation) return (relation.label ?? "").trim() || undefined;
+      return linked?.relationships.find((relationship) => relationship.relationId === id)?.name || undefined;
+    },
+    linksRelationships: relations.some((relation) => relation.edgeType !== "generalization"),
+  };
+}
+
+/**
+ * A metamodel's own relationships and Generalizations, from its graph (its
+ * types and the relationships between them), for linking a type's formula.
+ */
+export function metamodelRelationsOf(graph: RelatedGraph): Pick<RelationKnowledge, "relations" | "parentMap"> {
+  const relations: MetaRelation[] = graph.relationships
+    .filter((relationship) => relationship.id)
+    .map((relationship) => ({
+      id: relationship.id!,
+      label: relationship.name,
+      edgeType: relationship.kind ?? "association",
+      sourceTypeId: relationship.source,
+      targetTypeId: relationship.target,
+    }));
+  return {
+    relations: relations.filter((relation) => relation.edgeType !== "generalization"),
+    parentMap: buildParentMap(relations),
   };
 }
