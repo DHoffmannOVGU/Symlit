@@ -10,7 +10,7 @@ GROUPS = {
     "R5": "Models are checked against the language and user-defined constraints, with clear feedback",
     "R6": "Models are exchanged in open formats and with engineering standards",
     "R7": "Browser use without installation, teaching, controlled team work, operation on premises",
-    "R8": "Programs and agents use standard, metamodel-aware operations; changes are validated and stay under human control",
+    "R8": "Programs and agents use standard, metamodel-aware operations whose results are validated and stay under human control",
 }
 
 def surnames(a):
@@ -33,7 +33,7 @@ rows = list(csv.DictReader(open("requirements-mapping.csv", encoding="utf8")))
 
 
 def status(s):
-    return s.replace("partly met:", "partly met –").replace("open:", "open –").replace("met in the local edition;", "met in the local edition;")
+    return s
 
 
 out = []
@@ -45,12 +45,12 @@ w("## Derivation\n")
 w("76 publications from six areas (clusters A–F below) were read in full. 307 statements on needs and shortcomings "
   "were extracted with page references, coded deductively and inductively, and consolidated into 28 **atomic "
   "requirements** (one need each). The corpus contained 307 distinct extracted statements. A statement could support "
-  "more than one atomic requirement (193 statements did), yielding 568 statement–requirement assignments; the "
-  "statement counts per requirement below count these assignments. Every atomic requirement is supported by at least two independent publications. "
+  "more than one atomic requirement (193 statements did), which yields 568 statement–requirement assignments. "
+  "The statement counts per requirement below count these assignments. Every atomic requirement is supported by at least two independent publications. "
   "For reporting in the paper, the atomic requirements are arranged in eight **reporting groups** (R1–R8, Table 1 of "
-  "the paper) by the tool capability they concern; Table 2 of the paper assesses Symlit v0.1.0 per atomic requirement. "
-  "Coding was performed by one coder and reviewed by the authors. The coverage assessment states what v0.1.0 provides; "
-  "the supporting publications establish why a requirement matters, not that Symlit meets it.\n")
+  "the paper) according to the tool capability they concern, and Table 2 of the paper assesses Symlit v0.1.0 per atomic requirement. "
+  "Coding was performed by one coder and reviewed by the authors. The coverage assessment states what v0.1.0 provides, "
+  "whereas the supporting publications establish why a requirement matters, not that Symlit meets it.\n")
 w("## Reporting groups\n")
 w("| Group | Statement | Atomic requirements |\n|---|---|---|")
 for g, t in GROUPS.items():
@@ -69,7 +69,7 @@ for r in rows:
 w("")
 w("## Literature (76 publications)\n")
 for c, name in CLUSTERS.items():
-    w(f"**{c} – {name}**\n")
+    w(f"**{c}. {name}**\n")
     for k in order:
         cl, au, yr, ti, ve = LIT[k]
         if cl == c:

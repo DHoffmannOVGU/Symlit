@@ -40,10 +40,10 @@ text = [
     ("Derivation: 76 publications from six areas (clusters A–F) were read in full. 307 distinct statements on needs and "
      "shortcomings were extracted with page references, coded deductively and inductively, and consolidated into 28 "
      "atomic requirements (one need each), each supported by at least two independent publications. A statement could "
-     "support more than one atomic requirement (193 statements did), yielding 568 statement–requirement assignments; "
-     "the statement counts per requirement count these assignments. Coding was performed by one coder and reviewed by "
+     "support more than one atomic requirement (193 statements did), which yields 568 statement–requirement assignments. "
+     "The statement counts per requirement count these assignments. Coding was performed by one coder and reviewed by "
      "the authors.", False),
-    ("Reporting groups R1–R8 correspond to Table 1 of the paper; the coverage column corresponds to Table 2. The "
+    ("Reporting groups R1 to R8 correspond to Table 1 of the paper, and the coverage column corresponds to Table 2. The "
      "supporting publications establish why a requirement matters, not that Symlit meets it.", False),
     ("Sources in 'Atomic requirements' are numbers in 'Publications'.", False),
     ("", False),
@@ -92,7 +92,7 @@ data = []
 for k in order:
     cl, au, yr, ti, ve = LIT[k]
     sup = " ".join(r["atomic_id"] for r in rows if k in [x.strip() for x in r["supporting_papers"].split(",")])
-    data.append([num[k], f"{cl} – {CLUSTERS[cl]}", surnames(au), yr, ti[0].upper() + ti[1:], ve, sup])
+    data.append([num[k], f"{cl}. {CLUSTERS[cl]}", surnames(au), yr, ti[0].upper() + ti[1:], ve, sup])
 sheet(pb, ["No.", "Cluster", "Authors", "Year", "Title", "Venue", "Supports"], data, [6, 26, 36, 7, 60, 30, 30])
 
 wb.save("S1_Requirements_Catalogue_Symlit.xlsx")
