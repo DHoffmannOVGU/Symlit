@@ -1,10 +1,10 @@
-# Requirements catalogue (A1–A28)
+# Supplementary Material S1 – Requirements Catalogue for Symlit
 
 Supplement to D. Hoffmann, C. Binder, A. Lüder: *Symlit: Composing Domain Metamodels for Resilience and Sustainability in Production Systems*, CIRP CMS 2027.
 
 ## Derivation
 
-76 publications from six areas (clusters A–F below) were read in full. 307 statements on needs and shortcomings were extracted with page references, coded deductively and inductively, and consolidated into 28 **atomic requirements** (one need each). Every atomic requirement is supported by at least two independent publications. For reporting in the paper, the atomic requirements are arranged in eight **reporting groups** (R1–R8, Table 1 of the paper) by the tool capability they concern; Table 2 of the paper assesses Symlit v0.1.0 per atomic requirement. Coding was performed by one coder and reviewed by the authors. Working IDs (PR-xx) refer to the extraction sheet.
+76 publications from six areas (clusters A–F below) were read in full. 307 statements on needs and shortcomings were extracted with page references, coded deductively and inductively, and consolidated into 28 **atomic requirements** (one need each). The corpus contained 307 distinct extracted statements. A statement could support more than one atomic requirement (193 statements did), yielding 568 statement–requirement assignments; the statement counts per requirement below count these assignments. Every atomic requirement is supported by at least two independent publications. For reporting in the paper, the atomic requirements are arranged in eight **reporting groups** (R1–R8, Table 1 of the paper) by the tool capability they concern; Table 2 of the paper assesses Symlit v0.1.0 per atomic requirement. Coding was performed by one coder and reviewed by the authors. The coverage assessment states what v0.1.0 provides; the supporting publications establish why a requirement matters, not that Symlit meets it.
 
 ## Reporting groups
 
@@ -26,7 +26,7 @@ Papers / statements: number of supporting publications and extracted statements.
 | ID | Requirement | Group | Concern | Papers / statements | Symlit v0.1.0 | Sources |
 |---|---|---|---|---|---|---|
 | A1 | Domain engineers without metamodeling or programming expertise shall be able to define modeling languages (concepts, attributes, relations) themselves. | R1 | Language definition | 34 / 60 | met | 2, 3, 6–8, 11, 12, 15–17, 23, 25, 33, 37, 38, 40–45, 47–51, 53, 54, 56, 57, 62, 69, 70, 73 |
-| A2 | The environment shall be learnable and usable by domain engineers with little training. | R1 | Language definition | 42 / 70 | met | 1, 3, 6–8, 10–13, 15–17, 25, 32, 35, 37, 38, 40, 42, 43, 45, 47–49, 51–56, 58–62, 64, 65, 68–70, 73, 74 |
+| A2 | The environment shall be learnable and usable by domain engineers with little training. | R1 | Language definition | 42 / 70 | partly met – learnability indicated by course interviews; onboarding effort not measured | 1, 3, 6–8, 10–13, 15–17, 25, 32, 35, 37, 38, 40, 42, 43, 45, 47–49, 51–56, 58–62, 64, 65, 68–70, 73, 74 |
 | A3 | The environment shall support lean, task-specific languages that contain only the concepts an engineering task needs. | R1 | Language definition | 17 / 26 | met | 1, 3, 4, 6, 7, 13, 34–36, 38, 45, 47, 50, 52–54, 60 |
 | A4 | New engineering concerns (e.g. resilience, sustainability) shall be addable to a language without changing standards or tool code. | R2 | Language definition | 35 / 52 | met | 2–6, 11, 13, 14, 17–21, 24–34, 36–38, 44, 50, 52–54, 73, 74, 76 |
 | A5 | Established domain concept sets (e.g. PPR) shall be reusable as a starting point for new languages. | R2 | Language definition | 8 / 9 | met | 1, 4, 8, 11, 17, 19, 21, 75 |
