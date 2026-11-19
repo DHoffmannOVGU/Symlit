@@ -1,0 +1,886 @@
+{
+  "export": {
+    "version": 1,
+    "generatedAt": "2026-11-19T00:01:44.951Z",
+    "kind": "instance-model"
+  },
+  "project": {
+    "id": 9,
+    "userId": 1,
+    "name": "Plastics recycling lab (abstracted)",
+    "description": "Shredding step with its resilience and sustainability context.",
+    "projectType": "instance",
+    "referencedMetamodels": [
+      7,
+      8
+    ],
+    "templateId": null,
+    "metamodelSetup": null,
+    "createdAt": "2026-11-19T00:01:15.152Z",
+    "updatedAt": "2026-11-19T00:01:43.070Z"
+  },
+  "views": [
+    {
+      "id": 9,
+      "projectId": 9,
+      "name": "Main",
+      "description": "",
+      "viewType": "view",
+      "modelRules": [],
+      "createdAt": "2026-11-19T00:01:15.161Z",
+      "nodes": [
+        {
+          "id": "node_73be3533-6934-40b7-b65e-42c6e1efe043",
+          "projectId": 9,
+          "type": "part",
+          "data": {
+            "icon": "Zap",
+            "type": "Mitigation",
+            "color": "#dc2626",
+            "label": "Replace worn blades",
+            "typeId": "mm:7:node_47325402-b29e-430a-8cab-4cb8f2ebbe32",
+            "attributes": [
+              {
+                "id": "attr-downtime",
+                "name": "downtime",
+                "type": "number",
+                "unit": "h",
+                "value": "1",
+                "inheritedFrom": {
+                  "attrId": "attr-downtime",
+                  "nodeId": "mm:7:node_47325402-b29e-430a-8cab-4cb8f2ebbe32"
+                }
+              }
+            ],
+            "inheritStyle": true
+          },
+          "createdAt": "2026-11-19T00:01:15.174Z",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_7f44f175-4435-4f46-b8b6-b8d3f52921fc",
+          "projectId": 9,
+          "type": "part",
+          "data": {
+            "icon": "Radio",
+            "type": "Disruption",
+            "color": "#dc2626",
+            "label": "Blade wear",
+            "typeId": "mm:7:node_c64c56b4-b386-4335-9cf2-37babf004559",
+            "attributes": [
+              {
+                "id": "attr-downtime",
+                "name": "downtime",
+                "type": "number",
+                "unit": "h",
+                "value": "8",
+                "inheritedFrom": {
+                  "attrId": "attr-downtime",
+                  "nodeId": "mm:7:node_c64c56b4-b386-4335-9cf2-37babf004559"
+                }
+              }
+            ],
+            "inheritStyle": true
+          },
+          "createdAt": "2026-11-19T00:01:15.174Z",
+          "position": {
+            "x": 0,
+            "y": 219
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_e9d5b936-0cc0-4a99-9311-ef2a8a5200bb",
+          "projectId": 9,
+          "type": "part",
+          "data": {
+            "icon": "Bot",
+            "type": "CO2 machine",
+            "color": "#16a34a",
+            "label": "Shredder",
+            "typeId": "mm:8:node_82506434-2532-4fd6-9c70-f75015e7447c",
+            "attributes": [
+              {
+                "id": "attr-co2PerHour",
+                "name": "co2PerHour",
+                "type": "related",
+                "unit": "kg CO2/h",
+                "value": "2.85",
+                "formula": "[attr:attr-power] * sum([attr:attr-emissionFactor] of incoming \"supplies\")",
+                "inheritedFrom": {
+                  "attrId": "attr-co2PerHour",
+                  "nodeId": "mm:8:node_82506434-2532-4fd6-9c70-f75015e7447c"
+                }
+              },
+              {
+                "id": "attr-power",
+                "name": "power",
+                "type": "number",
+                "unit": "kW",
+                "value": "7.5",
+                "inheritedFrom": {
+                  "attrId": "attr-power",
+                  "nodeId": "mm:6:node_b8aa0088-2f9f-42cb-aa57-d4f109e1ea57"
+                }
+              }
+            ],
+            "inheritStyle": true
+          },
+          "createdAt": "2026-11-19T00:01:15.174Z",
+          "position": {
+            "x": 264,
+            "y": 219
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_b39becbc-241c-4223-a0ce-5c66a5b80221",
+          "projectId": 9,
+          "type": "part",
+          "data": {
+            "icon": "Box",
+            "type": "Power supply",
+            "color": "#16a34a",
+            "label": "Grid electricity",
+            "typeId": "mm:8:node_97d3cabc-d3b0-4a8b-a308-a6bc4b6590e7",
+            "attributes": [
+              {
+                "id": "attr-emissionFactor",
+                "name": "emissionFactor",
+                "type": "number",
+                "unit": "kg CO2/kWh",
+                "value": "0.38",
+                "inheritedFrom": {
+                  "attrId": "attr-emissionFactor",
+                  "nodeId": "mm:8:node_97d3cabc-d3b0-4a8b-a308-a6bc4b6590e7"
+                }
+              }
+            ],
+            "inheritStyle": true
+          },
+          "createdAt": "2026-11-19T00:01:15.174Z",
+          "position": {
+            "x": 528,
+            "y": 219
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_614a67c8-58f5-4f17-bce7-f4db6962cf59",
+          "projectId": 9,
+          "type": "part",
+          "data": {
+            "icon": "Box",
+            "type": "Material",
+            "color": "#2563eb",
+            "label": "PP waste",
+            "typeId": "mm:6:node_91efe639-e4b3-442f-b008-4ac5b3b7f9c2",
+            "attributes": [],
+            "inheritStyle": true
+          },
+          "createdAt": "2026-11-19T00:01:15.174Z",
+          "position": {
+            "x": 0,
+            "y": 438
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_5ad96269-f286-4ec8-b0c8-f640ef697104",
+          "projectId": 9,
+          "type": "part",
+          "data": {
+            "icon": "Zap",
+            "type": "CO2 process",
+            "color": "#16a34a",
+            "label": "Shredding",
+            "typeId": "mm:8:node_1b011a29-8e40-426c-852b-b1124d4d0f46",
+            "attributes": [
+              {
+                "id": "attr-co2PerKg",
+                "name": "co2PerKg",
+                "type": "related",
+                "unit": "kg CO2/kg",
+                "value": "0.095",
+                "formula": "sum([attr:attr-co2PerHour] of incoming \"executes\") / [attr:attr-throughput]",
+                "inheritedFrom": {
+                  "attrId": "attr-co2PerKg",
+                  "nodeId": "mm:8:node_1b011a29-8e40-426c-852b-b1124d4d0f46"
+                }
+              },
+              {
+                "id": "attr-throughput",
+                "name": "throughput",
+                "type": "number",
+                "unit": "kg/h",
+                "value": "30",
+                "inheritedFrom": {
+                  "attrId": "attr-throughput",
+                  "nodeId": "mm:6:node_d90f8a2c-3b48-400d-9326-ba10aee4b1fa"
+                }
+              }
+            ],
+            "inheritStyle": true
+          },
+          "createdAt": "2026-11-19T00:01:15.174Z",
+          "position": {
+            "x": 264,
+            "y": 438
+          },
+          "parentId": null
+        },
+        {
+          "id": "node_725eff20-4316-4370-a1b9-708868ba719a",
+          "projectId": 9,
+          "type": "part",
+          "data": {
+            "icon": "Box",
+            "type": "Material",
+            "color": "#2563eb",
+            "label": "PP flakes",
+            "typeId": "mm:6:node_91efe639-e4b3-442f-b008-4ac5b3b7f9c2",
+            "attributes": [],
+            "inheritStyle": true
+          },
+          "createdAt": "2026-11-19T00:01:15.174Z",
+          "position": {
+            "x": 528,
+            "y": 438
+          },
+          "parentId": null
+        }
+      ],
+      "edges": [
+        {
+          "id": "edge_08fccdc3-1553-4c8a-b9a5-e1320812ded9",
+          "viewId": 9,
+          "source": "node_73be3533-6934-40b7-b65e-42c6e1efe043",
+          "target": "node_7f44f175-4435-4f46-b8b6-b8d3f52921fc",
+          "edgeType": "dependency",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "label": "mitigates",
+            "edgeType": "dependency",
+            "pathType": "straight",
+            "lineStyle": "dashed",
+            "sourceArrow": "none",
+            "targetArrow": "arrow"
+          },
+          "createdAt": "2026-11-19T00:01:43.059Z"
+        },
+        {
+          "id": "edge_00db7e70-baca-4e36-bb6d-1d9797f4909e",
+          "viewId": 9,
+          "source": "node_7f44f175-4435-4f46-b8b6-b8d3f52921fc",
+          "target": "node_e9d5b936-0cc0-4a99-9311-ef2a8a5200bb",
+          "edgeType": "dependency",
+          "sourceHandle": "right",
+          "targetHandle": "left",
+          "data": {
+            "label": "affects",
+            "edgeType": "dependency",
+            "pathType": "straight",
+            "lineStyle": "dashed",
+            "sourceArrow": "none",
+            "targetArrow": "arrow"
+          },
+          "createdAt": "2026-11-19T00:01:43.059Z"
+        },
+        {
+          "id": "edge_29a6595f-0670-46f9-a956-5416780f2004",
+          "viewId": 9,
+          "source": "node_b39becbc-241c-4223-a0ce-5c66a5b80221",
+          "target": "node_e9d5b936-0cc0-4a99-9311-ef2a8a5200bb",
+          "edgeType": "association",
+          "sourceHandle": "left",
+          "targetHandle": "right",
+          "data": {
+            "label": "supplies",
+            "edgeType": "association",
+            "pathType": "straight",
+            "lineStyle": "solid",
+            "sourceArrow": "none",
+            "targetArrow": "arrowclosed"
+          },
+          "createdAt": "2026-11-19T00:01:43.059Z"
+        },
+        {
+          "id": "edge_4a513a21-8d6f-41a3-a6cf-9f112e727bd7",
+          "viewId": 9,
+          "source": "node_e9d5b936-0cc0-4a99-9311-ef2a8a5200bb",
+          "target": "node_5ad96269-f286-4ec8-b0c8-f640ef697104",
+          "edgeType": "association",
+          "sourceHandle": "bottom",
+          "targetHandle": "top",
+          "data": {
+            "label": "executes",
+            "edgeType": "association",
+            "pathType": "straight",
+            "lineStyle": "solid",
+            "sourceArrow": "none",
+            "targetArrow": "arrowclosed"
+          },
+          "createdAt": "2026-11-19T00:01:43.059Z"
+        },
+        {
+          "id": "edge_f49b9f87-c360-4edd-bc69-f50e3b399762",
+          "viewId": 9,
+          "source": "node_614a67c8-58f5-4f17-bce7-f4db6962cf59",
+          "target": "node_5ad96269-f286-4ec8-b0c8-f640ef697104",
+          "edgeType": "association",
+          "sourceHandle": "right",
+          "targetHandle": "left",
+          "data": {
+            "label": "input of",
+            "edgeType": "association",
+            "pathType": "straight",
+            "lineStyle": "solid",
+            "sourceArrow": "none",
+            "targetArrow": "arrowclosed"
+          },
+          "createdAt": "2026-11-19T00:01:43.059Z"
+        },
+        {
+          "id": "edge_8f4f4423-8209-45ca-9889-64e1b8915b5e",
+          "viewId": 9,
+          "source": "node_5ad96269-f286-4ec8-b0c8-f640ef697104",
+          "target": "node_725eff20-4316-4370-a1b9-708868ba719a",
+          "edgeType": "association",
+          "sourceHandle": "right",
+          "targetHandle": "left",
+          "data": {
+            "label": "produces",
+            "edgeType": "association",
+            "pathType": "straight",
+            "lineStyle": "solid",
+            "sourceArrow": "none",
+            "targetArrow": "arrowclosed"
+          },
+          "createdAt": "2026-11-19T00:01:43.059Z"
+        }
+      ]
+    }
+  ],
+  "referencedMetamodels": [
+    {
+      "project": {
+        "id": 7,
+        "userId": 1,
+        "name": "Resilience",
+        "description": "Disruptions of machines and their mitigations.",
+        "projectType": "metamodel",
+        "referencedMetamodels": [
+          6
+        ],
+        "templateId": null,
+        "metamodelSetup": null,
+        "createdAt": "2026-11-19T00:01:15.031Z",
+        "updatedAt": "2026-11-19T00:01:32.644Z"
+      },
+      "views": [
+        {
+          "id": 7,
+          "projectId": 7,
+          "name": "Main",
+          "description": "",
+          "viewType": "view",
+          "modelRules": [],
+          "createdAt": "2026-11-19T00:01:15.035Z",
+          "nodes": [
+            {
+              "id": "node_b8aa0088-2f9f-42cb-aa57-d4f109e1ea57",
+              "projectId": 6,
+              "type": "agentdef",
+              "data": {
+                "type": "Performer",
+                "color": "#2563eb",
+                "label": "Machine",
+                "attributes": [
+                  {
+                    "id": "attr-power",
+                    "name": "power",
+                    "type": "number",
+                    "unit": "kW",
+                    "value": ""
+                  }
+                ],
+                "description": "Machine that executes a process."
+              },
+              "createdAt": "2026-11-19T00:01:15.011Z",
+              "position": {
+                "x": 528,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_c64c56b4-b386-4335-9cf2-37babf004559",
+              "projectId": 7,
+              "type": "eventdef",
+              "data": {
+                "type": "Event",
+                "color": "#dc2626",
+                "label": "Disruption",
+                "attributes": [
+                  {
+                    "id": "attr-downtime",
+                    "name": "downtime",
+                    "type": "number",
+                    "unit": "h",
+                    "value": ""
+                  }
+                ],
+                "description": "Event that can stop a machine."
+              },
+              "createdAt": "2026-11-19T00:01:15.067Z",
+              "position": {
+                "x": 264,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_47325402-b29e-430a-8cab-4cb8f2ebbe32",
+              "projectId": 7,
+              "type": "actiondef",
+              "data": {
+                "type": "Behavior",
+                "color": "#dc2626",
+                "label": "Mitigation",
+                "attributes": [
+                  {
+                    "id": "attr-downtime",
+                    "name": "downtime",
+                    "type": "number",
+                    "unit": "h",
+                    "value": ""
+                  }
+                ],
+                "description": "Measure that limits the effect of a disruption."
+              },
+              "createdAt": "2026-11-19T00:01:15.067Z",
+              "position": {
+                "x": 0,
+                "y": 0
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_62a9b6df-9013-4aa1-be1e-1f3f2b685d4f",
+              "viewId": 7,
+              "source": "node_47325402-b29e-430a-8cab-4cb8f2ebbe32",
+              "target": "node_c64c56b4-b386-4335-9cf2-37babf004559",
+              "edgeType": "dependency",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "label": "mitigates",
+                "edgeType": "dependency",
+                "pathType": "straight",
+                "lineStyle": "dashed",
+                "sourceArrow": "none",
+                "targetArrow": "arrow"
+              },
+              "createdAt": "2026-11-19T00:01:32.633Z"
+            },
+            {
+              "id": "edge_3c9a79f7-c5bc-48f7-bf0a-3c841e86e904",
+              "viewId": 7,
+              "source": "node_c64c56b4-b386-4335-9cf2-37babf004559",
+              "target": "node_b8aa0088-2f9f-42cb-aa57-d4f109e1ea57",
+              "edgeType": "dependency",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "label": "affects",
+                "edgeType": "dependency",
+                "pathType": "straight",
+                "lineStyle": "dashed",
+                "sourceArrow": "none",
+                "targetArrow": "arrow"
+              },
+              "createdAt": "2026-11-19T00:01:32.633Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": {
+        "id": 8,
+        "userId": 1,
+        "name": "Sustainability",
+        "description": "Energy supply and emissions of machines and processes.",
+        "projectType": "metamodel",
+        "referencedMetamodels": [
+          6
+        ],
+        "templateId": null,
+        "metamodelSetup": null,
+        "createdAt": "2026-11-19T00:01:15.083Z",
+        "updatedAt": "2026-11-19T00:01:37.755Z"
+      },
+      "views": [
+        {
+          "id": 8,
+          "projectId": 8,
+          "name": "Main",
+          "description": "",
+          "viewType": "view",
+          "modelRules": [],
+          "createdAt": "2026-11-19T00:01:15.087Z",
+          "nodes": [
+            {
+              "id": "node_b8aa0088-2f9f-42cb-aa57-d4f109e1ea57",
+              "projectId": 6,
+              "type": "agentdef",
+              "data": {
+                "type": "Performer",
+                "color": "#2563eb",
+                "label": "Machine",
+                "attributes": [
+                  {
+                    "id": "attr-power",
+                    "name": "power",
+                    "type": "number",
+                    "unit": "kW",
+                    "value": ""
+                  }
+                ],
+                "description": "Machine that executes a process."
+              },
+              "createdAt": "2026-11-19T00:01:15.011Z",
+              "position": {
+                "x": 264,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_d90f8a2c-3b48-400d-9326-ba10aee4b1fa",
+              "projectId": 6,
+              "type": "actiondef",
+              "data": {
+                "type": "Behavior",
+                "color": "#2563eb",
+                "label": "Process",
+                "attributes": [
+                  {
+                    "id": "attr-throughput",
+                    "name": "throughput",
+                    "type": "number",
+                    "unit": "kg/h",
+                    "value": ""
+                  }
+                ],
+                "description": "Processing step."
+              },
+              "createdAt": "2026-11-19T00:01:15.011Z",
+              "position": {
+                "x": 528,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_97d3cabc-d3b0-4a8b-a308-a6bc4b6590e7",
+              "projectId": 8,
+              "type": "partdef",
+              "data": {
+                "type": "Object",
+                "color": "#16a34a",
+                "label": "Power supply",
+                "attributes": [
+                  {
+                    "id": "attr-emissionFactor",
+                    "name": "emissionFactor",
+                    "type": "number",
+                    "unit": "kg CO2/kWh",
+                    "value": ""
+                  }
+                ],
+                "description": "Energy carrier that supplies machines."
+              },
+              "createdAt": "2026-11-19T00:01:15.133Z",
+              "position": {
+                "x": 0,
+                "y": 0
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_82506434-2532-4fd6-9c70-f75015e7447c",
+              "projectId": 8,
+              "type": "agentdef",
+              "data": {
+                "type": "Performer",
+                "color": "#16a34a",
+                "label": "CO2 machine",
+                "attributes": [
+                  {
+                    "id": "attr-co2PerHour",
+                    "name": "co2PerHour",
+                    "type": "related",
+                    "unit": "kg CO2/h",
+                    "value": "",
+                    "formula": "[attr:attr-power] * sum([attr:attr-emissionFactor] of incoming \"supplies\")"
+                  }
+                ],
+                "description": "Machine with electricity-related emissions."
+              },
+              "createdAt": "2026-11-19T00:01:15.133Z",
+              "position": {
+                "x": 264,
+                "y": 219
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_1b011a29-8e40-426c-852b-b1124d4d0f46",
+              "projectId": 8,
+              "type": "actiondef",
+              "data": {
+                "type": "Behavior",
+                "color": "#16a34a",
+                "label": "CO2 process",
+                "attributes": [
+                  {
+                    "id": "attr-co2PerKg",
+                    "name": "co2PerKg",
+                    "type": "related",
+                    "unit": "kg CO2/kg",
+                    "value": "",
+                    "formula": "sum([attr:attr-co2PerHour] of incoming \"executes\") / [attr:attr-throughput]"
+                  }
+                ],
+                "description": "Process with emissions per kilogram of output."
+              },
+              "createdAt": "2026-11-19T00:01:15.133Z",
+              "position": {
+                "x": 528,
+                "y": 219
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_c0f82b73-7ec2-4144-95ba-62047fb98a35",
+              "viewId": 8,
+              "source": "node_97d3cabc-d3b0-4a8b-a308-a6bc4b6590e7",
+              "target": "node_b8aa0088-2f9f-42cb-aa57-d4f109e1ea57",
+              "edgeType": "association",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "label": "supplies",
+                "edgeType": "association",
+                "pathType": "straight",
+                "lineStyle": "solid",
+                "sourceArrow": "none",
+                "targetArrow": "arrowclosed"
+              },
+              "createdAt": "2026-11-19T00:01:37.740Z"
+            },
+            {
+              "id": "edge_a3736c57-5238-4c60-ac51-ab8a68d8656f",
+              "viewId": 8,
+              "source": "node_82506434-2532-4fd6-9c70-f75015e7447c",
+              "target": "node_b8aa0088-2f9f-42cb-aa57-d4f109e1ea57",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "bottom",
+              "data": {
+                "label": "",
+                "edgeType": "generalization",
+                "pathType": "straight",
+                "lineStyle": "solid",
+                "sourceArrow": "none",
+                "targetArrow": "none"
+              },
+              "createdAt": "2026-11-19T00:01:37.740Z"
+            },
+            {
+              "id": "edge_df9c601f-3e26-4dc2-bfa7-4c6f9363c6f4",
+              "viewId": 8,
+              "source": "node_1b011a29-8e40-426c-852b-b1124d4d0f46",
+              "target": "node_d90f8a2c-3b48-400d-9326-ba10aee4b1fa",
+              "edgeType": "generalization",
+              "sourceHandle": "top",
+              "targetHandle": "bottom",
+              "data": {
+                "label": "",
+                "edgeType": "generalization",
+                "pathType": "straight",
+                "lineStyle": "solid",
+                "sourceArrow": "none",
+                "targetArrow": "none"
+              },
+              "createdAt": "2026-11-19T00:01:37.740Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": {
+        "id": 6,
+        "userId": 1,
+        "name": "PPR core",
+        "description": "Products, processes and resources of the recycling laboratory.",
+        "projectType": "metamodel",
+        "referencedMetamodels": [],
+        "templateId": null,
+        "metamodelSetup": null,
+        "createdAt": "2026-11-19T00:01:14.990Z",
+        "updatedAt": "2026-11-19T00:01:27.578Z"
+      },
+      "views": [
+        {
+          "id": 6,
+          "projectId": 6,
+          "name": "Main",
+          "description": "",
+          "viewType": "view",
+          "modelRules": [],
+          "createdAt": "2026-11-19T00:01:14.995Z",
+          "nodes": [
+            {
+              "id": "node_91efe639-e4b3-442f-b008-4ac5b3b7f9c2",
+              "projectId": 6,
+              "type": "partdef",
+              "data": {
+                "type": "Object",
+                "color": "#2563eb",
+                "label": "Material",
+                "attributes": [],
+                "description": "Input, intermediate or recycled material."
+              },
+              "createdAt": "2026-11-19T00:01:15.011Z",
+              "position": {
+                "x": 0,
+                "y": 219
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_d90f8a2c-3b48-400d-9326-ba10aee4b1fa",
+              "projectId": 6,
+              "type": "actiondef",
+              "data": {
+                "type": "Behavior",
+                "color": "#2563eb",
+                "label": "Process",
+                "attributes": [
+                  {
+                    "id": "attr-throughput",
+                    "name": "throughput",
+                    "type": "number",
+                    "unit": "kg/h",
+                    "value": ""
+                  }
+                ],
+                "description": "Processing step."
+              },
+              "createdAt": "2026-11-19T00:01:15.011Z",
+              "position": {
+                "x": 264,
+                "y": 219
+              },
+              "parentId": null
+            },
+            {
+              "id": "node_b8aa0088-2f9f-42cb-aa57-d4f109e1ea57",
+              "projectId": 6,
+              "type": "agentdef",
+              "data": {
+                "type": "Performer",
+                "color": "#2563eb",
+                "label": "Machine",
+                "attributes": [
+                  {
+                    "id": "attr-power",
+                    "name": "power",
+                    "type": "number",
+                    "unit": "kW",
+                    "value": ""
+                  }
+                ],
+                "description": "Machine that executes a process."
+              },
+              "createdAt": "2026-11-19T00:01:15.011Z",
+              "position": {
+                "x": 264,
+                "y": 0
+              },
+              "parentId": null
+            }
+          ],
+          "edges": [
+            {
+              "id": "edge_af64bf79-a1a0-4329-93ef-8427720b1561",
+              "viewId": 6,
+              "source": "node_91efe639-e4b3-442f-b008-4ac5b3b7f9c2",
+              "target": "node_d90f8a2c-3b48-400d-9326-ba10aee4b1fa",
+              "edgeType": "association",
+              "sourceHandle": "right",
+              "targetHandle": "left",
+              "data": {
+                "label": "input of",
+                "edgeType": "association",
+                "pathType": "straight",
+                "lineStyle": "solid",
+                "sourceArrow": "none",
+                "targetArrow": "arrowclosed"
+              },
+              "createdAt": "2026-11-19T00:01:27.558Z"
+            },
+            {
+              "id": "edge_35e9b880-0d50-485d-be21-0fb08bde28ae",
+              "viewId": 6,
+              "source": "node_d90f8a2c-3b48-400d-9326-ba10aee4b1fa",
+              "target": "node_91efe639-e4b3-442f-b008-4ac5b3b7f9c2",
+              "edgeType": "association",
+              "sourceHandle": "bottom",
+              "targetHandle": "bottom",
+              "data": {
+                "label": "produces",
+                "edgeType": "association",
+                "pathType": "straight",
+                "lineStyle": "solid",
+                "sourceArrow": "none",
+                "targetArrow": "arrowclosed"
+              },
+              "createdAt": "2026-11-19T00:01:27.558Z"
+            },
+            {
+              "id": "edge_a2b711e5-05f1-4df1-b59c-59d7a631c7e5",
+              "viewId": 6,
+              "source": "node_b8aa0088-2f9f-42cb-aa57-d4f109e1ea57",
+              "target": "node_d90f8a2c-3b48-400d-9326-ba10aee4b1fa",
+              "edgeType": "association",
+              "sourceHandle": "bottom",
+              "targetHandle": "top",
+              "data": {
+                "label": "executes",
+                "edgeType": "association",
+                "pathType": "straight",
+                "lineStyle": "solid",
+                "sourceArrow": "none",
+                "targetArrow": "arrowclosed"
+              },
+              "createdAt": "2026-11-19T00:01:27.558Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

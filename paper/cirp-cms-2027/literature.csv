@@ -1,0 +1,77 @@
+no,key,cluster,authors,year,title,venue,supports
+1,Beers2024a,A,"Beers, Nabizada, Weigand, Gehlhoff, Fay",2024,Towards an MBSE approach for modeling complex production systems based on industrial standards,IEEE ETFA 2024,A2 A3 A5 A12 A13
+2,Beers2024b,A,"Beers, Nabizada, Weigand, Gehlhoff, Fay",2024,A SysML profile for the standardized description of processes during system development,IEEE SysCon 2024,A1 A4 A12 A13
+3,Beers2026,A,"Beers, Nabizada, Weigand, Chahine, Gehlhoff, Fay",2026,A domain-specific modeling language for production systems in early engineering phases,Systems (MDPI),A1 A2 A3 A4 A12 A13 A14 A26
+4,Beers2026b,A,"Beers, Nabizada, Chahine, Gehlhoff, Fay",2026,Modeling product-process-resource variability in early design phases of production systems,IEEE SysCon 2026,A3 A4 A5 A10 A15
+5,Biffl2017,A,"Biffl, Lüder, Gerhard (eds.)",2017,Multi-disciplinary engineering for cyber-physical production systems,Springer,A4 A10 A11 A12 A17 A21
+6,Biffl2021,A,"Biffl, Musil, Musil, Meixner, Lüder, et al.",2021,An Industry 4.0 asset-based coordination artifact for production systems engineering,IEEE CBI 2021,A1 A2 A3 A4 A7 A11 A15 A27
+7,Binder2021,A,"Binder, Neureiter, Lüder",2021,Towards a domain-specific approach enabling tool-supported model-based systems engineering of complex industrial Internet-of-Things applications,Systems (MDPI) 9(2),A1 A2 A3 A15
+8,Binder2023,A,"Binder, Hünecke, Neureiter, Lüder",2023,Towards flexible production systems engineering according to RAMI 4.0 by utilizing PPR notation,IEEE INDIN 2023,A1 A2 A5 A11 A17 A21
+9,Feldmann2019,A,"Feldmann, Kernschmidt, Vogel-Heuser, et al.",2019,Managing inter-model inconsistencies in model-based systems engineering: application in automated production systems engineering,J Syst Softw,A7 A9 A12 A13 A15
+10,Gudder2025,A,"Gudder, Hoffmann, Hünecke, Lüder",2025,The IEDT framework: enabling efficient engineering data exchange using AutomationML,IEEE ETFA 2025,A2 A15 A16 A17 A26
+11,Hoffmann2024,A,"Hoffmann, Gudder, Hünecke, Lüder",2024,Enhancing production system conceptualization with PPR modeling,IEEE ETFA 2024,A1 A2 A4 A5 A17
+12,Huenecke2025,A,"Hünecke, Binder, Hoffmann, Hoang, Lüder",2025,Common concept method for citizen modelers in cross-domain engineering,IEEE ETFA 2025,A1 A2 A12 A15 A16 A20
+13,Kathrein2019,A,"Kathrein, Meixner, Winkler, Lüder, Biffl",2019,A meta-model for representing consistency as extension to the formal process description,IEEE ETFA 2019,A2 A3 A4 A12 A13 A27
+14,Lueder2020,A,"Lüder, Baumann, Behnert, et al.",2020,Paving pathways for digitalization in engineering: common concepts in engineering chains,IEEE ETFA 2020,A4 A11 A15 A16
+15,Meixner2019,A,"Meixner, Rabiser, Biffl",2019,"Towards modeling variability of products, processes and resources in cyber-physical production systems engineering",SPLC 2019 (ACM),A1 A2 A7 A10 A15
+16,Meixner2020,A,"Meixner, Decker, Marcher, Lüder, Biffl",2020,Towards a domain-specific language for product-process-resource constraints,IEEE ETFA 2020,A1 A2 A16 A18 A21
+17,Meixner2021,A,"Meixner, Rinker, Marcher, Decker, Biffl",2021,A domain-specific language for product-process-resource modeling,IEEE ETFA 2021,A1 A2 A4 A5 A12 A13 A14 A16 A17 A21
+18,Nabizada2026,A,"Nabizada, Drath, Gehlhoff, Fay",2026,An AutomationML domain library for the formalized process description,arXiv 2606.03691,A4 A16 A17 A18
+19,Pfrommer2013,A,"Pfrommer, Schleipen, Beyerer",2013,"PPRS: production skills and their relation to product, process, and resource",IEEE ETFA 2013,A4 A5 A16 A17
+20,Rath2026,A,"Rath, Gierecker, Schüppstuhl",2026,Assembly system modeling with SysML and AutomationML for configuration and reconfiguration,Procedia CIRP,A4 A11 A15 A17
+21,Schleipen2009,A,"Schleipen, Drath",2009,Three-view-concept for modeling process or manufacturing plants with AutomationML,IEEE ETFA 2009,A4 A5 A16
+22,Strakosova2024,A,"Strakošová, Novák, Kadera",2024,Product-oriented product-process-resource asset network and its representation in AutomationML for AAS,IEEE ETFA 2024,A16 A17
+23,Barata2023,B,"Barata, Kayser",2023,"Industry 5.0 - past, present, and near future",Procedia Comput Sci,A1 A20
+24,Barrero2026,B,"Barrero-Arciniegas, Bataleblu, Rauch, Matt",2026,Sustainable and resilient cyber-physical production systems: a systematic literature review,J Comput Des Eng 13(5),A4 A11
+25,Breque2021,B,"Breque, De Nul, Petridis",2021,"Industry 5.0: towards a sustainable, human-centric and resilient European industry","European Commission, Publications Office of the EU",A1 A2 A4 A7 A20
+26,Dickopf2023,B,"Dickopf, Forte, Weber, Stürmer, et al.",2023,Application of the asset administration shell in the context of engineering data management systems,IEEE ICE/ITMC 2023,A4 A16 A17
+27,Glisic2024,B,"Glišić, Møller, Ramanujan",2024,Digital process passport: a conceptual model for information collection and sharing in sustainable manufacturing,Procedia CIRP,A4 A7 A16 A17
+28,Hostos2025,B,"Hostos, Goepp, Sondi",2025,A systematic literature review of resilience approaches in production systems,IEEE Trans Eng Manag 72,A4
+29,Kuehn2025,B,"Kühn, Baumann, Volz, Stojanovic",2025,Digital product passport design supporting the circular economy based on the asset administration shell,Sustainability (MDPI) 17(3),A4 A16 A17 A27
+30,Leng2022,B,"Leng, Sha, Wang, Zheng, Zhuang, Liu, Wuest, Mourtzis, Wang",2022,Industry 5.0: prospect and retrospect,J Manuf Syst 65,A4 A7
+31,Thiele2019,B,"Thiele, Khorsandi, Krüger",2019,Energy efficiency optimization using AutomationML modeling and an EnPI methodology,IEEE ETFA 2019,A4 A16
+32,Wurm2026,B,"Wurm, Kasner, Petrovic, Herfs",2026,Designing a system architecture for automated product carbon footprint calculation in production lines,Procedia CIRP 140,A2 A4 A15 A16 A17 A26
+33,Xu2021,B,"Xu, Lu, Vogel-Heuser, Wang",2021,"Industry 4.0 and Industry 5.0 - inception, conception and perception",J Manuf Syst 61,A1 A4
+34,deLara2010,C,"de Lara, Guerra",2010,Deep meta-modelling with MetaDepth,TOOLS 2010 (Springer),A3 A4 A6 A7
+35,Fill2013,C,"Fill, Karagiannis",2013,On the conceptualisation of modelling methods using the ADOxx meta modelling platform,EMISA 8(1),A2 A3 A12 A13 A16 A18 A21
+36,Karagiannis2015,C,Karagiannis,2015,Agile modeling method engineering,PCI 2015 (ACM),A3 A4 A7 A11 A12 A16 A17 A18 A21
+37,Karagiannis2022,C,"Karagiannis, Buchmann, Utz",2022,The OMiLAB Digital Innovation environment: agile conceptual models to bridge business value with digital and physical twins,Comput Ind,A1 A2 A4 A20 A21
+38,KellyTolvanen2008,C,"Kelly, Tolvanen",2008,Domain-specific modeling: enabling full code generation,Wiley,A1 A2 A3 A4 A7
+39,Maroti2014,C,"Maróti, Kecskés, Kereskényi, Broll, et al.",2014,Next generation (meta)modeling: web- and cloud-based collaborative tool infrastructure,"MPM@MODELS 2014, CEUR 1237",A6 A7 A12 A18 A19
+40,Metin2025,C,"Metin, Bork",2025,A reference architecture for the development of GLSP-based web modeling tools,Softw Syst Model,A1 A2 A18 A20
+41,Muff2026,C,"Muff, Borcard, Fill",2026,MM-AR: a web-based open-source metamodeling platform for spatial conceptual modeling,Softw Syst Model,A1 A7 A13 A18
+42,Syriani2013,C,"Syriani, Vangheluwe, Mannadiar, et al.",2013,AToMPM: a web-based modeling environment,"MODELS 2013 Demos, CEUR 1115",A1 A2 A18 A19
+43,Zweihoff2019,C,"Zweihoff, Naujokat, Steffen",2019,Pyro: generating domain-specific collaborative online modeling environments,FASE 2019 (Springer),A1 A2 A12 A13 A14 A18 A19 A26
+44,Bucaioni2022,D,"Bucaioni, Cicchetti, Ciccozzi",2022,Modelling in low-code development: a multi-vocal systematic review,Softw Syst Model,A1 A4 A17
+45,Ruscio2022,D,"Di Ruscio, Kolovos, de Lara, Pierantonio, Tisi, Wimmer",2022,Low-code development and model-driven engineering: two sides of the same coin?,Softw Syst Model 21,A1 A2 A3 A7 A18 A21
+46,Guerra2018,D,"Guerra, de Lara",2018,On the quest for flexible modelling,MODELS 2018 (ACM),A7 A8 A9 A12 A26
+47,Hutchinson2011,D,"Hutchinson, Whittle, Rouncefield, Kristoffersen",2011,Empirical assessment of MDE in industry,ICSE 2011 (ACM),A1 A2 A3 A20
+48,Izquierdo2013,D,"Izquierdo, Cabot, López-Fernández, Sánchez Cuadrado, Guerra, de Lara",2013,Engaging end-users in the collaborative development of domain-specific modelling languages,CDVE 2013 (Springer),A1 A2 A7 A8 A18 A19
+49,LopezFernandez2015,D,"López-Fernández, Sánchez Cuadrado, Guerra, de Lara",2015,Example-driven meta-model development,Softw Syst Model 14,A1 A2 A8 A12 A14 A26
+50,MartinezLasaca2026,D,"Martínez-Lasaca, Díez, Guerra, de Lara",2026,A model and workflow-driven approach for engineering domain-specific low-code platforms and applications,Softw Syst Model,A1 A3 A4 A17 A18
+51,SanchezCuadrado2012,D,"Sánchez Cuadrado, de Lara, Guerra",2012,Bottom-up meta-modelling: an interactive approach,MODELS 2012 (Springer),A1 A2 A8 A26
+52,Verbruggen2023,D,"Verbruggen, Snoeck",2023,Practitioners' experiences with model-driven engineering: a meta-review,Softw Syst Model,A2 A3 A4 A11 A17
+53,Whittle2014,D,"Whittle, Hutchinson, Rouncefield",2014,The state of practice in model-driven engineering,IEEE Softw 31(3),A1 A2 A3 A4 A10 A11
+54,Whittle2017,D,"Whittle, Hutchinson, Rouncefield, Burden, Heldal",2017,A taxonomy of tool-related issues affecting the adoption of model-driven engineering,Softw Syst Model 16,A1 A2 A3 A4 A7 A17
+55,Alfonso2025,E,"Alfonso, Cabot",2025,Teaching low-code development with BESSER,MODELS-C 2025 (IEEE),A2 A18 A20
+56,Kienzle2024,E,"Kienzle, Zschaler, Barnett, Sağlam, et al.",2024,Requirements for modelling tools for teaching,Softw Syst Model 23(5),A1 A2 A11 A12 A14 A18 A19 A20
+57,Snoeck2025,E,"Snoeck, Pastor",2025,Teaching conceptual modelling in the age of LLMs,Softw Syst Model,A1 A12 A13 A24 A25
+58,Zschaler2026,E,"Zschaler, Barnett, Boronat, et al.",2026,The MDENet education platform: zero-install directed activities for learning MDE,Softw Syst Model,A2 A14 A18 A20
+59,Chen2023,F,"Chen, Yang, Chen, Hernández López, Mussbacher, Varró",2023,Automated domain modeling with large language models: a comparative study,MODELS 2023 (IEEE),A2 A23 A24 A26
+60,Cibrian2025,F,"Cibrián, Olivert-Iserte, Álvarez-Rodríguez",2025,An agent-based approach for the automatic generation of valid SysMLv2 models in industrial contexts,Comput Ind,A2 A3 A21 A24 A25
+61,Cruz2026,F,Cruz et al.,2026,Integrating LLM-based modeling assistants into Capella: experiments and architectural tradeoffs,IEEE 2026,A2 A21 A22 A23 A24 A25 A26
+62,DiSipio2024,F,"Di Sipio, Rubei, Di Rocco, Di Ruscio, et al.",2024,On the use of LLMs to support the development of domain-specific modeling languages,MODELS-C 2024 (ACM),A1 A2 A6 A26
+63,Hachm2025,F,"Hachm, Le Calvar, Bruneliere, Tisi",2025,Towards LLM agents for model-based engineering: a case in transformation selection,MODELS-C 2025 (IEEE),A21 A23 A24 A26 A28
+64,Hachm2026,F,"Hachm, Le Calvar, Bruneliere, Tisi",2026,A tool selection mechanism for LLM-based model management agents,Innov Syst Softw Eng,A2 A21 A22 A23 A24 A25 A26 A28
+65,Hell2026,F,"Hell, Fleck, Langer, Bork",2026,Realizing a Model Context Protocol (MCP) server for the Graphical Language Server Platform,MODELS 2026 (ACM),A2 A7 A21 A23 A24
+66,Hou2025,F,"Hou, Zhao, Wang, Wang",2025,"Model Context Protocol (MCP): landscape, security threats, and future research directions",ACM TOSEM (arXiv 2503.23278),A21 A22 A27
+67,Kunze2024,F,"Kunze, Fay",2024,Automated generation of AML models for industrial plants using LLM chat applications,IEEE ETFA 2024,A21 A23 A24
+68,Koehle2026,F,"Köhle, Anicic, Runkler",2026,Tool-based agentic AI for asset administration shell generation,IEEE ICPS 2026,A2 A15 A16 A23 A24 A25 A26
+69,Petrovic2025,F,"Petrovic, Pan, Zolfaghari, Knoll",2025,LLM-based iterative approach to metamodeling in automotive,GACLM 2025 (IEEE),A1 A2 A7 A24 A25 A26 A28
+70,SilvaMercado2026,F,"Silva Mercado, Ma, Cabot, Kelsen, Proper",2026,Human-LLM collaborative domain modeling: a human-in-the-loop framework and empirical assessment,Softw Syst Model,A1 A2 A24 A25
+71,Song2026,F,Song et al.,2026,Artificial intelligence for model-based systems engineering: a scoping review,Comput Ind Eng,A7 A15 A17 A26
+72,Storey2025,F,"Storey, Pastor, Guizzardi, Liddle, et al.",2025,Large language models for conceptual modeling: assessment and application potential,Data Knowl Eng,A12 A20 A24 A25
+73,DaSilva2025,F,"Vieira da Silva, Köcher, Gehlhoff",2025,Beyond formal semantics for capabilities and skills: Model Context Protocol in manufacturing,IEEE ETFA 2025,A1 A2 A4 A21 A22 A23 A24 A26
+74,Westermann2025,F,"Westermann, Köcher, Gehlhoff",2025,Automated validation of textual constraints against AutomationML via LLMs and SHACL,IEEE ETFA 2025,A2 A4 A12 A13 A14 A16 A24 A25
+75,Xia2023,F,"Xia, Shenoy, Jazdi, Weyrich",2023,Towards autonomous system: flexible modular production system enhanced with large language model agents,IEEE ETFA 2023,A5 A21 A26
+76,Xia2024,F,"Xia, Xiao, Jazdi, Weyrich",2024,Generation of asset administration shell with large language model agents,IEEE Access 12,A4 A7 A16 A24 A25 A26
