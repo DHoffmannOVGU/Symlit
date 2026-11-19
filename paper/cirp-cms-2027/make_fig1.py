@@ -32,9 +32,9 @@ def ref(x0, y0, x1, y1, label, side):
 box(20, 60, 60, 20, BLUE, "METAMODEL", "PPR core",
     ["owns Product, Process, Resource", "and their relationships"])
 box(2, 30, 44, 23, RED, "METAMODEL", "Resilience",
-    ["owns its types, attributes and", "relationships; specialises or", "relates core types"])
+    ["owns its types, attributes", "and relationships, specialises", "or relates to core types"])
 box(54, 30, 44, 23, GREEN, "METAMODEL", "Sustainability",
-    ["owns its types, attributes and", "relationships; specialises or", "relates core types"])
+    ["owns its types, attributes", "and relationships, specialises", "or relates to core types"])
 box(20, 1, 60, 19, GREY, "INSTANCE PROJECT", "Production-system model",
     ["each element uses a type defined in a", "domain metamodel or the shared core"])
 
